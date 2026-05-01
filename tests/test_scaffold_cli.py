@@ -1,4 +1,4 @@
-"""Tests for the 'scaffold github-action' and 'scaffold diagnostics' subcommands."""
+"""Tests for the scaffold github-action, diagnostics, and repairs subcommands."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ runner = CliRunner()
 
 GOLDEN = Path(__file__).parent / "scaffold_golden" / "github_action.yml"
 DIAGNOSTICS_GOLDEN = Path(__file__).parent / "scaffold_golden" / "diagnostics.py"
+REPAIRS_GOLDEN = Path(__file__).parent / "scaffold_golden" / "repairs.py"
 
 
 # ---------------------------------------------------------------------------
@@ -249,3 +250,131 @@ def test_check_command_shows_diagnostics_scaffold_hint(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert "hasscheck scaffold diagnostics" in result.output
+
+
+# ---------------------------------------------------------------------------
+# repairs subcommand
+# ---------------------------------------------------------------------------
+
+
+def test_repairs_dry_run_prints_template(tmp_path: Path) -> None:
+    write_minimal_integration_for_scaffold(tmp_path, domain="demo")
+
+    result = runner.invoke(
+        app,
+        ["scaffold", "repairs", "--path", str(tmp_path), "--dry-run"],
+    )
+
+    assert result.exit_code == 0
+    assert "async_create_fix_flow" in result.output
+
+
+def test_repairs_writes_file(tmp_path: Path) -> None:
+    write_minimal_integration_for_scaffold(tmp_path, domain="demo")
+
+    result = runner.invoke(
+        app,
+        ["scaffold", "repairs", "--path", str(tmp_path)],
+    )
+
+    assert result.exit_code == 0
+    target = tmp_path / "custom_components" / "demo" / "repairs.py"
+    assert target.exists()
+
+
+def test_repairs_output_matches_golden(tmp_path: Path) -> None:
+    write_minimal_integration_for_scaffold(tmp_path, domain="demo")
+
+    result = runner.invoke(
+        app,
+        ["scaffold", "repairs", "--path", str(tmp_path)],
+    )
+
+    assert result.exit_code == 0
+    target = tmp_path / "custom_components" / "demo" / "repairs.py"
+    assert target.read_text(encoding="utf-8") == REPAIRS_GOLDEN.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_repairs_refuses_if_file_exists(tmp_path: Path) -> None:
+    write_minimal_integration_for_scaffold(tmp_path, domain="demo")
+    target = tmp_path / "custom_components" / "demo" / "repairs.py"
+    target.write_text("existing content", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["scaffold", "repairs", "--path", str(tmp_path)],
+    )
+
+    assert result.exit_code != 0
+    assert "--force" in result.output
+
+
+def test_repairs_force_overwrites(tmp_path: Path) -> None:
+    write_minimal_integration_for_scaffold(tmp_path, domain="demo")
+    target = tmp_path / "custom_components" / "demo" / "repairs.py"
+    target.write_text("old content", encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["scaffold", "repairs", "--path", str(tmp_path), "--force"],
+    )
+
+    assert result.exit_code == 0
+    assert target.read_text(encoding="utf-8") != "old content"
+    assert "async_create_fix_flow" in target.read_text(encoding="utf-8")
+
+
+def test_repairs_applicability_gate_fires(tmp_path: Path) -> None:
+    write_minimal_integration_for_scaffold(tmp_path, domain="demo")
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.3.0'\napplicability:\n  has_user_fixable_repairs: false\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["scaffold", "repairs", "--path", str(tmp_path)],
+    )
+
+    assert result.exit_code != 0
+    assert "Warning" in result.output or "warning" in result.output.lower()
+
+
+def test_repairs_force_bypasses_gate(tmp_path: Path) -> None:
+    write_minimal_integration_for_scaffold(tmp_path, domain="demo")
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.3.0'\napplicability:\n  has_user_fixable_repairs: false\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["scaffold", "repairs", "--path", str(tmp_path), "--force"],
+    )
+
+    assert result.exit_code == 0
+    target = tmp_path / "custom_components" / "demo" / "repairs.py"
+    assert target.exists()
+
+
+def test_repairs_path_not_found(tmp_path: Path) -> None:
+    nonexistent = tmp_path / "does_not_exist"
+
+    result = runner.invoke(
+        app,
+        ["scaffold", "repairs", "--path", str(nonexistent)],
+    )
+
+    assert result.exit_code != 0
+
+
+def test_check_command_shows_repairs_scaffold_hint(tmp_path: Path) -> None:
+    """repairs.file.exists WARN fix command should reference scaffold hint."""
+    write_minimal_integration_for_scaffold(tmp_path, domain="demo")
+
+    result = runner.invoke(app, ["check", "--path", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "hasscheck scaffold repairs" in result.output

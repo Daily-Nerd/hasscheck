@@ -80,7 +80,9 @@ def repairs_file_exists(context: ProjectContext) -> Finding:
         fix=None
         if exists
         else FixSuggestion(
-            summary="Add repairs.py when the integration has user-fixable repair scenarios."
+            summary="Add repairs.py when the integration has user-fixable repair scenarios.",
+            command="hasscheck scaffold repairs",
+            docs_url="https://developers.home-assistant.io/docs/core/integration/repairs/",
         ),
         path=str(path.relative_to(context.root)),
     )
