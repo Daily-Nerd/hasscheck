@@ -80,6 +80,10 @@ jobs:
 | `no-config` | `false` | Ignore `hasscheck.yaml` if present |
 | `comment-pr` | `false` | Post findings as a PR comment |
 | `github-token` | `''` | Required when `comment-pr: true` |
+| `emit-badges` | `false` | Generate shields.io badge JSON and upload as artifact |
+| `badges-out-dir` | `badges` | Directory for badge JSON when `emit-badges: 'true'` |
+| `emit-publish` | `false` | Publish the report to a hosted HassCheck service. Requires workflow `permissions: id-token: write` |
+| `publish-endpoint` | `https://hasscheck.io` | Publish endpoint URL when `emit-publish: 'true'` |
 
 **Outputs:** `exit-code` — `0` when no FAIL findings, `1` when one or more FAIL findings.
 

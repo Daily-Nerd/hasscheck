@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `httpx>=0.27` runtime dependency (publish client only)
 - `hasscheck init` CLI command — bootstraps a repo with `hasscheck.yaml` and `.github/workflows/hasscheck.yml`. Supports `--dry-run`, `--force`, `--skip-action`. Refuses to overwrite existing files unless `--force`.
 - `src/hasscheck/scaffold/templates/hasscheck.yaml.tmpl` — conservative `hasscheck.yaml` template used by `init`
+- `emit-publish` and `publish-endpoint` inputs on the composite GitHub Action. When `emit-publish: 'true'`, the action requests a workflow OIDC token (audience `hasscheck-web`) and runs `hasscheck publish`. Requires workflow-level `permissions: id-token: write`.
 
 ### Changed
 - README "Current status" reflects v0.6.0 latest + v0.7.0 in-planning

@@ -23,6 +23,14 @@ inputs:
     description: 'Directory to write badge JSON files when emit-badges is true.'
     required: false
     default: 'badges'
+  emit-publish:
+    description: 'Publish the report to a hosted HassCheck service (opt-in). Set to "true" to enable. Requires `permissions: id-token: write` on the workflow.'
+    required: false
+    default: 'false'
+  publish-endpoint:
+    description: 'Publish endpoint URL when emit-publish is true. Defaults to https://hasscheck.io.'
+    required: false
+    default: 'https://hasscheck.io'
 
 outputs:
   exit-code:
@@ -92,6 +100,37 @@ runs:
         name: hasscheck-badges
         path: ${{ inputs.badges-out-dir }}/
         if-no-files-found: warn
+
+    - name: Request GitHub OIDC token
+      id: oidc
+      if: inputs.emit-publish == 'true'
+      shell: bash
+      run: |
+        if [ -z "$ACTIONS_ID_TOKEN_REQUEST_URL" ] || [ -z "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          echo "::error::emit-publish requires the workflow to grant 'id-token: write' permission."
+          exit 1
+        fi
+        TOKEN=$(curl -fsSL \
+          -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+          "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=hasscheck-web" | \
+          python -c "import json,sys; print(json.load(sys.stdin)['value'])")
+        echo "::add-mask::$TOKEN"
+        echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+    - name: Publish report
+      if: inputs.emit-publish == 'true'
+      shell: bash
+      env:
+        HASSCHECK_OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+      run: |
+        ARGS=""
+        if [ "${{ inputs.no-config }}" = "true" ]; then
+          ARGS="--no-config"
+        fi
+        hasscheck publish \
+          --path "${{ inputs.path }}" \
+          --to "${{ inputs.publish-endpoint }}" \
+          $ARGS
 
     - name: Assert result
       shell: bash
