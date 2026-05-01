@@ -1,0 +1,104 @@
+name: Bug report
+description: Report reproducible behavior that is not working as expected.
+title: "bug: "
+labels:
+  - bug
+  - status:needs-review
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Clear reproduction steps help us triage faster.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checklist
+      description: Please confirm these before opening the issue.
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I read the README and relevant docs.
+          required: true
+        - label: I understand changes go through the maintainer approval workflow before implementation.
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug description
+      description: What happened? Be specific about the behavior that looks wrong.
+      placeholder: hasscheck reports ... when ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest set of steps or files needed to reproduce the bug.
+      placeholder: |
+        1. Create ...
+        2. Run ...
+        3. See ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What should hasscheck have done instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: What did hasscheck actually do?
+    validations:
+      required: true
+
+  - type: input
+    id: hasscheck-version
+    attributes:
+      label: hasscheck version
+      description: Paste the output of `hasscheck --version`.
+      placeholder: hasscheck 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: operating-system
+    attributes:
+      label: Operating system
+      placeholder: macOS 15.5, Ubuntu 24.04, Windows 11, etc.
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      description: Paste the output of `python --version`.
+      placeholder: Python 3.13.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or output
+      description: Paste any relevant CLI output, traceback, or diagnostic log.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add screenshots, sample files, links, or anything else that helps explain the issue.
+    validations:
+      required: false
