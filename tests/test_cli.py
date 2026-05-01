@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from typer.main import get_command
 from typer.testing import CliRunner
 
 from hasscheck.cli import app
@@ -60,10 +61,10 @@ def test_explain_shows_overridable_true_for_softable_rule() -> None:
 # ---------- Phase 5: --no-config flag + ConfigError handling ----------
 
 
-def test_no_config_flag_exists_in_help(tmp_path) -> None:
-    result = runner.invoke(app, ["check", "--help"])
-    assert result.exit_code == 0
-    assert "--no-config" in result.stdout
+def test_no_config_flag_is_registered() -> None:
+    command = get_command(app).commands["check"]
+
+    assert any("--no-config" in option.opts for option in command.params)
 
 
 def test_no_config_flag_skips_yaml(tmp_path) -> None:
