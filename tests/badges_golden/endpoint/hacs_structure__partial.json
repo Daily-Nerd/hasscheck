@@ -1,0 +1,7 @@
+{
+  "cacheSeconds": 300,
+  "color": "yellow",
+  "label": "HACS Structure",
+  "message": "Partial",
+  "schemaVersion": 1
+}

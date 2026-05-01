@@ -1,0 +1,7 @@
+{
+  "cacheSeconds": 300,
+  "color": "red",
+  "label": "HACS Structure",
+  "message": "Issues",
+  "schemaVersion": 1
+}
