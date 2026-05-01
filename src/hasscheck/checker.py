@@ -14,6 +14,7 @@ CATEGORY_LABELS = {
     "diagnostics_repairs": "Diagnostics/Repairs",
     "docs_support": "Docs/Support",
     "maintenance_signals": "Maintenance Signals",
+    "tests_ci": "Tests/CI",
 }
 
 
