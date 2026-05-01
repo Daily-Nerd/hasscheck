@@ -4,10 +4,10 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-SCHEMA_VERSION = "0.1.0"
+SCHEMA_VERSION = "0.2.0"
 DEFAULT_RULESET_ID = "hasscheck-ha-2026.4"
 DEFAULT_SOURCE_CHECKED_AT = "2026-05-01"
 
@@ -32,6 +32,9 @@ class RuleSeverity(StrEnum):
     INFORMATIONAL = "informational"
 
 
+ApplicabilitySource = Literal["default", "detected", "config"]
+
+
 class RuleSource(BaseModel):
     url: str
     checked_at: str = DEFAULT_SOURCE_CHECKED_AT
@@ -40,6 +43,7 @@ class RuleSource(BaseModel):
 class Applicability(BaseModel):
     status: ApplicabilityStatus = ApplicabilityStatus.APPLICABLE
     reason: str
+    source: ApplicabilitySource = "default"
 
 
 class FixSuggestion(BaseModel):
@@ -72,12 +76,29 @@ class CategorySignal(BaseModel):
     points_possible: int
 
 
+class OverridesApplied(BaseModel):
+    count: int = 0
+    rule_ids: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _invariant(self) -> "OverridesApplied":
+        if self.count != len(self.rule_ids):
+            raise ValueError(
+                f"overrides_applied invariant violated: count={self.count} but "
+                f"rule_ids has {len(self.rule_ids)} entries"
+            )
+        if self.rule_ids != sorted(self.rule_ids):
+            raise ValueError("overrides_applied.rule_ids must be alphabetically sorted")
+        return self
+
+
 class ReportSummary(BaseModel):
     overall: Literal["informational_only"] = "informational_only"
     security_review: Literal["not_performed"] = "not_performed"
     official_ha_tier: Literal["not_assigned"] = "not_assigned"
     hacs_acceptance: Literal["not_guaranteed"] = "not_guaranteed"
     categories: list[CategorySignal] = Field(default_factory=list)
+    overrides_applied: OverridesApplied = Field(default_factory=OverridesApplied)
 
 
 class ProjectInfo(BaseModel):
@@ -89,7 +110,7 @@ class ProjectInfo(BaseModel):
 
 class ToolInfo(BaseModel):
     name: Literal["hasscheck"] = "hasscheck"
-    version: str = "0.1.0"
+    version: str = "0.2.0"
 
 
 class RulesetInfo(BaseModel):

@@ -92,6 +92,7 @@ RULES = [
         why="HACS integration repositories are structured around custom_components/<domain>/.",
         source_url=HACS_SOURCE,
         check=custom_components_exists,
+        overridable=False,
     ),
     RuleDefinition(
         id="hacs.file.parseable",
@@ -102,5 +103,6 @@ RULES = [
         why="hacs.json stores HACS repository metadata and must be valid JSON before it can be inspected.",
         source_url=HACS_SOURCE,
         check=hacs_file_parseable,
+        overridable=False,
     ),
 ]

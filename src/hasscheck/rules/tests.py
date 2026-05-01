@@ -39,5 +39,6 @@ RULES = [
         why="Tests provide maintainers a safety net for future Home Assistant and integration changes.",
         source_url=TESTS_SOURCE,
         check=tests_folder_exists,
+        overridable=True,
     )
 ]

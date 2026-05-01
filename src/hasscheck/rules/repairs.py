@@ -65,5 +65,6 @@ RULES = [
         why="Repair flows guide users through problems they can fix themselves.",
         source_url=REPAIRS_SOURCE,
         check=repairs_file_exists,
+        overridable=True,
     )
 ]

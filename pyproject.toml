@@ -1,11 +1,12 @@
 [project]
 name = "hasscheck"
-version = "0.1.0"
+version = "0.2.0"
 description = "Unofficial sourced checks for Home Assistant custom integration repos."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.8",
+    "pyyaml>=6.0.3",
     "rich>=13.7",
     "typer>=0.12",
 ]

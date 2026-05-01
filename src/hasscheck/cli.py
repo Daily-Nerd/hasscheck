@@ -8,6 +8,7 @@ from rich.console import Console
 
 from hasscheck import __version__
 from hasscheck.checker import run_check
+from hasscheck.config import ConfigError
 from hasscheck.models import HassCheckReport
 from hasscheck.output import print_terminal_report, report_to_json
 from hasscheck.rules.registry import RULES_BY_ID
@@ -39,19 +40,29 @@ def root(
 def check(
     path: Path = typer.Option(Path("."), "--path", "-p", help="Repository path to inspect."),
     json_output: bool = typer.Option(False, "--json", help="Emit the stable JSON report."),
+    no_config: bool = typer.Option(False, "--no-config", help="Ignore hasscheck.yaml even if present (useful for CI debugging)."),
 ) -> None:
     """Check a custom integration repository and print actionable findings.
+
+    Reads hasscheck.yaml at the repo root if present, applying per-rule
+    applicability overrides. Use --no-config to ignore.
 
     Examples:
       hasscheck check --path .
       hasscheck check --path . --json
+      hasscheck check --path . --no-config
     """
     if not path.exists():
         console.print(f"[red]Error:[/] Path '{path}' does not exist.")
         console.print("[yellow]Suggestion:[/] Pass an existing repository path with --path.")
         raise typer.Exit(code=1)
 
-    report = run_check(path)
+    try:
+        report = run_check(path, no_config=no_config)
+    except ConfigError as exc:
+        typer.echo(f"hasscheck: error: {exc}", err=True)
+        raise typer.Exit(code=1)
+
     if json_output:
         typer.echo(report_to_json(report), nl=False)
         return
@@ -78,6 +89,7 @@ def explain(rule_id: str = typer.Argument(..., help="Rule ID to explain, for exa
     console.print(f"Version: {rule.version}")
     console.print(f"Category: {rule.category}")
     console.print(f"Severity: {rule.severity.value}")
+    console.print(f"Overridable: {'true' if rule.overridable else 'false'}")
     console.print(f"Why: {rule.why}")
     console.print(f"Source: {rule.source_url}")
 

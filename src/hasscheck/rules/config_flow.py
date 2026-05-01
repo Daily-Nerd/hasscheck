@@ -226,6 +226,7 @@ RULES = [
         why="Config flows are the standard way for Home Assistant integrations to support UI setup.",
         source_url=CONFIG_FLOW_SOURCE,
         check=config_flow_file_exists,
+        overridable=True,
     ),
     RuleDefinition(
         id="config_flow.manifest_flag_consistent",
@@ -236,5 +237,6 @@ RULES = [
         why="Home Assistant requires manifest config_flow metadata to match the config_flow.py implementation.",
         source_url=CONFIG_FLOW_SOURCE,
         check=config_flow_manifest_flag_consistent,
+        overridable=False,
     ),
 ]

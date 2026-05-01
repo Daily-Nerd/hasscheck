@@ -47,5 +47,6 @@ RULES = [
         why="A CI workflow makes quality checks repeatable for pushes and pull requests.",
         source_url=GITHUB_ACTIONS_SOURCE,
         check=github_actions_exists,
+        overridable=True,
     )
 ]
