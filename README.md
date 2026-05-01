@@ -48,27 +48,9 @@ HassCheck is intentionally not a replacement for hassfest and does not assign Ho
 
 ## Current status
 
-- **Latest release:** v0.7.0 — opt-in hosted reports via GitHub OIDC
-- **Current development target:** v0.8.0 — license, packaging metadata, and schema-versioning policy (in progress)
+**Latest release**: v0.9.0 — rule depth, AST-based config flow + diagnostics inspection, README content rules, and adoption-focused docs.
 
-v0.6.0 includes:
-
-- GitHub Action (`uses: Daily-Nerd/hasscheck@v0.6.0`) with PR comment, JSON artifact upload, and opt-in badge artifact
-- Typer CLI with `check`, `explain`, `schema`, `scaffold`, and `badge` commands
-- Rich terminal output with per-finding fix suggestions
-- `scaffold github-action` — generate a GitHub Actions CI workflow
-- `scaffold diagnostics` — generate a `diagnostics.py` starter with redaction helpers
-- `scaffold repairs` — generate a `repairs.py` starter with `ConfirmRepairFlow` skeleton
-- Applicability-aware scaffold refusal (respects `hasscheck.yaml` flags)
-- `hasscheck badge` — opt-in shields.io endpoint JSON for per-category quality signals
-- Pydantic JSON report schema (stable, additive-only versioning)
-- Rule IDs and rule versions
-- Source links and source timestamps
-- Applicability-aware statuses
-- Per-rule config overrides via `hasscheck.yaml`
-- Project applicability context via `hasscheck.yaml`
-- Example good and partial integration fixtures
-- Pytest coverage for the current rule set
+**In progress**: v0.10 — rule expansion (modern HA pattern checks, manifest.requirements sanity, advanced config flow signals). See open issues for the working backlog.
 
 ## GitHub Action
 
@@ -87,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Daily-Nerd/hasscheck@v0.7.0
+      - uses: Daily-Nerd/hasscheck@v0.9.0
         with:
           comment-pr: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -105,6 +87,8 @@ jobs:
 | `badges-out-dir` | `badges` | Directory for badge JSON when `emit-badges: 'true'` |
 | `emit-publish` | `false` | Publish the report to a hosted HassCheck service. Requires workflow `permissions: id-token: write` |
 | `publish-endpoint` | `https://hasscheck.io` | Publish endpoint URL when `emit-publish: 'true'` |
+
+> The hosted reports endpoint (`hasscheck.io`) launches alongside the public release. Until then, `emit-publish: 'true'` works against a self-hosted endpoint via the `publish-endpoint` input or `HASSCHECK_PUBLISH_ENDPOINT` env var. The local CLI (without `--emit-publish`) is fully functional and is the recommended starting point.
 
 **Outputs:** `exit-code` — `0` when no FAIL findings, `1` when one or more FAIL findings.
 
@@ -127,7 +111,7 @@ This writes per-category JSON files and a `manifest.json` to `badges/`. Commit t
 Add `emit-badges: 'true'` to your HassCheck action step:
 
 ```yaml
-- uses: Daily-Nerd/hasscheck@v0.7.0
+- uses: Daily-Nerd/hasscheck@v0.9.0
   with:
     emit-badges: 'true'
     badges-out-dir: 'badges'
