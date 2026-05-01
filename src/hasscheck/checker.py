@@ -10,6 +10,7 @@ from hasscheck.rules.registry import RULES
 CATEGORY_LABELS = {
     "hacs_structure": "HACS Structure",
     "manifest_metadata": "Manifest Metadata",
+    "modern_ha_patterns": "Modern HA Patterns",
 }
 
 
