@@ -178,6 +178,7 @@ def test_diagnostics_refuses_if_file_exists(tmp_path: Path) -> None:
     )
 
     assert result.exit_code != 0
+    assert "--force" in result.output
 
 
 def test_diagnostics_force_overwrites(tmp_path: Path) -> None:

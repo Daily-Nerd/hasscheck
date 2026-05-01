@@ -89,7 +89,9 @@ def diagnostics(
         target = path / "custom_components" / domain / "diagnostics.py"
 
     template_content = load_template("diagnostics.py.tmpl")
-    content = render(template_content, domain=domain)
+    content = render(template_content)
+
+    console.print(f"[dim]Domain:[/] {domain}")
 
     try:
         write_or_refuse(target, content, force=force, dry_run=dry_run)

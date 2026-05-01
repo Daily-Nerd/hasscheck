@@ -7,8 +7,6 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-DOMAIN = "demo"
-
 # Add any keys that should be redacted from diagnostics output.
 # Common sensitive fields: API keys, tokens, passwords, location data.
 TO_REDACT: list[str] = [
@@ -26,11 +24,12 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     return {
-        "entry": async_redact_data(dict(entry.data), TO_REDACT),
+        "entry": redact_data(dict(entry.data), TO_REDACT),
+        "options": redact_data(dict(entry.options), TO_REDACT),
     }
 
 
-def async_redact_data(data: dict[str, Any], to_redact: list[str]) -> dict[str, Any]:
+def redact_data(data: dict[str, Any], to_redact: list[str]) -> dict[str, Any]:
     """Redact sensitive data from a dict."""
     redacted = dict(data)
     for key in to_redact:
