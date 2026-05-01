@@ -57,6 +57,7 @@ def render(template: str, **variables: str) -> str:
 
     Raises:
         KeyError: If a placeholder in the template is not in *variables*.
+        ValueError: If the template contains an invalid $-placeholder (e.g. $1 or a bare $).
     """
     return string.Template(template).substitute(variables)
 
