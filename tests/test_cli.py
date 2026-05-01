@@ -67,6 +67,12 @@ def test_no_config_flag_is_registered() -> None:
     assert any("--no-config" in option.opts for option in command.params)
 
 
+def test_scaffold_subcommand_is_registered() -> None:
+    result = runner.invoke(app, ["scaffold", "--help"])
+    assert result.exit_code == 0
+    assert "scaffold" in result.output.lower()
+
+
 def test_no_config_flag_skips_yaml(tmp_path) -> None:
     (tmp_path / "hasscheck.yaml").write_text(
         "rules:\n"

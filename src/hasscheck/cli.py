@@ -12,6 +12,7 @@ from hasscheck.config import ConfigError
 from hasscheck.models import HassCheckReport
 from hasscheck.output import print_terminal_report, report_to_json
 from hasscheck.rules.registry import RULES_BY_ID
+from hasscheck.scaffold.cli import scaffold_app
 
 # CLI philosophy: developer-friendly but scriptable. Human output is explanatory;
 # --json is stable and machine-readable for CI, badges, and future hosted reports.
@@ -114,6 +115,9 @@ def explain(
     console.print(f"Overridable: {'true' if rule.overridable else 'false'}")
     console.print(f"Why: {rule.why}")
     console.print(f"Source: {rule.source_url}")
+
+
+app.add_typer(scaffold_app, name="scaffold")
 
 
 def main() -> None:
