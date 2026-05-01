@@ -110,7 +110,7 @@ def test_pyproject_version_matches_tool_info() -> None:
     from pathlib import Path
     from hasscheck.models import ToolInfo
     pyproject = tomllib.loads((Path(__file__).parent.parent / "pyproject.toml").read_text())
-    assert pyproject["project"]["version"] == ToolInfo().version == "0.2.0"
+    assert pyproject["project"]["version"] == ToolInfo().version == "0.2.1"
 
 
 def test_yaml_importable() -> None:

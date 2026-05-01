@@ -110,7 +110,7 @@ class ProjectInfo(BaseModel):
 
 class ToolInfo(BaseModel):
     name: Literal["hasscheck"] = "hasscheck"
-    version: str = "0.2.0"
+    version: str = "0.2.1"
 
 
 class RulesetInfo(BaseModel):
