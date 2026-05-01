@@ -370,6 +370,14 @@ def init(
         "--skip-action",
         help="Skip generating .github/workflows/hasscheck.yml.",
     ),
+    enable_publish: bool = typer.Option(
+        False,
+        "--enable-publish",
+        help=(
+            "Scaffold a publish-aware workflow with id-token: write permission "
+            "and emit-publish enabled. Use --force to overwrite an existing workflow."
+        ),
+    ),
 ) -> None:
     """Bootstrap a repository for HassCheck.
 
@@ -389,7 +397,11 @@ def init(
 
     try:
         artifacts = init_project(
-            resolved, dry_run=dry_run, force=force, skip_action=skip_action
+            resolved,
+            dry_run=dry_run,
+            force=force,
+            skip_action=skip_action,
+            enable_publish=enable_publish,
         )
     except FileExistsError as exc:
         console.print(f"[red]Error:[/] {exc}")

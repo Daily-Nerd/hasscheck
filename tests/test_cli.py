@@ -405,3 +405,28 @@ def test_publish_help_contains_force_flag(tmp_path) -> None:
         or "non-TTY" in result.output
         or "skip" in result.output.lower()
     )
+
+
+# ---------- init --enable-publish (v0.8) ----------
+
+
+def test_init_enable_publish_cli_writes_publish_workflow(tmp_path) -> None:
+    """CLI: hasscheck init --enable-publish → workflow with id-token: write + emit-publish."""
+    result = runner.invoke(
+        app,
+        ["init", "--path", str(tmp_path), "--enable-publish"],
+    )
+    assert result.exit_code == 0
+    workflow = tmp_path / ".github" / "workflows" / "hasscheck.yml"
+    content = workflow.read_text()
+    assert "id-token: write" in content
+    assert "emit-publish: 'true'" in content
+
+
+def test_init_default_cli_does_not_write_publish_workflow(tmp_path) -> None:
+    """CLI: hasscheck init (no --enable-publish) → standard workflow without emit-publish."""
+    result = runner.invoke(app, ["init", "--path", str(tmp_path)])
+    assert result.exit_code == 0
+    workflow = tmp_path / ".github" / "workflows" / "hasscheck.yml"
+    content = workflow.read_text()
+    assert "emit-publish" not in content
