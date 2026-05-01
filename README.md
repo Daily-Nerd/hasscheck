@@ -1,5 +1,7 @@
 # HassCheck
 
+[![CI](https://github.com/Daily-Nerd/hasscheck/actions/workflows/ci.yml/badge.svg)](https://github.com/Daily-Nerd/hasscheck/actions/workflows/ci.yml)
+
 HassCheck is an **unofficial** CLI for Home Assistant community integration maintainers.
 
 It checks custom integration repositories for sourced HA/HACS quality signals and produces explainable, actionable reports.
