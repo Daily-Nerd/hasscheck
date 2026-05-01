@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-05-01
+
 ### Added
 - ADR 0008 — hosted reports publish contract (two-repo split, GitHub OIDC auth, schema lockstep, last-50 retention, free-for-all v0.7, monetization constraints)
 - `docs/architecture/publish-handshake.md` — client-side OIDC flow, request/response shapes, error semantics, withdrawal commands
-- `docs/README.md` refreshed: project status table through v0.6, links to all architecture docs and ADRs 0001-0008, OSS/proprietary split note
-- `CHANGELOG.md` — Keep a Changelog 1.1.0 format, populated retroactively from v0.1.0 through v0.6.0
+- `docs/README.md` refreshed: project status table through v0.7, links to all architecture docs and ADRs 0001-0008, OSS/proprietary split note
+- `CHANGELOG.md` — Keep a Changelog 1.1.0 format, populated retroactively from v0.1.0 through v0.7.0
 - `src/hasscheck/slug.py` — best-effort `owner/repo` detection from git remote with manifest `issue_tracker` fallback
 - `ProjectInfo.repo_slug: str | None` field on the JSON report (additive per ADR 0006)
 - `hasscheck publish` CLI command — opt-in upload to a hosted service via GitHub OIDC. Supports `--withdraw --report-id <id>` and `--withdraw-all`. Endpoint and token resolution: CLI flag > env var (`HASSCHECK_PUBLISH_ENDPOINT`, `HASSCHECK_OIDC_TOKEN`) > default (`https://hasscheck.io`).
@@ -21,10 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `emit-publish` and `publish-endpoint` inputs on the composite GitHub Action. When `emit-publish: 'true'`, the action requests a workflow OIDC token (audience `hasscheck-web`) and runs `hasscheck publish`. Requires workflow-level `permissions: id-token: write`.
 
 ### Changed
-- README "Current status" reflects v0.6.0 latest + v0.7.0 in-planning
-- Action example versions bumped to v0.6.0 across README sections
+- Bumped `version` and `__version__` to `0.7.0`
+- README "Current status" reflects v0.6.0 latest + v0.7.0 in-planning at the time of writing; refreshed during the release
+- Action example versions bumped to v0.6.0 across README sections during the docs refresh
 - "Non-goals for v0.4.0" → "Non-goals" (stale version dropped)
 - Dropped "/bad" claim from fixture description (no tracked files yet; tracked separately)
+
+[Compare v0.6.0...v0.7.0](https://github.com/Daily-Nerd/hasscheck/compare/v0.6.0...v0.7.0)
 
 ## [0.6.0] — 2026-05-01
 
@@ -130,7 +135,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Initial release](https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.1.0)
 
-[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.7.0
 [0.6.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.6.0
 [0.5.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.4.0
