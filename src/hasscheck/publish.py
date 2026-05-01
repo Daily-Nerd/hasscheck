@@ -58,13 +58,22 @@ class PublishResult:
     schema_version: str
 
 
-def resolve_endpoint(cli_value: str | None) -> str:
-    """Resolve publish endpoint with precedence: CLI flag > env var > default."""
+def resolve_endpoint(
+    cli_value: str | None,
+    *,
+    config: HassCheckConfig | None = None,
+) -> str:
+    """Resolve publish endpoint.
+
+    Precedence: CLI flag > $HASSCHECK_PUBLISH_ENDPOINT > config.publish.endpoint > DEFAULT_ENDPOINT.
+    """
     if cli_value:
         return cli_value.rstrip("/")
     env_value = os.environ.get(ENDPOINT_ENV_VAR)
     if env_value:
         return env_value.rstrip("/")
+    if config is not None and config.publish is not None and config.publish.endpoint:
+        return config.publish.endpoint.rstrip("/")
     return DEFAULT_ENDPOINT
 
 

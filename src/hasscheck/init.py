@@ -36,6 +36,7 @@ def init_project(
     dry_run: bool = False,
     force: bool = False,
     skip_action: bool = False,
+    enable_publish: bool = False,
 ) -> list[InitArtifact]:
     """Generate `hasscheck.yaml` (and optionally the GitHub Action) at *root*.
 
@@ -44,6 +45,8 @@ def init_project(
         dry_run: Print would-be content, do not write.
         force: Overwrite existing files.
         skip_action: Do not generate `.github/workflows/hasscheck.yml`.
+        enable_publish: When True, use the publish-aware workflow template
+            (grants id-token: write and sets emit-publish: 'true').
 
     Returns:
         One `InitArtifact` per file considered (whether written, skipped,
@@ -66,8 +69,11 @@ def init_project(
     if skip_action:
         return artifacts
 
+    template_name = (
+        "github_action_publish.yml.tmpl" if enable_publish else "github_action.yml.tmpl"
+    )
     action_target = _github_action_target(root)
-    action_content = load_template("github_action.yml.tmpl")
+    action_content = load_template(template_name)
     write_or_refuse(action_target, render(action_content), force=force, dry_run=dry_run)
     artifacts.append(InitArtifact(target=action_target, created=not dry_run))
 

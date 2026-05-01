@@ -39,6 +39,12 @@ class ProjectApplicability(BaseModel):
     uses_config_flow: bool | None = None
 
 
+class PublishConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    endpoint: str | None = None
+
+
 class HassCheckConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -46,6 +52,7 @@ class HassCheckConfig(BaseModel):
     project: ProjectConfig | None = None
     applicability: ProjectApplicability | None = None
     rules: dict[str, RuleOverride] = Field(default_factory=dict)
+    publish: PublishConfig | None = None
 
     @model_validator(mode="after")
     def _schema_version_matches_fields(self) -> HassCheckConfig:

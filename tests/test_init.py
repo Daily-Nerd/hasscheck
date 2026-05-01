@@ -78,3 +78,53 @@ def test_init_invalid_path_raises_value_error(tmp_path):
     missing = tmp_path / "nope"
     with pytest.raises(ValueError):
         init_project(missing)
+
+
+# ---------- --enable-publish flag (v0.8) ----------
+
+
+def test_init_enable_publish_false_writes_standard_workflow(tmp_path):
+    """Default (enable_publish=False) → workflow without emit-publish."""
+    init_project(tmp_path, enable_publish=False)
+    workflow = tmp_path / ".github" / "workflows" / "hasscheck.yml"
+    content = workflow.read_text()
+    assert "emit-publish" not in content
+
+
+def test_init_enable_publish_true_writes_publish_workflow(tmp_path):
+    """enable_publish=True → workflow with id-token: write and emit-publish: 'true'."""
+    init_project(tmp_path, enable_publish=True)
+    workflow = tmp_path / ".github" / "workflows" / "hasscheck.yml"
+    content = workflow.read_text()
+    assert "id-token: write" in content
+    assert "emit-publish: 'true'" in content
+
+
+def test_init_enable_publish_force_overwrites_existing_workflow(tmp_path):
+    """--force --enable-publish over existing standard workflow → swap to publish variant."""
+    init_project(tmp_path)
+    workflow = tmp_path / ".github" / "workflows" / "hasscheck.yml"
+    original_content = workflow.read_text()
+    assert "emit-publish" not in original_content
+
+    init_project(tmp_path, force=True, enable_publish=True)
+    new_content = workflow.read_text()
+    assert "emit-publish: 'true'" in new_content
+    assert "id-token: write" in new_content
+
+
+def test_init_enable_publish_missing_template_raises(tmp_path, monkeypatch):
+    """Missing template file raises FileNotFoundError before writing anything."""
+    import hasscheck.init as init_module
+
+    original_load = init_module.load_template
+
+    def patched_load(name: str) -> str:
+        if name == "github_action_publish.yml.tmpl":
+            raise FileNotFoundError(f"Template not found: {name}")
+        return original_load(name)
+
+    monkeypatch.setattr(init_module, "load_template", patched_load)
+
+    with pytest.raises(FileNotFoundError):
+        init_project(tmp_path, enable_publish=True)

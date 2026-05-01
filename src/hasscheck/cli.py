@@ -11,7 +11,7 @@ from hasscheck import __version__
 from hasscheck.badges import generate_badges
 from hasscheck.badges.policy import BadgePolicyError
 from hasscheck.checker import run_check
-from hasscheck.config import ConfigError
+from hasscheck.config import ConfigError, discover_config
 from hasscheck.init import init_project
 from hasscheck.models import HassCheckReport, RuleStatus
 from hasscheck.output import print_terminal_report, report_to_json, report_to_md
@@ -251,6 +251,11 @@ def publish(
             "remote when omitted."
         ),
     ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Skip the withdraw confirmation prompt. Required in CI / non-TTY.",
+    ),
 ) -> None:
     """Opt-in upload of a HassCheck report to a hosted service.
 
@@ -280,7 +285,13 @@ def publish(
         raise typer.Exit(code=1)
 
     try:
-        endpoint = resolve_endpoint(to)
+        cfg = discover_config(path.resolve())
+    except ConfigError as exc:
+        typer.echo(f"hasscheck: error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    try:
+        endpoint = resolve_endpoint(to, config=cfg)
         token = resolve_oidc_token(oidc_token)
     except PublishError as exc:
         typer.echo(f"hasscheck: error: {exc}", err=True)
@@ -296,6 +307,20 @@ def publish(
             raise typer.Exit(code=1)
         try:
             owner, repo = split_slug(resolved_slug)
+        except PublishError as exc:
+            typer.echo(f"hasscheck: error: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+        if not force:
+            target_desc = (
+                f"report {report_id}"
+                if report_id
+                else f"all reports for {owner}/{repo}"
+            )
+            typer.confirm(
+                f"Withdraw {target_desc} from {endpoint}? This is irreversible and cannot be undone.",
+                abort=True,
+            )
+        try:
             withdraw_report(
                 endpoint=endpoint,
                 oidc_token=token,
@@ -345,6 +370,14 @@ def init(
         "--skip-action",
         help="Skip generating .github/workflows/hasscheck.yml.",
     ),
+    enable_publish: bool = typer.Option(
+        False,
+        "--enable-publish",
+        help=(
+            "Scaffold a publish-aware workflow with id-token: write permission "
+            "and emit-publish enabled. Use --force to overwrite an existing workflow."
+        ),
+    ),
 ) -> None:
     """Bootstrap a repository for HassCheck.
 
@@ -364,7 +397,11 @@ def init(
 
     try:
         artifacts = init_project(
-            resolved, dry_run=dry_run, force=force, skip_action=skip_action
+            resolved,
+            dry_run=dry_run,
+            force=force,
+            skip_action=skip_action,
+            enable_publish=enable_publish,
         )
     except FileExistsError as exc:
         console.print(f"[red]Error:[/] {exc}")
