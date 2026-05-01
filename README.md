@@ -320,6 +320,11 @@ The exact category order may change as rules evolve. The JSON schema is the dura
 | Rule ID | Signal |
 | --- | --- |
 | `docs.readme.exists` | Repository has a README. |
+| `docs.installation.exists` | README contains an Installation section (HACS or manual). |
+| `docs.configuration.exists` | README contains a Configuration / Setup section. |
+| `docs.troubleshooting.exists` | README contains a Troubleshooting / FAQ / Support section. |
+| `docs.removal.exists` | README contains a Removal / Uninstall section. |
+| `docs.privacy.exists` | README addresses privacy / data / cloud / local handling. |
 | `repo.license.exists` | Repository has a license file. |
 
 ### Tests and CI

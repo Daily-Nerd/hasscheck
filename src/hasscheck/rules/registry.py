@@ -6,6 +6,7 @@ from hasscheck.rules.ci import RULES as CI_RULES
 from hasscheck.rules.config_flow import RULES as CONFIG_FLOW_RULES
 from hasscheck.rules.diagnostics import RULES as DIAGNOSTICS_RULES
 from hasscheck.rules.docs import RULES as DOCS_RULES
+from hasscheck.rules.docs_readme import RULES as DOCS_README_RULES
 from hasscheck.rules.hacs_structure import RULES as HACS_STRUCTURE_RULES
 from hasscheck.rules.manifest import RULES as MANIFEST_RULES
 from hasscheck.rules.repairs import RULES as REPAIRS_RULES
@@ -20,6 +21,7 @@ RULES = [
     *DIAGNOSTICS_RULES,
     *REPAIRS_RULES,
     *DOCS_RULES,
+    *DOCS_README_RULES,
     *REPOSITORY_RULES,
     *TESTS_RULES,
     *CI_RULES,
