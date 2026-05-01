@@ -8,6 +8,7 @@ from rich.console import Console
 from hasscheck.models import (
     Applicability,
     ApplicabilityStatus,
+    CategorySignal,
     Finding,
     FixSuggestion,
     HassCheckReport,
@@ -17,7 +18,7 @@ from hasscheck.models import (
     RuleSource,
     RuleStatus,
 )
-from hasscheck.output import print_terminal_report
+from hasscheck.output import print_terminal_report, report_to_md
 
 
 def make_finding(
@@ -196,3 +197,143 @@ def test_fix_section_shows_all_qualifying_findings() -> None:
     assert "repairs.file.exists" in output
     assert "hasscheck scaffold diagnostics" in output
     assert "hasscheck scaffold repairs" in output
+
+
+def make_finding_with_source(
+    status: RuleStatus,
+    fix: FixSuggestion | None = None,
+    rule_id: str = "test.rule",
+    applicability_source: str = "default",
+) -> Finding:
+    return Finding(
+        rule_id=rule_id,
+        rule_version="1.0.0",
+        category="test",
+        status=status,
+        severity=RuleSeverity.RECOMMENDED,
+        title="Test Rule",
+        message="Test message",
+        applicability=Applicability(
+            status=ApplicabilityStatus.APPLICABLE,
+            reason="applicable",
+            source=applicability_source,
+        ),
+        source=RuleSource(url="https://example.com"),
+        fix=fix,
+    )
+
+
+def make_md_report(
+    findings: list[Finding],
+    categories: list[CategorySignal] | None = None,
+) -> HassCheckReport:
+    return HassCheckReport(
+        project=ProjectInfo(path="/some/path", domain="my_integration"),
+        summary=ReportSummary(categories=categories or []),
+        findings=findings,
+    )
+
+
+def test_report_to_md_basic_structure() -> None:
+    report = make_md_report([make_finding(RuleStatus.PASS)])
+    output = report_to_md(report)
+
+    assert "## HassCheck Signals" in output
+    assert "| Category | Score | Points |" in output
+    assert "| Status | Rule | Message |" in output
+    assert "Security Review: Not performed." in output
+
+
+def test_report_to_md_category_score_all_points() -> None:
+    categories = [
+        CategorySignal(
+            id="cat1", label="Structure", points_awarded=10, points_possible=10
+        )
+    ]
+    report = make_md_report([], categories=categories)
+    output = report_to_md(report)
+
+    assert "✅" in output
+    assert "10 / 10" in output
+
+
+def test_report_to_md_category_score_partial_points() -> None:
+    categories = [
+        CategorySignal(
+            id="cat1", label="Structure", points_awarded=5, points_possible=10
+        )
+    ]
+    report = make_md_report([], categories=categories)
+    output = report_to_md(report)
+
+    assert "⚠️" in output
+    assert "5 / 10" in output
+
+
+def test_report_to_md_category_score_zero_points() -> None:
+    categories = [
+        CategorySignal(
+            id="cat1", label="Structure", points_awarded=0, points_possible=10
+        )
+    ]
+    report = make_md_report([], categories=categories)
+    output = report_to_md(report)
+
+    assert "❌" in output
+    assert "0 / 10" in output
+
+
+def test_report_to_md_fix_suggestions_shown_for_non_pass_with_fix() -> None:
+    fix = FixSuggestion(summary="Do the thing.", command="hasscheck scaffold thing")
+    report = make_md_report(
+        [make_finding(RuleStatus.WARN, fix=fix, rule_id="some.rule")]
+    )
+    output = report_to_md(report)
+
+    assert "### Fix Suggestions" in output
+    assert "some.rule" in output
+    assert "Do the thing." in output
+    assert "`hasscheck scaffold thing`" in output
+
+
+def test_report_to_md_fix_suggestions_omitted_when_all_fixes_none() -> None:
+    report = make_md_report(
+        [
+            make_finding(RuleStatus.WARN, fix=None, rule_id="warn.rule"),
+            make_finding(RuleStatus.FAIL, fix=None, rule_id="fail.rule"),
+        ]
+    )
+    output = report_to_md(report)
+
+    assert "### Fix Suggestions" not in output
+
+
+def test_report_to_md_fix_suggestions_omitted_for_pass_findings() -> None:
+    fix = FixSuggestion(summary="Should not appear.", command="hasscheck scaffold pass")
+    report = make_md_report(
+        [make_finding(RuleStatus.PASS, fix=fix, rule_id="pass.rule")]
+    )
+    output = report_to_md(report)
+
+    assert "### Fix Suggestions" not in output
+    assert "Should not appear." not in output
+
+
+def test_report_to_md_config_applicability_marker() -> None:
+    finding = make_finding_with_source(
+        RuleStatus.PASS, rule_id="config.rule", applicability_source="config"
+    )
+    report = make_md_report([finding])
+    output = report_to_md(report)
+
+    assert "config.rule *(config)*" in output
+
+
+def test_report_to_md_no_config_marker_for_default_source() -> None:
+    finding = make_finding_with_source(
+        RuleStatus.PASS, rule_id="default.rule", applicability_source="default"
+    )
+    report = make_md_report([finding])
+    output = report_to_md(report)
+
+    assert "*(config)*" not in output
