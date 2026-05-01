@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import ast
 import json
-from pathlib import Path
 from typing import Any
 
+from hasscheck.ast_utils import parse_module
 from hasscheck.models import (
     Applicability,
     ApplicabilityStatus,
@@ -63,24 +63,6 @@ def _read_manifest(context: ProjectContext) -> tuple[dict[str, Any] | None, str 
         return None, "manifest root must be a JSON object"
 
     return payload, None
-
-
-def _parse_module(path: Path) -> tuple[ast.Module | None, str | None]:
-    """Return (parsed_tree, None) on success, (None, error_msg) on failure.
-
-    Three states:
-    - (tree, None)  — parsed OK
-    - (None, msg)   — file could not be read or has a syntax error
-    - (None, None)  — file does not exist (caller should check before calling)
-    """
-    try:
-        source = path.read_text(encoding="utf-8")
-    except OSError as exc:
-        return None, str(exc)
-    try:
-        return ast.parse(source), None
-    except SyntaxError as exc:
-        return None, exc.msg or "syntax error"
 
 
 def _has_async_function(tree: ast.Module, name: str) -> bool:
@@ -162,7 +144,7 @@ def config_flow_user_step_exists(context: ProjectContext) -> Finding:
         )
 
     # Parse the file
-    tree, error = _parse_module(config_flow_path)
+    tree, error = parse_module(config_flow_path)
 
     if error is not None:
         return Finding(
