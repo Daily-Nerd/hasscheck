@@ -105,6 +105,18 @@ def test_json_contract_v01_fields_still_present(tmp_path) -> None:
     assert "reason" in finding["applicability"]
 
 
+def test_pyproject_version_matches_tool_info() -> None:
+    import tomllib
+    from pathlib import Path
+    from hasscheck.models import ToolInfo
+    pyproject = tomllib.loads((Path(__file__).parent.parent / "pyproject.toml").read_text())
+    assert pyproject["project"]["version"] == ToolInfo().version == "0.2.0"
+
+
+def test_yaml_importable() -> None:
+    import yaml  # noqa: F401  — pyyaml runtime dep present
+
+
 def test_json_contract_v02_additive_fields_present(tmp_path) -> None:
     """New v0.2 fields present without breaking v0.1 consumers."""
     import json
