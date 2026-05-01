@@ -64,3 +64,17 @@ def test_config_flow_user_step_warns_on_bad_integration_fixture() -> None:
     f = findings["config_flow.user_step.exists"]
     assert f.status is RuleStatus.WARN
     assert "async_step_user" in f.message
+
+
+# ---------------------------------------------------------------------------
+# PR4: diagnostics.redaction.used must WARN (fixture returns entry.data raw,
+#       no redaction call)
+# ---------------------------------------------------------------------------
+
+
+def test_diagnostics_redaction_warns_on_bad_integration_fixture() -> None:
+    """Fixture diagnostics.py returns entry.data directly without redaction — must WARN."""
+    findings = _findings_by_id()
+    f = findings["diagnostics.redaction.used"]
+    assert f.status is RuleStatus.WARN
+    assert "likely exposes secrets" in f.message
