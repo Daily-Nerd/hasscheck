@@ -83,6 +83,48 @@ jobs:
 
 The action uploads `hasscheck-report.json` as a build artifact on every run.
 
+## Badges (opt-in)
+
+HassCheck can generate [shields.io](https://shields.io) endpoint JSON files for embedding specific quality signals in your README. Badges are **opt-in only** and show specific signals — not vague trust claims.
+
+### Generate locally
+
+```bash
+hasscheck badge --path . --out-dir badges/
+```
+
+This writes per-category JSON files and a `manifest.json` to `badges/`. Commit these files to your repo.
+
+### Generate in CI
+
+Add `emit-badges: 'true'` to your HassCheck action step:
+
+```yaml
+- uses: Daily-Nerd/hasscheck@v1
+  with:
+    emit-badges: 'true'
+    badges-out-dir: 'badges'
+```
+
+This uploads a `hasscheck-badges` artifact. To embed in your README, publish the JSON files somewhere publicly accessible (e.g. committed to your repo or hosted on GitHub Pages).
+
+### Embed in README
+
+Replace `OWNER/REPO/main` with your repository path:
+
+```markdown
+![HACS Structure](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/OWNER/REPO/main/badges/hacs_structure.json)
+![Config Flow](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/OWNER/REPO/main/badges/modern_ha_patterns.json)
+![Diagnostics](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/OWNER/REPO/main/badges/diagnostics_repairs.json)
+![Tests & CI](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/OWNER/REPO/main/badges/tests_ci.json)
+![HassCheck](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/OWNER/REPO/main/badges/hasscheck.json)
+```
+
+Badges show the current state of your integration: `Passing`, `Partial`, or `Issues`. For `Config Flow` and `Diagnostics`, suffixes are `Present` or `Missing`.
+
+> HassCheck is unofficial and not affiliated with Home Assistant, HACS, or Nabu Casa.
+> Security Review: Not performed. HACS Acceptance: Not guaranteed.
+
 ## Install for local development
 
 This repository uses [`uv`](https://docs.astral.sh/uv/) for dependency management.
