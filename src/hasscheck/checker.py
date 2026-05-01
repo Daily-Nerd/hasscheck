@@ -18,6 +18,7 @@ from hasscheck.slug import detect_repo_slug
 
 APPLICABILITY_FLAGS_BY_RULE = {
     "diagnostics.file.exists": "supports_diagnostics",
+    "diagnostics.redaction.used": "supports_diagnostics",
     "repairs.file.exists": "has_user_fixable_repairs",
     "config_flow.file.exists": "uses_config_flow",
     "config_flow.manifest_flag_consistent": "uses_config_flow",

@@ -194,7 +194,7 @@ def test_terminal_banner_shown_when_applicability_applied(tmp_path) -> None:
     result = runner.invoke(app, ["check", "--path", str(tmp_path)])
 
     assert result.exit_code == 1
-    assert "2 applicability decision(s) applied from hasscheck.yaml." in result.output
+    assert "3 applicability decision(s) applied from hasscheck.yaml." in result.output
 
 
 def test_terminal_banner_not_shown_when_no_applicability_applied(tmp_path) -> None:

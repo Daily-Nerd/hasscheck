@@ -36,6 +36,7 @@ def test_project_applicability_softens_missing_optional_files(tmp_path: Path) ->
 
     for rule_id in (
         "diagnostics.file.exists",
+        "diagnostics.redaction.used",  # v0.8 PR4 — also responds to supports_diagnostics
         "repairs.file.exists",
         "config_flow.file.exists",
         "config_flow.manifest_flag_consistent",
@@ -44,12 +45,13 @@ def test_project_applicability_softens_missing_optional_files(tmp_path: Path) ->
         assert findings[rule_id].status is RuleStatus.NOT_APPLICABLE
         assert findings[rule_id].applicability.source == "config"
 
-    assert report.summary.applicability_applied.count == 5
+    assert report.summary.applicability_applied.count == 6
     assert report.summary.applicability_applied.rule_ids == [
         "config_flow.file.exists",
         "config_flow.manifest_flag_consistent",
         "config_flow.user_step.exists",
         "diagnostics.file.exists",
+        "diagnostics.redaction.used",
         "repairs.file.exists",
     ]
     assert report.summary.applicability_applied.flags == [
@@ -88,8 +90,11 @@ def test_project_applicability_natural_pass_wins(tmp_path: Path) -> None:
     # exists — per spec, uses_config_flow=False always suppresses user-step inspection.
     assert findings["config_flow.user_step.exists"].status is RuleStatus.NOT_APPLICABLE
     assert findings["config_flow.user_step.exists"].applicability.source == "config"
-    # Only config_flow.user_step.exists is suppressed via config in this scenario.
-    assert report.summary.applicability_applied.count == 1
+    # diagnostics.redaction.used is also suppressed via config (supports_diagnostics=False).
+    assert findings["diagnostics.redaction.used"].status is RuleStatus.NOT_APPLICABLE
+    assert findings["diagnostics.redaction.used"].applicability.source == "config"
+    # Both config_flow.user_step.exists and diagnostics.redaction.used suppressed via config.
+    assert report.summary.applicability_applied.count == 2
 
 
 def test_project_applicability_does_not_hide_config_flow_mismatch(
@@ -119,5 +124,6 @@ def test_project_applicability_loaded_from_disk(tmp_path: Path) -> None:
     findings = {finding.rule_id: finding for finding in report.findings}
 
     assert findings["diagnostics.file.exists"].status is RuleStatus.NOT_APPLICABLE
+    assert findings["diagnostics.redaction.used"].status is RuleStatus.NOT_APPLICABLE
     assert findings["repairs.file.exists"].status is RuleStatus.NOT_APPLICABLE
-    assert report.summary.applicability_applied.count == 2
+    assert report.summary.applicability_applied.count == 3

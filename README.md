@@ -312,6 +312,7 @@ The exact category order may change as rules evolve. The JSON schema is the dura
 | Rule ID | Signal |
 | --- | --- |
 | `diagnostics.file.exists` | Integration has `diagnostics.py`. |
+| `diagnostics.redaction.used` | `diagnostics.py` uses `async_redact_data` or a local redaction helper (AST inspection). |
 | `repairs.file.exists` | Integration has `repairs.py`. |
 
 ### Docs and maintenance

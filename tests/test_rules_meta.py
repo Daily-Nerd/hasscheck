@@ -13,9 +13,9 @@ from __future__ import annotations
 from hasscheck.rules.registry import RULES
 
 # Canonical audit (from sdd/config-file-support/mixed-status-rule-audit):
-# 24 rules total (v0.8 PR3 adds 1 config_flow rule):
-#   - config_flow.user_step.exists (overridable=True, RECOMMENDED)
-# 11 locked overridable=False, 13 overridable=True.
+# 25 rules total (v0.8 PR4 adds 1 diagnostics rule):
+#   - diagnostics.redaction.used (overridable=True, RECOMMENDED)
+# 11 locked overridable=False, 14 overridable=True.
 EXPECTED_LOCKED_RULE_IDS = {
     "hacs.custom_components.exists",
     "hacs.file.parseable",  # mixed-status: WARN missing, FAIL invalid JSON
@@ -34,6 +34,7 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
     "config_flow.file.exists",
     "config_flow.user_step.exists",  # v0.8 PR3 — AST inspection (RECOMMENDED, overridable=True)
     "diagnostics.file.exists",
+    "diagnostics.redaction.used",  # v0.8 PR4 — AST redaction detection (RECOMMENDED, overridable=True)
     "repairs.file.exists",
     "brand.icon.exists",
     "docs.readme.exists",
@@ -48,8 +49,8 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
 }
 
 
-def test_total_rule_count_is_twenty_four() -> None:
-    assert len(RULES) == 24, f"expected 24 rules, got {len(RULES)}"
+def test_total_rule_count_is_twenty_five() -> None:
+    assert len(RULES) == 25, f"expected 25 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:

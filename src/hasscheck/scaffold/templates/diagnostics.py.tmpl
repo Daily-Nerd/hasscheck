@@ -9,6 +9,10 @@ from homeassistant.core import HomeAssistant
 
 # Add any keys that should be redacted from diagnostics output.
 # Common sensitive fields: API keys, tokens, passwords, location data.
+#
+# Upgrade path: replace redact_data() below with the official HA helper:
+#   from homeassistant.components.diagnostics import async_redact_data
+# and call: async_redact_data(dict(entry.data), TO_REDACT)
 TO_REDACT: list[str] = [
     "api_key",
     "password",
