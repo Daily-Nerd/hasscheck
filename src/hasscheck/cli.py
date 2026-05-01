@@ -89,6 +89,7 @@ def explain(rule_id: str = typer.Argument(..., help="Rule ID to explain, for exa
     console.print(f"Version: {rule.version}")
     console.print(f"Category: {rule.category}")
     console.print(f"Severity: {rule.severity.value}")
+    console.print(f"Overridable: {'true' if rule.overridable else 'false'}")
     console.print(f"Why: {rule.why}")
     console.print(f"Source: {rule.source_url}")
 

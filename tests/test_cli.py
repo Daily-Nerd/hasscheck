@@ -36,6 +36,18 @@ def test_explain_known_rule() -> None:
     assert "Source:" in result.stdout
 
 
+def test_explain_shows_overridable_false_for_locked_rule() -> None:
+    result = runner.invoke(app, ["explain", "manifest.exists"])
+    assert result.exit_code == 0
+    assert "overridable: false" in result.output.lower()
+
+
+def test_explain_shows_overridable_true_for_softable_rule() -> None:
+    result = runner.invoke(app, ["explain", "repairs.file.exists"])
+    assert result.exit_code == 0
+    assert "overridable: true" in result.output.lower()
+
+
 # ---------- Phase 5: --no-config flag + ConfigError handling ----------
 
 def test_no_config_flag_exists_in_help(tmp_path) -> None:
