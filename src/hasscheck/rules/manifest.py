@@ -18,6 +18,47 @@ from hasscheck.rules.base import ProjectContext, RuleDefinition
 HACS_INTEGRATION_SOURCE = "https://www.hacs.xyz/docs/publish/integration/"
 CATEGORY = "manifest_metadata"
 
+# ---------------------------------------------------------------------------
+# PR2 (#52) — iot_class + integration_type enum constants
+# Source: https://developers.home-assistant.io/docs/creating_integration_manifest
+# Source-checked-at: 2026-05-01
+# ---------------------------------------------------------------------------
+
+_HA_DEV_DOCS_URL = (
+    "https://developers.home-assistant.io/docs/creating_integration_manifest"
+)
+_SOURCE_CHECKED_AT = "2026-05-01"
+
+# Canonical iot_class values — anchor #iot-class
+# Source: https://developers.home-assistant.io/docs/creating_integration_manifest#iot-class
+# Verified: 2026-05-01
+_VALID_IOT_CLASSES: frozenset[str] = frozenset(
+    {
+        "assumed_state",
+        "calculated",
+        "cloud_polling",
+        "cloud_push",
+        "local_polling",
+        "local_push",
+    }
+)
+
+# Canonical integration_type values — anchor #integration-type
+# Source: https://developers.home-assistant.io/docs/creating_integration_manifest#integration-type
+# Verified: 2026-05-01
+_VALID_INTEGRATION_TYPES: frozenset[str] = frozenset(
+    {
+        "device",
+        "entity",
+        "hardware",
+        "helper",
+        "hub",
+        "service",
+        "system",
+        "virtual",
+    }
+)
+
 
 def _manifest_path(context: ProjectContext):
     if context.integration_path is None:
@@ -349,6 +390,292 @@ def manifest_domain_matches_directory(context: ProjectContext) -> Finding:
     )
 
 
+# ---------------------------------------------------------------------------
+# PR2 (#52) — _required_enum_field_rule factory
+# Generates both the *.exists and *.valid variants for a manifest field
+# that must belong to a known frozenset of string values.
+# ---------------------------------------------------------------------------
+
+
+def _required_enum_field_rule(
+    *,
+    exists_rule_id: str,
+    valid_rule_id: str,
+    field_name: str,
+    exists_title: str,
+    valid_title: str,
+    exists_warn_message: str,
+    valid_values: frozenset[str],
+    valid_sorted_display: str,
+    fix_exists_summary: str,
+    fix_valid_summary: str,
+    # why_exists and why_valid are used in RuleDefinition directly — not inside checks
+    why_exists: str = "",
+    why_valid: str = "",
+) -> tuple[Callable[[ProjectContext], Finding], Callable[[ProjectContext], Finding]]:
+    """Return (exists_check, valid_check) for a manifest enum field.
+
+    exists semantics:
+      - NOT_APPLICABLE if no manifest (missing or no integration path)
+      - FAIL if manifest JSON is broken
+      - PASS if field is present (any non-empty string)
+      - WARN if field is absent
+
+    valid semantics:
+      - NOT_APPLICABLE if no manifest OR field is absent
+      - PASS if field value is in valid_values
+      - FAIL if field value is present but not in valid_values
+    """
+
+    def exists_check(context: ProjectContext) -> Finding:
+        path = _manifest_path(context)
+        display = _manifest_display_path(context)
+
+        if path is None or not path.is_file():
+            return Finding(
+                rule_id=exists_rule_id,
+                rule_version="1.0.0",
+                category=CATEGORY,
+                status=RuleStatus.NOT_APPLICABLE,
+                severity=RuleSeverity.RECOMMENDED,
+                title=exists_title,
+                message=f"manifest.json is missing, so the {field_name} field cannot be inspected yet.",
+                applicability=Applicability(
+                    status=ApplicabilityStatus.NOT_APPLICABLE,
+                    reason=f"manifest.json must exist before HassCheck can inspect manifest.{field_name}.",
+                ),
+                source=RuleSource(url=_HA_DEV_DOCS_URL),
+                fix=FixSuggestion(summary=fix_exists_summary),
+                path="custom_components/<domain>/manifest.json",
+            )
+
+        payload, error = _read_manifest(context)
+        if error is not None:
+            return Finding(
+                rule_id=exists_rule_id,
+                rule_version="1.0.0",
+                category=CATEGORY,
+                status=RuleStatus.FAIL,
+                severity=RuleSeverity.RECOMMENDED,
+                title=exists_title,
+                message=f"manifest.json is not valid JSON: {error}.",
+                applicability=Applicability(
+                    reason="manifest.json exists but cannot be parsed."
+                ),
+                source=RuleSource(url=_HA_DEV_DOCS_URL),
+                fix=FixSuggestion(
+                    summary="Fix manifest.json syntax, then rerun HassCheck."
+                ),
+                path=display,
+            )
+
+        value = payload.get(field_name) if payload else None
+        is_present = isinstance(value, str) and bool(value.strip())
+
+        if is_present:
+            return Finding(
+                rule_id=exists_rule_id,
+                rule_version="1.0.0",
+                category=CATEGORY,
+                status=RuleStatus.PASS,
+                severity=RuleSeverity.RECOMMENDED,
+                title=exists_title,
+                message=f"manifest.json declares {field_name}.",
+                applicability=Applicability(
+                    reason=f"Declaring {field_name} classifies the integration for Home Assistant discovery."
+                ),
+                source=RuleSource(url=_HA_DEV_DOCS_URL),
+                fix=None,
+                path=display,
+            )
+
+        return Finding(
+            rule_id=exists_rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.WARN,
+            severity=RuleSeverity.RECOMMENDED,
+            title=exists_title,
+            message=exists_warn_message,
+            applicability=Applicability(
+                reason=f"Declaring {field_name} is recommended for Home Assistant integrations."
+            ),
+            source=RuleSource(url=_HA_DEV_DOCS_URL),
+            fix=FixSuggestion(summary=fix_exists_summary),
+            path=display,
+        )
+
+    def valid_check(context: ProjectContext) -> Finding:
+        path = _manifest_path(context)
+        display = _manifest_display_path(context)
+
+        if path is None or not path.is_file():
+            return Finding(
+                rule_id=valid_rule_id,
+                rule_version="1.0.0",
+                category=CATEGORY,
+                status=RuleStatus.NOT_APPLICABLE,
+                severity=RuleSeverity.RECOMMENDED,
+                title=valid_title,
+                message=f"manifest.json is missing, so the {field_name} field cannot be validated.",
+                applicability=Applicability(
+                    status=ApplicabilityStatus.NOT_APPLICABLE,
+                    reason=f"manifest.json must exist before HassCheck can validate manifest.{field_name}.",
+                ),
+                source=RuleSource(url=_HA_DEV_DOCS_URL),
+                fix=FixSuggestion(summary=fix_exists_summary),
+                path="custom_components/<domain>/manifest.json",
+            )
+
+        payload, error = _read_manifest(context)
+        if error is not None:
+            # Broken manifest: exists rule FAILs, valid rule is NOT_APPLICABLE
+            return Finding(
+                rule_id=valid_rule_id,
+                rule_version="1.0.0",
+                category=CATEGORY,
+                status=RuleStatus.NOT_APPLICABLE,
+                severity=RuleSeverity.RECOMMENDED,
+                title=valid_title,
+                message=f"manifest.json could not be parsed; {field_name} validation is skipped.",
+                applicability=Applicability(
+                    status=ApplicabilityStatus.NOT_APPLICABLE,
+                    reason="manifest.json must be valid JSON before field values can be validated.",
+                ),
+                source=RuleSource(url=_HA_DEV_DOCS_URL),
+                fix=FixSuggestion(
+                    summary="Fix manifest.json syntax, then rerun HassCheck."
+                ),
+                path=display,
+            )
+
+        value = payload.get(field_name) if payload else None
+
+        if not isinstance(value, str) or not value.strip():
+            # Field absent → not applicable for the valid rule
+            return Finding(
+                rule_id=valid_rule_id,
+                rule_version="1.0.0",
+                category=CATEGORY,
+                status=RuleStatus.NOT_APPLICABLE,
+                severity=RuleSeverity.RECOMMENDED,
+                title=valid_title,
+                message=f"manifest.json does not declare {field_name}; value validation is skipped.",
+                applicability=Applicability(
+                    status=ApplicabilityStatus.NOT_APPLICABLE,
+                    reason=f"manifest.{field_name} must be present before its value can be validated.",
+                ),
+                source=RuleSource(url=_HA_DEV_DOCS_URL),
+                fix=FixSuggestion(summary=fix_exists_summary),
+                path=display,
+            )
+
+        if value in valid_values:
+            return Finding(
+                rule_id=valid_rule_id,
+                rule_version="1.0.0",
+                category=CATEGORY,
+                status=RuleStatus.PASS,
+                severity=RuleSeverity.RECOMMENDED,
+                title=valid_title,
+                message=f'manifest.json {field_name} "{value}" is a recognized value.',
+                applicability=Applicability(
+                    reason=f"manifest.{field_name} must be one of the values defined in the HA integration manifest docs."
+                ),
+                source=RuleSource(url=_HA_DEV_DOCS_URL),
+                fix=None,
+                path=display,
+            )
+
+        return Finding(
+            rule_id=valid_rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.FAIL,
+            severity=RuleSeverity.RECOMMENDED,
+            title=valid_title,
+            message=(
+                f'manifest.json {field_name} "{value}" is not a recognized value '
+                f"(expected one of: {valid_sorted_display})."
+            ),
+            applicability=Applicability(
+                reason=f"manifest.{field_name} must be one of the values defined in the HA integration manifest docs."
+            ),
+            source=RuleSource(url=_HA_DEV_DOCS_URL),
+            fix=FixSuggestion(summary=fix_valid_summary),
+            path=display,
+        )
+
+    return exists_check, valid_check
+
+
+_IOT_CLASS_EXISTS_WHY = (
+    "iot_class describes how the integration fetches data (polling vs. push, "
+    "cloud vs. local). Home Assistant uses this value to set user expectations "
+    "about connectivity and latency. "
+    f"Source: {_HA_DEV_DOCS_URL} (verified {_SOURCE_CHECKED_AT})."
+)
+_IOT_CLASS_VALID_WHY = (
+    "iot_class must be one of the canonical values defined in the Home Assistant "
+    "integration manifest docs. An unrecognised value may cause HA to silently "
+    "ignore the field or display incorrect information. "
+    f"Source: {_HA_DEV_DOCS_URL} (verified {_SOURCE_CHECKED_AT})."
+)
+_INTEGRATION_TYPE_EXISTS_WHY = (
+    "integration_type classifies how the integration fits into the Home Assistant "
+    "architecture (hub, device, helper, etc.). Required for integrations with a "
+    "config flow; custom integrations default to 'hub' when omitted. "
+    f"Source: {_HA_DEV_DOCS_URL} (verified {_SOURCE_CHECKED_AT})."
+)
+_INTEGRATION_TYPE_VALID_WHY = (
+    "integration_type must be one of the canonical values defined in the Home Assistant "
+    "integration manifest docs. An unrecognised value is rejected by the core manifest "
+    "loader in newer HA versions. "
+    f"Source: {_HA_DEV_DOCS_URL} (verified {_SOURCE_CHECKED_AT})."
+)
+
+_iot_class_exists_check, _iot_class_valid_check = _required_enum_field_rule(
+    exists_rule_id="manifest.iot_class.exists",
+    valid_rule_id="manifest.iot_class.valid",
+    field_name="iot_class",
+    exists_title="manifest.json declares iot_class",
+    valid_title="manifest.json iot_class is a recognized value",
+    exists_warn_message=(
+        "manifest.json does not declare iot_class; recommended for Home Assistant integrations."
+    ),
+    valid_values=_VALID_IOT_CLASSES,
+    valid_sorted_display="assumed_state, calculated, cloud_polling, cloud_push, local_polling, local_push",
+    fix_exists_summary="Add an iot_class field to manifest.json.",
+    fix_valid_summary=(
+        "Set iot_class to one of: assumed_state, calculated, cloud_polling, "
+        "cloud_push, local_polling, local_push."
+    ),
+    why_exists=_IOT_CLASS_EXISTS_WHY,
+    why_valid=_IOT_CLASS_VALID_WHY,
+)
+
+_integration_type_exists_check, _integration_type_valid_check = (
+    _required_enum_field_rule(
+        exists_rule_id="manifest.integration_type.exists",
+        valid_rule_id="manifest.integration_type.valid",
+        field_name="integration_type",
+        exists_title="manifest.json declares integration_type",
+        valid_title="manifest.json integration_type is a recognized value",
+        exists_warn_message=(
+            "manifest.json does not declare integration_type; recommended for Home Assistant integrations."
+        ),
+        valid_values=_VALID_INTEGRATION_TYPES,
+        valid_sorted_display="device, entity, hardware, helper, hub, service, system, virtual",
+        fix_exists_summary="Add an integration_type field to manifest.json.",
+        fix_valid_summary=(
+            "Set integration_type to one of: device, entity, hardware, helper, hub, service, system, virtual."
+        ),
+        why_exists=_INTEGRATION_TYPE_EXISTS_WHY,
+        why_valid=_INTEGRATION_TYPE_VALID_WHY,
+    )
+)
+
+
 def manifest_exists(context: ProjectContext) -> Finding:
     path = _manifest_path(context)
     exists = path is not None and path.is_file()
@@ -471,5 +798,50 @@ RULES = [
         source_url=HA_MANIFEST_DOCS_URL,
         check=manifest_domain_matches_directory,
         overridable=False,
+    ),
+    # PR2 (#52) — iot_class and integration_type validation
+    RuleDefinition(
+        id="manifest.iot_class.exists",
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title="manifest.json declares iot_class",
+        why=_IOT_CLASS_EXISTS_WHY,
+        source_url=_HA_DEV_DOCS_URL,
+        check=_iot_class_exists_check,
+        overridable=True,
+    ),
+    RuleDefinition(
+        id="manifest.iot_class.valid",
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title="manifest.json iot_class is a recognized value",
+        why=_IOT_CLASS_VALID_WHY,
+        source_url=_HA_DEV_DOCS_URL,
+        check=_iot_class_valid_check,
+        overridable=True,
+    ),
+    RuleDefinition(
+        id="manifest.integration_type.exists",
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title="manifest.json declares integration_type",
+        why=_INTEGRATION_TYPE_EXISTS_WHY,
+        source_url=_HA_DEV_DOCS_URL,
+        check=_integration_type_exists_check,
+        overridable=True,
+    ),
+    RuleDefinition(
+        id="manifest.integration_type.valid",
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title="manifest.json integration_type is a recognized value",
+        why=_INTEGRATION_TYPE_VALID_WHY,
+        source_url=_HA_DEV_DOCS_URL,
+        check=_integration_type_valid_check,
+        overridable=True,
     ),
 ]

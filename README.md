@@ -294,6 +294,10 @@ The exact category order may change as rules evolve. The JSON schema is the dura
 | `manifest.documentation.exists` | Manifest defines `documentation`. |
 | `manifest.issue_tracker.exists` | Manifest defines `issue_tracker`. |
 | `manifest.codeowners.exists` | Manifest defines non-empty `codeowners`. |
+| `manifest.iot_class.exists` | Manifest declares `iot_class`. |
+| `manifest.iot_class.valid` | Manifest `iot_class` is a recognized value. |
+| `manifest.integration_type.exists` | Manifest declares `integration_type`. |
+| `manifest.integration_type.valid` | Manifest `integration_type` is a recognized value. |
 
 ### Modern Home Assistant patterns
 
