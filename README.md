@@ -305,6 +305,7 @@ The exact category order may change as rules evolve. The JSON schema is the dura
 | --- | --- |
 | `config_flow.file.exists` | Integration has `config_flow.py`. |
 | `config_flow.manifest_flag_consistent` | `config_flow.py` and manifest `config_flow: true` agree. |
+| `config_flow.user_step.exists` | `config_flow.py` defines `async_step_user` (AST inspection). |
 
 ### Diagnostics and repairs
 

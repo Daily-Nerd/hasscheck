@@ -21,6 +21,7 @@ APPLICABILITY_FLAGS_BY_RULE = {
     "repairs.file.exists": "has_user_fixable_repairs",
     "config_flow.file.exists": "uses_config_flow",
     "config_flow.manifest_flag_consistent": "uses_config_flow",
+    "config_flow.user_step.exists": "uses_config_flow",
 }
 
 CATEGORY_LABELS = {

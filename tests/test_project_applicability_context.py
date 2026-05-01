@@ -39,14 +39,16 @@ def test_project_applicability_softens_missing_optional_files(tmp_path: Path) ->
         "repairs.file.exists",
         "config_flow.file.exists",
         "config_flow.manifest_flag_consistent",
+        "config_flow.user_step.exists",  # v0.8 PR3 — also responds to uses_config_flow
     ):
         assert findings[rule_id].status is RuleStatus.NOT_APPLICABLE
         assert findings[rule_id].applicability.source == "config"
 
-    assert report.summary.applicability_applied.count == 4
+    assert report.summary.applicability_applied.count == 5
     assert report.summary.applicability_applied.rule_ids == [
         "config_flow.file.exists",
         "config_flow.manifest_flag_consistent",
+        "config_flow.user_step.exists",
         "diagnostics.file.exists",
         "repairs.file.exists",
     ]
@@ -82,7 +84,12 @@ def test_project_applicability_natural_pass_wins(tmp_path: Path) -> None:
         assert findings[rule_id].status is RuleStatus.PASS
         assert findings[rule_id].applicability.source == "default"
 
-    assert report.summary.applicability_applied.count == 0
+    # config_flow.user_step.exists is NOT_APPLICABLE via config even when config_flow.py
+    # exists — per spec, uses_config_flow=False always suppresses user-step inspection.
+    assert findings["config_flow.user_step.exists"].status is RuleStatus.NOT_APPLICABLE
+    assert findings["config_flow.user_step.exists"].applicability.source == "config"
+    # Only config_flow.user_step.exists is suppressed via config in this scenario.
+    assert report.summary.applicability_applied.count == 1
 
 
 def test_project_applicability_does_not_hide_config_flow_mismatch(
