@@ -38,6 +38,11 @@ def test_schema_command_outputs_json_schema() -> None:
     assert payload["title"] == "HassCheckReport"
 
 
+def test_schema_help_does_not_reference_v01() -> None:
+    result = runner.invoke(app, ["schema", "--help"])
+    assert "v0.1" not in result.output
+
+
 def test_explain_known_rule() -> None:
     result = runner.invoke(app, ["explain", "manifest.domain.exists"])
 

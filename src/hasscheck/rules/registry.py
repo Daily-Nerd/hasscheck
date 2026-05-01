@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from hasscheck.rules.base import RuleDefinition
 from hasscheck.rules.brand import RULES as BRAND_RULES
 from hasscheck.rules.ci import RULES as CI_RULES
 from hasscheck.rules.config_flow import RULES as CONFIG_FLOW_RULES
@@ -23,4 +24,11 @@ RULES = [
     *TESTS_RULES,
     *CI_RULES,
 ]
-RULES_BY_ID = {rule.id: rule for rule in RULES}
+RULES_BY_ID: dict[str, RuleDefinition] = {}
+for _rule in RULES:
+    if _rule.id in RULES_BY_ID:
+        raise RuntimeError(
+            f"Duplicate rule ID '{_rule.id}' — "
+            f"each rule must have a unique ID across all modules."
+        )
+    RULES_BY_ID[_rule.id] = _rule
