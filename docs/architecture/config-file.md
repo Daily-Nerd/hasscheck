@@ -4,7 +4,7 @@
 
 ## Why
 
-After v0.1.0 shipped 23 rules across 7 categories, RECOMMENDED rules
+After v0.1.0 shipped 18 rules across 7 categories, RECOMMENDED rules
 emit `warn` findings on integrations where the rule legitimately does
 not apply (for example, `repairs.file.exists` warning on integrations
 with no user-fixable repair scenarios).
@@ -34,15 +34,48 @@ rules:
 
 | Capability | Allowed? |
 |---|---|
-| Soften a finding to `not_applicable` (RECOMMENDED rule) | ✅ |
-| Soften a finding to `manual_review` (RECOMMENDED rule) | ✅ |
+| Soften a `warn` finding to `not_applicable` (overridable rule) | ✅ |
+| Soften a `warn` finding to `manual_review` (overridable rule) | ✅ |
+| Soften a `fail` finding to `not_applicable` (overridable rule) | ✅ |
+| Soften a `fail` finding to `manual_review` (overridable rule) | ✅ |
+| Override a `pass` finding | ❌ ignored — stale-config stderr warning |
+| Override a `not_applicable` finding | ❌ silent no-op — natural source wins (Q8) |
 | Force a finding to `pass` | ❌ never |
 | Upgrade a `warn` or `fail` to `pass` | ❌ never |
-| Override a REQUIRED rule | ❌ never |
-| Override a correctness check (e.g. `config_flow.manifest_flag_consistent`) | ❌ never |
+| Override a REQUIRED rule | ❌ hard fail |
+| Override a correctness check (e.g. `config_flow.manifest_flag_consistent`) | ❌ hard fail |
+| Override a mixed-status rule (e.g. `hacs.file.parseable`) | ❌ hard fail |
 
-The full reasoning lives in
+The full policy reasoning lives in
 [`../decisions/0001-config-override-policy.md`](../decisions/0001-config-override-policy.md).
+
+## Defense in depth
+
+The override engine has five layers of defense to keep the JSON contract
+honest:
+
+| Layer | Mechanism |
+|---|---|
+| 1 | REQUIRED rules → `overridable=False` |
+| 2 | Correctness checks → `overridable=False` explicitly (e.g. `config_flow.manifest_flag_consistent`) |
+| 3 | Mixed-status rules → `overridable=False` (only `hacs.file.parseable` in v0.2) |
+| 4 | `pass` findings → ignored by the override engine even on overridable rules |
+| 5 | Disclosure: `summary.overrides_applied { count, rule_ids }` + per-finding `applicability.source: "config"` + mandatory `reason` text |
+
+Math stays consistent with v0.1 (overridden findings excluded from
+`points_possible`). Trust comes from disclosure, not punishment.
+
+### Overridable rules in v0.2
+
+Of the 18 v0.1 rules, **8 are overridable** by `hasscheck.yaml`:
+
+```text
+config_flow.file.exists       diagnostics.file.exists       repairs.file.exists
+brand.icon.exists             docs.readme.exists            repo.license.exists
+tests.folder.exists           ci.github_actions.exists
+```
+
+The other 10 are locked (9 REQUIRED + 1 mixed-status).
 
 ## What is NOT in v0.2
 
@@ -84,14 +117,30 @@ reports, the future hub) can see what was overridden:
 | `detected` | (v0.3) The rule auto-detected applicability from the project. |
 | `config` | `hasscheck.yaml` overrode the finding. |
 
-## Validation behavior (TBD)
+## Validation behavior
 
-Open questions to resolve during implementation:
+| Condition | Behavior | Exit code |
+|---|---|---|
+| Valid `hasscheck.yaml` | Apply overrides; emit findings normally | 0 |
+| Missing `hasscheck.yaml` | No overrides; behavior identical to v0.1 minus the new JSON fields | 0 |
+| Malformed YAML | Hard fail with parse error pointing at line/column | non-zero |
+| Unknown `rule_id` in config | Warn to stderr (with `rule_id` and "ignored"); skip that entry; continue | 0 |
+| Missing `reason` on an override | Hard fail (Pydantic validation; `reason` is required) | non-zero |
+| Locked-rule override (`overridable=False`) | Hard fail with rule_id and the rule's `overridable: false` flag | non-zero |
+| Override on a `pass` finding | Warn to stderr ("override for X was ignored because the rule already passes"); finding stays PASS; not counted in `summary.overrides_applied` | 0 |
+| Override on a `not_applicable` finding | Silent no-op (natural source wins per Q8); not counted in `summary.overrides_applied` | 0 |
+| `--no-config` flag | Skip `hasscheck.yaml` entirely; behavior identical to v0.1 minus the new JSON fields | 0 |
+| Both `config=...` and `no_config=True` to `run_check` | Hard fail (conflicting intent) | non-zero |
 
-- Locked-rule override attempts → hard fail with clear error (likely).
-- Unknown `rule_id` references in config → warn-and-skip for graceful
-  upgrade/downgrade UX (likely).
-- Missing `reason` on an override → hard fail; reason is mandatory
-  because the value is the audit trail.
+Order of operations inside `apply_overrides`:
 
-These will be confirmed during the v0.2 design phase.
+1. Iterate config entries.
+2. If `rule_id` is unknown → warn-and-skip.
+3. Else if rule is `overridable=False` → hard fail.
+4. Else if natural status is `PASS` → warn-and-skip (stale config).
+5. Else if natural status is `NOT_APPLICABLE` → silent no-op.
+6. Else → apply override, set `applicability.source = "config"`, append to `overrides_applied.rule_ids`.
+
+Locked-rule errors win over stale-PASS warnings when both could fire
+(fail-fast). Tests assert STRUCTURAL elements of error/warning messages
+(`rule_id` present, remediation hint present), not exact wording.
