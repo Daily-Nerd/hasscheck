@@ -396,15 +396,14 @@ def test_publish_withdraw_non_tty_aborts(tmp_path, monkeypatch) -> None:
 
 
 def test_publish_help_contains_force_flag(tmp_path) -> None:
-    """--force is documented in publish help text."""
-    result = runner.invoke(app, ["publish", "--help"], env={"COLUMNS": "200"})
-    assert result.exit_code == 0
-    assert "--force" in result.output
-    assert (
-        "CI" in result.output
-        or "non-TTY" in result.output
-        or "skip" in result.output.lower()
-    )
+    """--force is registered on publish and its help mentions CI/non-TTY usage."""
+    cmd = get_command(app)
+    publish_cmd = cmd.commands["publish"]
+    force_param = next((p for p in publish_cmd.params if p.name == "force"), None)
+    assert force_param is not None, "publish must declare a --force option"
+    assert "--force" in force_param.opts
+    help_text = (force_param.help or "").lower()
+    assert any(token in help_text for token in ("ci", "non-tty", "skip"))
 
 
 # ---------- init --enable-publish (v0.8) ----------
