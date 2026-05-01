@@ -8,6 +8,8 @@ import typer
 from rich.console import Console
 
 from hasscheck import __version__
+from hasscheck.badges import generate_badges
+from hasscheck.badges.policy import BadgePolicyError
 from hasscheck.checker import run_check
 from hasscheck.config import ConfigError
 from hasscheck.models import HassCheckReport, RuleStatus
@@ -132,6 +134,67 @@ def explain(
     console.print(f"Overridable: {'true' if rule.overridable else 'false'}")
     console.print(f"Why: {rule.why}")
     console.print(f"Source: {rule.source_url}")
+
+
+@app.command()
+def badge(
+    path: Path = typer.Option(
+        Path("."), "--path", "-p", help="Path to integration repo."
+    ),
+    out_dir: Path = typer.Option(
+        Path("badges"), "--out-dir", help="Directory to write badge JSON files."
+    ),
+    include: str = typer.Option(
+        "all", "--include", help="Comma-separated category IDs, or 'all'."
+    ),
+    no_umbrella: bool = typer.Option(
+        False, "--no-umbrella", help="Omit the umbrella HassCheck badge."
+    ),
+    no_config: bool = typer.Option(
+        False,
+        "--no-config",
+        help="Ignore hasscheck.yaml even if present (useful for CI debugging).",
+    ),
+) -> None:
+    """Generate shields.io endpoint JSON badge files for a custom integration.
+
+    Badge color reflects integration health. Exit code is always 0 even when
+    checks have FAIL findings — the badge color communicates the state instead.
+
+    Examples:
+      hasscheck badge --path . --out-dir badges/
+      hasscheck badge --path . --include hacs_structure,tests_ci
+      hasscheck badge --path . --no-umbrella
+    """
+    if not path.exists():
+        console.print(f"[red]Error:[/] Path '{path}' does not exist.")
+        console.print(
+            "[yellow]Suggestion:[/] Pass an existing repository path with --path."
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        report = run_check(path, no_config=no_config)
+    except ConfigError as exc:
+        typer.echo(f"hasscheck: error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    include_set: set[str] | None = None if include == "all" else set(include.split(","))
+
+    try:
+        artifacts = generate_badges(
+            report,
+            out_dir=out_dir,
+            include=include_set,
+            emit_umbrella=not no_umbrella,
+        )
+    except BadgePolicyError as exc:
+        typer.echo(f"hasscheck: badge policy error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"Wrote {len(artifacts)} badge(s) to {out_dir}")
+    for a in artifacts:
+        typer.echo(f"  {a.filename}: {a.label_left} — {a.label_right}")
 
 
 app.add_typer(scaffold_app, name="scaffold")
