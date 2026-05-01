@@ -14,6 +14,7 @@ from hasscheck.models import (
     RuleStatus,
 )
 from hasscheck.rules.registry import RULES
+from hasscheck.slug import detect_repo_slug
 
 APPLICABILITY_FLAGS_BY_RULE = {
     "diagnostics.file.exists": "supports_diagnostics",
@@ -102,6 +103,7 @@ def run_check(
             integration_path=str(context.integration_path.relative_to(root))
             if context.integration_path
             else None,
+            repo_slug=detect_repo_slug(root, context.integration_path),
         ),
         summary=ReportSummary(
             categories=categories,
