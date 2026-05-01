@@ -32,6 +32,9 @@ class RuleSeverity(StrEnum):
     INFORMATIONAL = "informational"
 
 
+ApplicabilitySource = Literal["default", "detected", "config"]
+
+
 class RuleSource(BaseModel):
     url: str
     checked_at: str = DEFAULT_SOURCE_CHECKED_AT
@@ -40,6 +43,7 @@ class RuleSource(BaseModel):
 class Applicability(BaseModel):
     status: ApplicabilityStatus = ApplicabilityStatus.APPLICABLE
     reason: str
+    source: ApplicabilitySource = "default"
 
 
 class FixSuggestion(BaseModel):
