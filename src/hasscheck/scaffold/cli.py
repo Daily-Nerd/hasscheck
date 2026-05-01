@@ -29,8 +29,8 @@ def github_action(
     """Generate a GitHub Actions CI workflow for a Home Assistant custom integration."""
     path = path.resolve()
 
-    if not path.exists():
-        console.print(f"[red]Error:[/] Path '{path}' does not exist.")
+    if not path.exists() or not path.is_dir():
+        console.print(f"[red]Error:[/] Path '{path}' is not a valid directory.")
         raise typer.Exit(code=1)
 
     template_content = load_template("github_action.yml.tmpl")
@@ -42,10 +42,7 @@ def github_action(
         write_or_refuse(target, content, force=force, dry_run=dry_run)
     except FileExistsError as exc:
         console.print(f"[red]Error:[/] {exc}")
-        console.print(
-            "[yellow]Hint:[/] Use --force to overwrite or --dry-run to preview."
-        )
         raise typer.Exit(code=1) from exc
 
     if not dry_run:
-        console.print("Created: .github/workflows/hasscheck.yml")
+        console.print(f"[green]Created:[/] {target}")

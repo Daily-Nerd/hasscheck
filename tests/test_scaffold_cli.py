@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -12,16 +11,6 @@ from hasscheck.cli import app
 runner = CliRunner()
 
 GOLDEN = Path(__file__).parent / "scaffold_golden" / "github_action.yml"
-
-
-def write_minimal_integration(root: Path) -> None:
-    """Mirror of helper in test_cli.py."""
-    integration = root / "custom_components" / "demo"
-    integration.mkdir(parents=True)
-    (integration / "manifest.json").write_text(
-        json.dumps({"domain": "demo"}),
-        encoding="utf-8",
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -36,7 +25,7 @@ def test_github_action_dry_run_prints_template(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 0
-    assert "uses: actions/checkout@v4" in result.output
+    assert "uses: actions/checkout@v6" in result.output
 
 
 def test_github_action_writes_file(tmp_path: Path) -> None:
@@ -49,18 +38,19 @@ def test_github_action_writes_file(tmp_path: Path) -> None:
     target = tmp_path / ".github" / "workflows" / "hasscheck.yml"
     assert target.exists()
     content = target.read_text(encoding="utf-8")
-    assert "uses: actions/checkout@v4" in content
+    assert "uses: actions/checkout@v6" in content
     # Verify ${{ is rendered correctly (not $${{)
     assert "${{ matrix.python-version }}" in content
     assert "$${{" not in content
 
 
 def test_github_action_output_matches_golden(tmp_path: Path) -> None:
-    runner.invoke(
+    result = runner.invoke(
         app,
         ["scaffold", "github-action", "--path", str(tmp_path)],
     )
 
+    assert result.exit_code == 0
     target = tmp_path / ".github" / "workflows" / "hasscheck.yml"
     assert target.read_text(encoding="utf-8") == GOLDEN.read_text(encoding="utf-8")
 
@@ -91,7 +81,7 @@ def test_github_action_force_overwrites(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert target.read_text(encoding="utf-8") != "old content"
-    assert "uses: actions/checkout@v4" in target.read_text(encoding="utf-8")
+    assert "uses: actions/checkout@v6" in target.read_text(encoding="utf-8")
 
 
 def test_github_action_path_not_found(tmp_path: Path) -> None:
