@@ -70,6 +70,73 @@ def print_terminal_report(
     _print_fix_suggestions(report.findings, console)
 
 
+def report_to_md(report: HassCheckReport) -> str:
+    lines: list[str] = []
+
+    lines.append("## HassCheck Signals")
+    lines.append("")
+    lines.append(f"**Project:** {report.project.path}  ")
+    lines.append(f"**Domain:** {report.project.domain or 'unknown'}  ")
+    lines.append(f"**Tool:** hasscheck {report.tool.version}  ")
+    lines.append(f"**Ruleset:** {report.ruleset.id}")
+    lines.append("")
+
+    lines.append("### Category Summary")
+    lines.append("")
+    lines.append("| Category | Score | Points |")
+    lines.append("|---|---|---|")
+    for category in report.summary.categories:
+        if category.points_awarded == category.points_possible:
+            icon = "✅"
+        elif category.points_awarded > 0:
+            icon = "⚠️"
+        else:
+            icon = "❌"
+        lines.append(
+            f"| {category.label} | {icon} | {category.points_awarded} / {category.points_possible} |"
+        )
+    lines.append("")
+
+    lines.append("### Findings")
+    lines.append("")
+    lines.append("| Status | Rule | Message |")
+    lines.append("|---|---|---|")
+    for finding in report.findings:
+        marker = " *(config)*" if finding.applicability.source == "config" else ""
+        lines.append(
+            f"| {STATUS_ICON[finding.status]} | {finding.rule_id}{marker} | {finding.message} |"
+        )
+    lines.append("")
+
+    fixable = [
+        f
+        for f in report.findings
+        if f.status in _NON_PASS_STATUSES and f.fix is not None
+    ]
+    if fixable:
+        lines.append("### Fix Suggestions")
+        lines.append("")
+        for finding in fixable:
+            fix = finding.fix
+            if fix is None:
+                continue
+            lines.append(f"**{finding.rule_id}**  ")
+            lines.append(f"{fix.summary}  ")
+            if fix.command is not None:
+                lines.append(f"Run: `{fix.command}`  ")
+            if fix.docs_url is not None:
+                lines.append(f"Docs: {fix.docs_url}  ")
+            lines.append("")
+
+    lines.append("---")
+    lines.append("")
+    lines.append(
+        "> Security Review: Not performed. Official HA Tier: Not assigned. HACS Acceptance: Not guaranteed."
+    )
+
+    return "\n".join(lines) + "\n"
+
+
 def _print_fix_suggestions(findings: list[Finding], console: Console) -> None:
     fixable = [
         f for f in findings if f.status in _NON_PASS_STATUSES and f.fix is not None
