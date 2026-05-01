@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from io import StringIO
 
+import pytest
 from rich.console import Console
 
 from hasscheck.models import (
@@ -160,3 +161,38 @@ def test_fix_section_only_lists_non_pass_findings() -> None:
 
     assert "Pass fix — should not appear." not in output
     assert "Run: hasscheck scaffold pass" not in output
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        RuleStatus.WARN,
+        RuleStatus.FAIL,
+        RuleStatus.NOT_APPLICABLE,
+        RuleStatus.MANUAL_REVIEW,
+    ],
+)
+def test_fix_section_shown_for_all_non_pass_statuses(status: RuleStatus) -> None:
+    fix = FixSuggestion(summary="Fix this.", command="hasscheck scaffold x")
+    report = make_report([make_finding(status, fix=fix)])
+    output = capture_output(report)
+    assert "Fix suggestions" in output
+    assert "Fix this." in output
+
+
+def test_fix_section_shows_all_qualifying_findings() -> None:
+    fix1 = FixSuggestion(
+        summary="Add diagnostics.py", command="hasscheck scaffold diagnostics"
+    )
+    fix2 = FixSuggestion(summary="Add repairs.py", command="hasscheck scaffold repairs")
+    report = make_report(
+        [
+            make_finding(RuleStatus.WARN, fix=fix1, rule_id="diagnostics.file.exists"),
+            make_finding(RuleStatus.WARN, fix=fix2, rule_id="repairs.file.exists"),
+        ]
+    )
+    output = capture_output(report)
+    assert "diagnostics.file.exists" in output
+    assert "repairs.file.exists" in output
+    assert "hasscheck scaffold diagnostics" in output
+    assert "hasscheck scaffold repairs" in output
