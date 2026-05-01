@@ -15,8 +15,12 @@ from hasscheck.models import (
 from hasscheck.rules.base import ProjectContext, RuleDefinition
 
 CATEGORY = "modern_ha_patterns"
-CONFIG_FLOW_SOURCE = "https://developers.home-assistant.io/docs/core/integration/config_flow"
-MANIFEST_SOURCE = "https://developers.home-assistant.io/docs/creating_integration_manifest"
+CONFIG_FLOW_SOURCE = (
+    "https://developers.home-assistant.io/docs/core/integration/config_flow"
+)
+MANIFEST_SOURCE = (
+    "https://developers.home-assistant.io/docs/creating_integration_manifest"
+)
 
 
 def _config_flow_path(context: ProjectContext):
@@ -69,11 +73,38 @@ def config_flow_file_exists(context: ProjectContext) -> Finding:
                 reason="custom_components/<domain>/ must exist before HassCheck can inspect config_flow.py.",
             ),
             source=RuleSource(url=CONFIG_FLOW_SOURCE),
-            fix=FixSuggestion(summary="Create custom_components/<domain>/ before adding config_flow.py."),
+            fix=FixSuggestion(
+                summary="Create custom_components/<domain>/ before adding config_flow.py."
+            ),
             path="custom_components/<domain>/config_flow.py",
         )
 
     exists = path.is_file()
+    if (
+        not exists
+        and context.applicability
+        and context.applicability.uses_config_flow is False
+    ):
+        return Finding(
+            rule_id="config_flow.file.exists",
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.RECOMMENDED,
+            title="config_flow.py exists",
+            message="Project config declares this integration does not use config flow UI setup.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="hasscheck.yaml declares uses_config_flow: false.",
+                source="config",
+            ),
+            source=RuleSource(url=CONFIG_FLOW_SOURCE),
+            fix=None,
+            path=_display_path(
+                path, context, "custom_components/<domain>/config_flow.py"
+            ),
+        )
+
     return Finding(
         rule_id="config_flow.file.exists",
         rule_version="1.0.0",
@@ -86,11 +117,15 @@ def config_flow_file_exists(context: ProjectContext) -> Finding:
             if exists
             else "Integration does not include config_flow.py; UI setup support cannot be inspected."
         ),
-        applicability=Applicability(reason="Config flows are the standard way to set up integrations via the UI."),
+        applicability=Applicability(
+            reason="Config flows are the standard way to set up integrations via the UI."
+        ),
         source=RuleSource(url=CONFIG_FLOW_SOURCE),
         fix=None
         if exists
-        else FixSuggestion(summary="Add config_flow.py when the integration should support setup via the Home Assistant UI."),
+        else FixSuggestion(
+            summary="Add config_flow.py when the integration should support setup via the Home Assistant UI."
+        ),
         path=_display_path(path, context, "custom_components/<domain>/config_flow.py"),
     )
 
@@ -112,7 +147,9 @@ def config_flow_manifest_flag_consistent(context: ProjectContext) -> Finding:
                 reason="custom_components/<domain>/ must exist before HassCheck can inspect config flow consistency.",
             ),
             source=RuleSource(url=CONFIG_FLOW_SOURCE),
-            fix=FixSuggestion(summary="Create custom_components/<domain>/ and manifest.json first."),
+            fix=FixSuggestion(
+                summary="Create custom_components/<domain>/ and manifest.json first."
+            ),
             path="custom_components/<domain>/",
         )
 
@@ -131,8 +168,12 @@ def config_flow_manifest_flag_consistent(context: ProjectContext) -> Finding:
                 reason="manifest.json must exist before HassCheck can inspect config_flow metadata.",
             ),
             source=RuleSource(url=CONFIG_FLOW_SOURCE),
-            fix=FixSuggestion(summary="Create manifest.json first, then define config_flow when needed."),
-            path=_display_path(manifest_path, context, "custom_components/<domain>/manifest.json"),
+            fix=FixSuggestion(
+                summary="Create manifest.json first, then define config_flow when needed."
+            ),
+            path=_display_path(
+                manifest_path, context, "custom_components/<domain>/manifest.json"
+            ),
         )
 
     if error is not None:
@@ -144,10 +185,16 @@ def config_flow_manifest_flag_consistent(context: ProjectContext) -> Finding:
             severity=RuleSeverity.REQUIRED,
             title="config_flow.py and manifest config_flow flag agree",
             message=f"manifest.json is not valid JSON: {error}.",
-            applicability=Applicability(reason="manifest.json exists but cannot be parsed."),
+            applicability=Applicability(
+                reason="manifest.json exists but cannot be parsed."
+            ),
             source=RuleSource(url=CONFIG_FLOW_SOURCE),
-            fix=FixSuggestion(summary="Fix manifest.json syntax, then rerun HassCheck."),
-            path=_display_path(manifest_path, context, "custom_components/<domain>/manifest.json"),
+            fix=FixSuggestion(
+                summary="Fix manifest.json syntax, then rerun HassCheck."
+            ),
+            path=_display_path(
+                manifest_path, context, "custom_components/<domain>/manifest.json"
+            ),
         )
 
     has_file = config_path.is_file()
@@ -162,10 +209,14 @@ def config_flow_manifest_flag_consistent(context: ProjectContext) -> Finding:
             severity=RuleSeverity.REQUIRED,
             title="config_flow.py and manifest config_flow flag agree",
             message="config_flow.py exists and manifest.json sets config_flow: true.",
-            applicability=Applicability(reason="Home Assistant needs both config_flow.py and manifest config_flow metadata."),
+            applicability=Applicability(
+                reason="Home Assistant needs both config_flow.py and manifest config_flow metadata."
+            ),
             source=RuleSource(url=CONFIG_FLOW_SOURCE),
             fix=None,
-            path=_display_path(config_path, context, "custom_components/<domain>/config_flow.py"),
+            path=_display_path(
+                config_path, context, "custom_components/<domain>/config_flow.py"
+            ),
         )
 
     if has_file and not manifest_flag:
@@ -177,10 +228,14 @@ def config_flow_manifest_flag_consistent(context: ProjectContext) -> Finding:
             severity=RuleSeverity.REQUIRED,
             title="config_flow.py and manifest config_flow flag agree",
             message="config_flow.py exists, but manifest.json does not set config_flow: true.",
-            applicability=Applicability(reason="Home Assistant activates config flows through manifest config_flow metadata."),
+            applicability=Applicability(
+                reason="Home Assistant activates config flows through manifest config_flow metadata."
+            ),
             source=RuleSource(url=CONFIG_FLOW_SOURCE),
-            fix=FixSuggestion(summary="Add \"config_flow\": true to manifest.json."),
-            path=_display_path(manifest_path, context, "custom_components/<domain>/manifest.json"),
+            fix=FixSuggestion(summary='Add "config_flow": true to manifest.json.'),
+            path=_display_path(
+                manifest_path, context, "custom_components/<domain>/manifest.json"
+            ),
         )
 
     if manifest_flag and not has_file:
@@ -192,10 +247,37 @@ def config_flow_manifest_flag_consistent(context: ProjectContext) -> Finding:
             severity=RuleSeverity.REQUIRED,
             title="config_flow.py and manifest config_flow flag agree",
             message="manifest.json sets config_flow: true, but config_flow.py is missing.",
-            applicability=Applicability(reason="Home Assistant docs say config_flow.py needs to exist when config_flow is specified."),
+            applicability=Applicability(
+                reason="Home Assistant docs say config_flow.py needs to exist when config_flow is specified."
+            ),
             source=RuleSource(url=CONFIG_FLOW_SOURCE),
-            fix=FixSuggestion(summary="Add config_flow.py or remove config_flow from manifest.json until UI setup is implemented."),
-            path=_display_path(config_path, context, "custom_components/<domain>/config_flow.py"),
+            fix=FixSuggestion(
+                summary="Add config_flow.py or remove config_flow from manifest.json until UI setup is implemented."
+            ),
+            path=_display_path(
+                config_path, context, "custom_components/<domain>/config_flow.py"
+            ),
+        )
+
+    if context.applicability and context.applicability.uses_config_flow is False:
+        return Finding(
+            rule_id="config_flow.manifest_flag_consistent",
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.REQUIRED,
+            title="config_flow.py and manifest config_flow flag agree",
+            message="Project config declares this integration does not use config flow UI setup.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="hasscheck.yaml declares uses_config_flow: false.",
+                source="config",
+            ),
+            source=RuleSource(url=CONFIG_FLOW_SOURCE),
+            fix=None,
+            path=_display_path(
+                manifest_path, context, "custom_components/<domain>/manifest.json"
+            ),
         )
 
     return Finding(
@@ -211,8 +293,12 @@ def config_flow_manifest_flag_consistent(context: ProjectContext) -> Finding:
             reason="The integration does not currently advertise a config flow.",
         ),
         source=RuleSource(url=CONFIG_FLOW_SOURCE),
-        fix=FixSuggestion(summary="Add config_flow.py and set config_flow: true when adding UI setup support."),
-        path=_display_path(manifest_path, context, "custom_components/<domain>/manifest.json"),
+        fix=FixSuggestion(
+            summary="Add config_flow.py and set config_flow: true when adding UI setup support."
+        ),
+        path=_display_path(
+            manifest_path, context, "custom_components/<domain>/manifest.json"
+        ),
     )
 
 

@@ -8,8 +8,19 @@ from hasscheck.rules.docs import RULES as DOCS_RULES
 from hasscheck.rules.hacs_structure import RULES as HACS_STRUCTURE_RULES
 from hasscheck.rules.manifest import RULES as MANIFEST_RULES
 from hasscheck.rules.repairs import RULES as REPAIRS_RULES
-from hasscheck.rules.tests import RULES as TESTS_RULES
 from hasscheck.rules.repository import RULES as REPOSITORY_RULES
+from hasscheck.rules.tests import RULES as TESTS_RULES
 
-RULES = [*HACS_STRUCTURE_RULES, *BRAND_RULES, *MANIFEST_RULES, *CONFIG_FLOW_RULES, *DIAGNOSTICS_RULES, *REPAIRS_RULES, *DOCS_RULES, *REPOSITORY_RULES, *TESTS_RULES, *CI_RULES]
+RULES = [
+    *HACS_STRUCTURE_RULES,
+    *BRAND_RULES,
+    *MANIFEST_RULES,
+    *CONFIG_FLOW_RULES,
+    *DIAGNOSTICS_RULES,
+    *REPAIRS_RULES,
+    *DOCS_RULES,
+    *REPOSITORY_RULES,
+    *TESTS_RULES,
+    *CI_RULES,
+]
 RULES_BY_ID = {rule.id: rule for rule in RULES}

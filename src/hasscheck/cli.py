@@ -31,16 +31,30 @@ def version_callback(value: bool) -> None:
 
 @app.callback()
 def root(
-    version: bool = typer.Option(False, "--version", "-V", callback=version_callback, help="Show version and exit."),
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        callback=version_callback,
+        help="Show version and exit.",
+    ),
 ) -> None:
     """Validate Home Assistant custom integration quality signals."""
 
 
 @app.command()
 def check(
-    path: Path = typer.Option(Path("."), "--path", "-p", help="Repository path to inspect."),
-    json_output: bool = typer.Option(False, "--json", help="Emit the stable JSON report."),
-    no_config: bool = typer.Option(False, "--no-config", help="Ignore hasscheck.yaml even if present (useful for CI debugging)."),
+    path: Path = typer.Option(
+        Path("."), "--path", "-p", help="Repository path to inspect."
+    ),
+    json_output: bool = typer.Option(
+        False, "--json", help="Emit the stable JSON report."
+    ),
+    no_config: bool = typer.Option(
+        False,
+        "--no-config",
+        help="Ignore hasscheck.yaml even if present (useful for CI debugging).",
+    ),
 ) -> None:
     """Check a custom integration repository and print actionable findings.
 
@@ -54,14 +68,16 @@ def check(
     """
     if not path.exists():
         console.print(f"[red]Error:[/] Path '{path}' does not exist.")
-        console.print("[yellow]Suggestion:[/] Pass an existing repository path with --path.")
+        console.print(
+            "[yellow]Suggestion:[/] Pass an existing repository path with --path."
+        )
         raise typer.Exit(code=1)
 
     try:
         report = run_check(path, no_config=no_config)
     except ConfigError as exc:
         typer.echo(f"hasscheck: error: {exc}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from exc
 
     if json_output:
         typer.echo(report_to_json(report), nl=False)
@@ -77,12 +93,18 @@ def schema() -> None:
 
 
 @app.command()
-def explain(rule_id: str = typer.Argument(..., help="Rule ID to explain, for example manifest.domain.exists.")) -> None:
+def explain(
+    rule_id: str = typer.Argument(
+        ..., help="Rule ID to explain, for example manifest.domain.exists."
+    ),
+) -> None:
     """Explain why a rule exists, how it is sourced, and what it checks."""
     rule = RULES_BY_ID.get(rule_id)
     if rule is None:
         console.print(f"[red]Error:[/] Unknown rule '{rule_id}'.")
-        console.print("[yellow]Suggestion:[/] Run 'hasscheck check --json' to see emitted rule IDs.")
+        console.print(
+            "[yellow]Suggestion:[/] Run 'hasscheck check --json' to see emitted rule IDs."
+        )
         raise typer.Exit(code=1)
 
     console.print(f"[bold]{rule.id}[/bold]")

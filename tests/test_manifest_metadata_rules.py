@@ -39,7 +39,10 @@ def test_required_manifest_metadata_fields_pass_when_present(tmp_path) -> None:
 
     for rule_id in REQUIRED_FIELD_RULES.values():
         assert findings[rule_id].status is RuleStatus.PASS
-        assert findings[rule_id].source.url == "https://www.hacs.xyz/docs/publish/integration/"
+        assert (
+            findings[rule_id].source.url
+            == "https://www.hacs.xyz/docs/publish/integration/"
+        )
         assert findings[rule_id].rule_version == "1.0.0"
 
 
@@ -53,7 +56,9 @@ def test_required_manifest_metadata_fields_fail_when_missing(tmp_path) -> None:
         assert findings[rule_id].fix is not None
 
 
-def test_required_manifest_metadata_fields_are_not_applicable_without_manifest(tmp_path) -> None:
+def test_required_manifest_metadata_fields_are_not_applicable_without_manifest(
+    tmp_path,
+) -> None:
     findings = findings_for(tmp_path)
 
     for rule_id in REQUIRED_FIELD_RULES.values():
@@ -74,4 +79,6 @@ def test_codeowners_requires_non_empty_list_of_strings(tmp_path) -> None:
         },
     )
 
-    assert findings_for(tmp_path)["manifest.codeowners.exists"].status is RuleStatus.FAIL
+    assert (
+        findings_for(tmp_path)["manifest.codeowners.exists"].status is RuleStatus.FAIL
+    )

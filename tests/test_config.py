@@ -1,4 +1,5 @@
 """Tests for hasscheck.config — YAML schema models and override engine."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,9 +16,10 @@ from hasscheck.config import (
     discover_config,
     load_config_file,
 )
-
+from hasscheck.models import Finding
 
 # ---------- RuleOverride ----------
+
 
 def test_rule_override_valid_not_applicable() -> None:
     ro = RuleOverride(status="not_applicable", reason="legitimately does not apply")
@@ -71,6 +73,7 @@ def test_rule_override_rejects_extra_fields() -> None:
 
 # ---------- ProjectConfig ----------
 
+
 def test_project_config_defaults_to_integration() -> None:
     pc = ProjectConfig()
     assert pc.type == "integration"
@@ -88,10 +91,12 @@ def test_project_config_rejects_extra_fields() -> None:
 
 # ---------- HassCheckConfig ----------
 
+
 def test_hasscheck_config_empty_defaults() -> None:
     cfg = HassCheckConfig()
-    assert cfg.schema_version == "0.2.0"
+    assert cfg.schema_version == "0.3.0"
     assert cfg.project is None
+    assert cfg.applicability is None
     assert cfg.rules == {}
 
 
@@ -114,10 +119,9 @@ def test_hasscheck_config_with_project_block() -> None:
 
 
 def test_hasscheck_config_rejects_unknown_top_level_key() -> None:
-    """Block A's `applicability:` block is deferred to v0.3 — extra=forbid rejects it."""
     with pytest.raises(ValidationError):
         HassCheckConfig(
-            applicability={"auth_required": False},  # type: ignore[call-arg]
+            unexpected={"value": False},  # type: ignore[call-arg]
         )
 
 
@@ -127,6 +131,7 @@ def test_hasscheck_config_rejects_wrong_schema_version() -> None:
 
 
 # ---------- ConfigError ----------
+
 
 def test_config_error_is_exception() -> None:
     assert issubclass(ConfigError, Exception)
@@ -138,6 +143,7 @@ def test_config_error_carries_message() -> None:
 
 
 # ---------- load_config_file ----------
+
 
 def test_load_config_file_minimal_valid(tmp_path: Path) -> None:
     (tmp_path / "hasscheck.yaml").write_text("schema_version: '0.2.0'\n")
@@ -182,10 +188,7 @@ def test_load_config_file_non_mapping_raises_config_error(tmp_path: Path) -> Non
 
 def test_load_config_file_forbidden_status_raises_config_error(tmp_path: Path) -> None:
     (tmp_path / "hasscheck.yaml").write_text(
-        "rules:\n"
-        "  repairs.file.exists:\n"
-        "    status: pass\n"
-        "    reason: some reason\n"
+        "rules:\n  repairs.file.exists:\n    status: pass\n    reason: some reason\n"
     )
     with pytest.raises(ConfigError):
         load_config_file(tmp_path / "hasscheck.yaml")
@@ -193,9 +196,7 @@ def test_load_config_file_forbidden_status_raises_config_error(tmp_path: Path) -
 
 def test_load_config_file_missing_reason_raises_config_error(tmp_path: Path) -> None:
     (tmp_path / "hasscheck.yaml").write_text(
-        "rules:\n"
-        "  repairs.file.exists:\n"
-        "    status: not_applicable\n"
+        "rules:\n  repairs.file.exists:\n    status: not_applicable\n"
     )
     with pytest.raises(ConfigError):
         load_config_file(tmp_path / "hasscheck.yaml")
@@ -214,6 +215,7 @@ def test_load_config_file_extra_fields_raises_config_error(tmp_path: Path) -> No
 
 
 # ---------- discover_config ----------
+
 
 def test_discover_config_returns_none_when_file_absent(tmp_path: Path) -> None:
     assert discover_config(tmp_path) is None
@@ -241,18 +243,19 @@ def test_discover_config_looks_only_at_repo_root_not_parents(tmp_path: Path) -> 
 
 # ---------- apply_overrides helpers ----------
 
+
 def _make_finding(
     rule_id: str = "repairs.file.exists",
     status: str = "warn",
-) -> "Finding":
+) -> Finding:
     from hasscheck.models import (
         Applicability,
         ApplicabilityStatus,
-        Finding,
         RuleSeverity,
         RuleSource,
         RuleStatus,
     )
+
     app_status = {
         "warn": ApplicabilityStatus.APPLICABLE,
         "fail": ApplicabilityStatus.APPLICABLE,
@@ -285,8 +288,10 @@ def _config_with_rule(
 
 # ---------- apply_overrides — Task 3.1: happy path ----------
 
+
 def test_apply_overrides_warn_to_not_applicable() -> None:
     from hasscheck.models import RuleStatus
+
     finding = _make_finding("repairs.file.exists", "warn")
     config = _config_with_rule("repairs.file.exists", "not_applicable", "no repairs")
     new_findings, applied = apply_overrides([finding], config)
@@ -297,6 +302,7 @@ def test_apply_overrides_warn_to_not_applicable() -> None:
 
 def test_apply_overrides_warn_to_manual_review() -> None:
     from hasscheck.models import RuleStatus
+
     finding = _make_finding("repairs.file.exists", "warn")
     config = _config_with_rule("repairs.file.exists", "manual_review", "needs human")
     new_findings, applied = apply_overrides([finding], config)
@@ -313,13 +319,16 @@ def test_apply_overrides_overridden_source_is_config() -> None:
 
 def test_apply_overrides_overridden_reason_from_config() -> None:
     finding = _make_finding("repairs.file.exists", "warn")
-    config = _config_with_rule("repairs.file.exists", "not_applicable", "my custom reason")
+    config = _config_with_rule(
+        "repairs.file.exists", "not_applicable", "my custom reason"
+    )
     new_findings, _ = apply_overrides([finding], config)
     assert new_findings[0].applicability.reason == "my custom reason"
 
 
 def test_apply_overrides_fail_to_not_applicable() -> None:
     from hasscheck.models import RuleStatus
+
     finding = _make_finding("repairs.file.exists", "fail")
     config = _config_with_rule("repairs.file.exists", "not_applicable", "no repairs")
     new_findings, applied = apply_overrides([finding], config)
@@ -327,7 +336,9 @@ def test_apply_overrides_fail_to_not_applicable() -> None:
     assert applied.count == 1
 
 
-def test_apply_overrides_empty_config_returns_unchanged(capsys: pytest.CaptureFixture) -> None:
+def test_apply_overrides_empty_config_returns_unchanged(
+    capsys: pytest.CaptureFixture,
+) -> None:
     finding = _make_finding("repairs.file.exists", "warn")
     config = HassCheckConfig()
     new_findings, applied = apply_overrides([finding], config)
@@ -338,7 +349,10 @@ def test_apply_overrides_empty_config_returns_unchanged(capsys: pytest.CaptureFi
 
 # ---------- apply_overrides — Task 3.2: unknown rule_id ----------
 
-def test_apply_overrides_unknown_rule_id_warns_stderr(capsys: pytest.CaptureFixture) -> None:
+
+def test_apply_overrides_unknown_rule_id_warns_stderr(
+    capsys: pytest.CaptureFixture,
+) -> None:
     finding = _make_finding("repairs.file.exists", "warn")
     config = _config_with_rule("nonexistent.rule.id", "not_applicable", "no such rule")
     apply_overrides([finding], config)
@@ -347,7 +361,9 @@ def test_apply_overrides_unknown_rule_id_warns_stderr(capsys: pytest.CaptureFixt
     assert "unknown" in err.lower()
 
 
-def test_apply_overrides_unknown_rule_id_not_counted(capsys: pytest.CaptureFixture) -> None:
+def test_apply_overrides_unknown_rule_id_not_counted(
+    capsys: pytest.CaptureFixture,
+) -> None:
     finding = _make_finding("repairs.file.exists", "warn")
     config = _config_with_rule("nonexistent.rule.id", "not_applicable", "no such rule")
     _, applied = apply_overrides([finding], config)
@@ -357,9 +373,12 @@ def test_apply_overrides_unknown_rule_id_not_counted(capsys: pytest.CaptureFixtu
 
 # ---------- apply_overrides — Task 3.3: locked rule ----------
 
+
 def test_apply_overrides_locked_rule_raises_config_error() -> None:
     finding = _make_finding("manifest.exists", "fail")
-    config = _config_with_rule("manifest.exists", "not_applicable", "we don't need this")
+    config = _config_with_rule(
+        "manifest.exists", "not_applicable", "we don't need this"
+    )
     with pytest.raises(ConfigError) as exc_info:
         apply_overrides([finding], config)
     assert "manifest.exists" in str(exc_info.value)
@@ -369,15 +388,21 @@ def test_apply_overrides_locked_rule_raises_config_error() -> None:
 def test_apply_overrides_locked_rule_error_even_when_passing() -> None:
     """Locked rule precedence: hard fail even if natural status is PASS."""
     finding = _make_finding("manifest.exists", "pass")
-    config = _config_with_rule("manifest.exists", "not_applicable", "we don't need this")
+    config = _config_with_rule(
+        "manifest.exists", "not_applicable", "we don't need this"
+    )
     with pytest.raises(ConfigError):
         apply_overrides([finding], config)
 
 
 # ---------- apply_overrides — Task 3.4: PASS-skip ----------
 
-def test_apply_overrides_natural_pass_not_applied(capsys: pytest.CaptureFixture) -> None:
+
+def test_apply_overrides_natural_pass_not_applied(
+    capsys: pytest.CaptureFixture,
+) -> None:
     from hasscheck.models import RuleStatus
+
     finding = _make_finding("repairs.file.exists", "pass")
     config = _config_with_rule("repairs.file.exists", "not_applicable", "no repairs")
     new_findings, applied = apply_overrides([finding], config)
@@ -386,7 +411,9 @@ def test_apply_overrides_natural_pass_not_applied(capsys: pytest.CaptureFixture)
     assert applied.count == 0
 
 
-def test_apply_overrides_natural_pass_emits_stale_warning(capsys: pytest.CaptureFixture) -> None:
+def test_apply_overrides_natural_pass_emits_stale_warning(
+    capsys: pytest.CaptureFixture,
+) -> None:
     finding = _make_finding("repairs.file.exists", "pass")
     config = _config_with_rule("repairs.file.exists", "not_applicable", "no repairs")
     apply_overrides([finding], config)
@@ -397,8 +424,12 @@ def test_apply_overrides_natural_pass_emits_stale_warning(capsys: pytest.Capture
 
 # ---------- apply_overrides — Task 3.5: NA-noop ----------
 
-def test_apply_overrides_natural_not_applicable_silent_noop(capsys: pytest.CaptureFixture) -> None:
+
+def test_apply_overrides_natural_not_applicable_silent_noop(
+    capsys: pytest.CaptureFixture,
+) -> None:
     from hasscheck.models import RuleStatus
+
     finding = _make_finding("repairs.file.exists", "not_applicable")
     config = _config_with_rule("repairs.file.exists", "not_applicable", "no repairs")
     new_findings, applied = apply_overrides([finding], config)
@@ -409,7 +440,10 @@ def test_apply_overrides_natural_not_applicable_silent_noop(capsys: pytest.Captu
 
 # ---------- apply_overrides — Task 3.6: MR-redundant-skip ----------
 
-def test_apply_overrides_mr_override_mr_warns_redundant(capsys: pytest.CaptureFixture) -> None:
+
+def test_apply_overrides_mr_override_mr_warns_redundant(
+    capsys: pytest.CaptureFixture,
+) -> None:
     finding = _make_finding("repairs.file.exists", "manual_review")
     config = _config_with_rule("repairs.file.exists", "manual_review", "needs human")
     _, applied = apply_overrides([finding], config)
@@ -421,6 +455,7 @@ def test_apply_overrides_mr_override_mr_warns_redundant(capsys: pytest.CaptureFi
 def test_apply_overrides_mr_to_na_is_applied() -> None:
     """MR + override=not_applicable → APPLY (not redundant, step 5 only blocks MR→MR)."""
     from hasscheck.models import RuleStatus
+
     finding = _make_finding("repairs.file.exists", "manual_review")
     config = _config_with_rule("repairs.file.exists", "not_applicable", "superseded")
     new_findings, applied = apply_overrides([finding], config)
@@ -429,6 +464,7 @@ def test_apply_overrides_mr_to_na_is_applied() -> None:
 
 
 # ---------- apply_overrides — multiple rules / alphabetical ----------
+
 
 def test_apply_overrides_rule_ids_alphabetical() -> None:
     findings = [
@@ -446,3 +482,72 @@ def test_apply_overrides_rule_ids_alphabetical() -> None:
     _, applied = apply_overrides(findings, config)
     assert applied.rule_ids == sorted(applied.rule_ids)
     assert applied.count == 3
+
+
+# ---------- v0.3 ProjectApplicability ----------
+
+
+def test_project_applicability_accepts_initial_v03_flags() -> None:
+    from hasscheck.config import ProjectApplicability
+
+    app = ProjectApplicability(
+        supports_diagnostics=False,
+        has_user_fixable_repairs=False,
+        uses_config_flow=False,
+    )
+
+    assert app.supports_diagnostics is False
+    assert app.has_user_fixable_repairs is False
+    assert app.uses_config_flow is False
+
+
+def test_project_applicability_rejects_unknown_flags() -> None:
+    from hasscheck.config import ProjectApplicability
+
+    with pytest.raises(ValidationError):
+        ProjectApplicability(auth_required=False)  # type: ignore[call-arg]
+
+
+def test_hasscheck_config_accepts_applicability_block() -> None:
+    from hasscheck.config import ProjectApplicability
+
+    cfg = HassCheckConfig(
+        applicability=ProjectApplicability(supports_diagnostics=False)
+    )
+
+    assert cfg.schema_version == "0.3.0"
+    assert cfg.applicability is not None
+    assert cfg.applicability.supports_diagnostics is False
+
+
+def test_hasscheck_config_accepts_v02_schema_when_no_applicability_block() -> None:
+    cfg = HassCheckConfig(schema_version="0.2.0")
+
+    assert cfg.schema_version == "0.2.0"
+    assert cfg.rules == {}
+
+
+def test_hasscheck_config_rejects_v02_schema_with_applicability_block() -> None:
+    from hasscheck.config import ProjectApplicability
+
+    with pytest.raises(ValidationError):
+        HassCheckConfig(
+            schema_version="0.2.0",
+            applicability=ProjectApplicability(supports_diagnostics=False),
+        )
+
+
+def test_load_config_file_with_v03_applicability(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.3.0'\n"
+        "applicability:\n"
+        "  supports_diagnostics: false\n"
+        "  has_user_fixable_repairs: false\n"
+        "  uses_config_flow: false\n"
+    )
+
+    cfg = load_config_file(tmp_path / "hasscheck.yaml")
+
+    assert cfg.schema_version == "0.3.0"
+    assert cfg.applicability is not None
+    assert cfg.applicability.supports_diagnostics is False

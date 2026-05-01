@@ -1,4 +1,5 @@
 """hasscheck.yaml schema models, config loader, and override engine."""
+
 from __future__ import annotations
 
 import sys
@@ -6,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TextIO
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 if TYPE_CHECKING:
     from hasscheck.models import Finding, OverridesApplied
@@ -30,12 +31,29 @@ class ProjectConfig(BaseModel):
     type: Literal["integration"] = "integration"
 
 
+class ProjectApplicability(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    supports_diagnostics: bool | None = None
+    has_user_fixable_repairs: bool | None = None
+    uses_config_flow: bool | None = None
+
+
 class HassCheckConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["0.2.0"] = "0.2.0"
+    schema_version: Literal["0.2.0", "0.3.0"] = "0.3.0"
     project: ProjectConfig | None = None
+    applicability: ProjectApplicability | None = None
     rules: dict[str, RuleOverride] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _schema_version_matches_fields(self) -> HassCheckConfig:
+        if self.schema_version == "0.2.0" and self.applicability is not None:
+            raise ValueError(
+                "schema_version 0.2.0 does not support applicability; use 0.3.0"
+            )
+        return self
 
 
 def load_config_file(path: Path) -> HassCheckConfig:
@@ -143,7 +161,10 @@ def apply_overrides(
             continue
 
         # Step 5: natural MANUAL_REVIEW + override=manual_review → redundant, warn-skip
-        if natural_status is RuleStatus.MANUAL_REVIEW and override.status == "manual_review":
+        if (
+            natural_status is RuleStatus.MANUAL_REVIEW
+            and override.status == "manual_review"
+        ):
             print(
                 f"hasscheck: warning: rule '{rule_id}' is already MANUAL_REVIEW; "
                 f"override in hasscheck.yaml is redundant.",
@@ -160,14 +181,16 @@ def apply_overrides(
             new_app_status = ApplicabilityStatus.MANUAL_REVIEW
 
         idx = new_findings.index(finding)
-        new_findings[idx] = finding.model_copy(update={
-            "status": new_status,
-            "applicability": Applicability(
-                status=new_app_status,
-                reason=override.reason,
-                source="config",
-            ),
-        })
+        new_findings[idx] = finding.model_copy(
+            update={
+                "status": new_status,
+                "applicability": Applicability(
+                    status=new_app_status,
+                    reason=override.reason,
+                    source="config",
+                ),
+            }
+        )
         applied.append(rule_id)
 
     overrides_applied = OverridesApplied(

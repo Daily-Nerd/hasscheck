@@ -1,17 +1,30 @@
 from __future__ import annotations
 
-from hasscheck.models import Applicability, Finding, FixSuggestion, RuleSeverity, RuleSource, RuleStatus
+from hasscheck.models import (
+    Applicability,
+    Finding,
+    FixSuggestion,
+    RuleSeverity,
+    RuleSource,
+    RuleStatus,
+)
 from hasscheck.rules.base import ProjectContext, RuleDefinition
 
 CATEGORY = "tests_ci"
-GITHUB_ACTIONS_SOURCE = "https://docs.github.com/actions/using-workflows/about-workflows"
+GITHUB_ACTIONS_SOURCE = (
+    "https://docs.github.com/actions/using-workflows/about-workflows"
+)
 
 
 def _workflow_files(context: ProjectContext):
     workflows_dir = context.root / ".github" / "workflows"
     if not workflows_dir.is_dir():
         return []
-    return sorted(path for path in workflows_dir.iterdir() if path.is_file() and path.suffix in {".yml", ".yaml"})
+    return sorted(
+        path
+        for path in workflows_dir.iterdir()
+        if path.is_file() and path.suffix in {".yml", ".yaml"}
+    )
 
 
 def github_actions_exists(context: ProjectContext) -> Finding:
@@ -30,9 +43,15 @@ def github_actions_exists(context: ProjectContext) -> Finding:
             if exists
             else "Repository does not contain a GitHub Actions workflow file."
         ),
-        applicability=Applicability(reason="CI helps maintainers catch regressions before releases and pull request merges."),
+        applicability=Applicability(
+            reason="CI helps maintainers catch regressions before releases and pull request merges."
+        ),
         source=RuleSource(url=GITHUB_ACTIONS_SOURCE),
-        fix=None if exists else FixSuggestion(summary="Add a .github/workflows/*.yml workflow that runs HassCheck and tests."),
+        fix=None
+        if exists
+        else FixSuggestion(
+            summary="Add a .github/workflows/*.yml workflow that runs HassCheck and tests."
+        ),
         path=str(path.relative_to(context.root)) if exists else ".github/workflows",
     )
 

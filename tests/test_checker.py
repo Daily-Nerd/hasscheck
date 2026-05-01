@@ -43,6 +43,7 @@ def test_manifest_domain_passes_for_custom_integration(tmp_path) -> None:
 
 # ---------- Phase 4: config kwarg + discovery ----------
 
+
 def test_run_check_config_and_no_config_conflict(tmp_path) -> None:
     with pytest.raises(ValueError, match="no_config"):
         run_check(tmp_path, config=HassCheckConfig(), no_config=True)
@@ -76,7 +77,9 @@ def test_run_check_discovers_yaml_at_root(tmp_path) -> None:
 def test_run_check_applies_overrides_from_config_kwarg(tmp_path) -> None:
     # tests.folder.exists is WARN in empty dir — confirms source="config" is set
     config = HassCheckConfig(
-        rules={"tests.folder.exists": RuleOverride(status="not_applicable", reason="test")}
+        rules={
+            "tests.folder.exists": RuleOverride(status="not_applicable", reason="test")
+        }
     )
     report = run_check(tmp_path, config=config)
     findings = {f.rule_id: f for f in report.findings}
@@ -91,6 +94,6 @@ def test_run_check_no_yaml_overrides_applied_is_empty(tmp_path) -> None:
     assert report.summary.overrides_applied.rule_ids == []
 
 
-def test_run_check_schema_version_is_0_2_0(tmp_path) -> None:
+def test_run_check_schema_version_is_0_3_0(tmp_path) -> None:
     report = run_check(tmp_path)
-    assert report.schema_version == "0.2.0"
+    assert report.schema_version == "0.3.0"

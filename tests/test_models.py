@@ -3,10 +3,10 @@ from pydantic import ValidationError
 
 from hasscheck.models import (
     Applicability,
+    HassCheckReport,
     OverridesApplied,
     ReportSummary,
     RuleStatus,
-    HassCheckReport,
 )
 
 
@@ -76,9 +76,11 @@ def test_report_summary_overrides_applied_default_is_empty_overrides_applied() -
 
 # ---------- Phase 8.2: JSON contract — additive-only verification ----------
 
+
 def test_json_contract_v01_fields_still_present(tmp_path) -> None:
     """All v0.1 JSON paths must exist in v0.2 output — no breaking changes."""
     import json
+
     from hasscheck.checker import run_check
     from hasscheck.output import report_to_json
 
@@ -108,9 +110,13 @@ def test_json_contract_v01_fields_still_present(tmp_path) -> None:
 def test_pyproject_version_matches_tool_info() -> None:
     import tomllib
     from pathlib import Path
+
     from hasscheck.models import ToolInfo
-    pyproject = tomllib.loads((Path(__file__).parent.parent / "pyproject.toml").read_text())
-    assert pyproject["project"]["version"] == ToolInfo().version == "0.2.1"
+
+    pyproject = tomllib.loads(
+        (Path(__file__).parent.parent / "pyproject.toml").read_text()
+    )
+    assert pyproject["project"]["version"] == ToolInfo().version == "0.3.0"
 
 
 def test_yaml_importable() -> None:
@@ -120,6 +126,7 @@ def test_yaml_importable() -> None:
 def test_json_contract_v02_additive_fields_present(tmp_path) -> None:
     """New v0.2 fields present without breaking v0.1 consumers."""
     import json
+
     from hasscheck.checker import run_check
     from hasscheck.output import report_to_json
 
@@ -131,3 +138,46 @@ def test_json_contract_v02_additive_fields_present(tmp_path) -> None:
     assert "rule_ids" in payload["summary"]["overrides_applied"]
     finding = payload["findings"][0]
     assert "source" in finding["applicability"]
+
+
+def test_applicability_applied_default_is_empty() -> None:
+    from hasscheck.models import ApplicabilityApplied
+
+    applied = ApplicabilityApplied()
+
+    assert applied.count == 0
+    assert applied.rule_ids == []
+    assert applied.flags == []
+
+
+def test_applicability_applied_enforces_count_and_sorting() -> None:
+    from hasscheck.models import ApplicabilityApplied
+
+    ApplicabilityApplied(
+        count=2,
+        rule_ids=["diagnostics.file.exists", "repairs.file.exists"],
+        flags=["has_user_fixable_repairs", "supports_diagnostics"],
+    )
+
+    with pytest.raises(ValidationError):
+        ApplicabilityApplied(count=2, rule_ids=["diagnostics.file.exists"], flags=[])
+
+    with pytest.raises(ValidationError):
+        ApplicabilityApplied(
+            count=2,
+            rule_ids=["repairs.file.exists", "diagnostics.file.exists"],
+            flags=[],
+        )
+
+    with pytest.raises(ValidationError):
+        ApplicabilityApplied(
+            count=1, rule_ids=["diagnostics.file.exists"], flags=["z", "a"]
+        )
+
+
+def test_report_summary_applicability_applied_default_is_empty() -> None:
+    from hasscheck.models import ApplicabilityApplied
+
+    summary = ReportSummary()
+
+    assert summary.applicability_applied == ApplicabilityApplied()

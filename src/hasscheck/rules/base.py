@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING
 
-from hasscheck.models import Finding, RuleSource, RuleSeverity, RuleStatus
+if TYPE_CHECKING:
+    from hasscheck.config import ProjectApplicability
+
+from hasscheck.models import Finding, RuleSeverity, RuleSource
 
 
 @dataclass(frozen=True)
@@ -12,6 +16,7 @@ class ProjectContext:
     root: Path
     integration_path: Path | None
     domain: str | None
+    applicability: ProjectApplicability | None = None
 
 
 @dataclass(frozen=True)

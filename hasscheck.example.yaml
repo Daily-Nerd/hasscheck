@@ -1,15 +1,27 @@
-# hasscheck.yaml — applicability overrides for hasscheck v0.2
-# Copy this file to your integration root as `hasscheck.yaml` and remove the rules
+# hasscheck.yaml — project context and rule overrides for hasscheck v0.3
+# Copy this file to your repository root as `hasscheck.yaml` and remove entries
 # that do not apply to your project.
 #
 # Documentation: docs/architecture/config-file.md
+# Project context: docs/architecture/project-applicability-context.md
 # Override rules: run `hasscheck explain <rule-id>` to see if a rule is overridable.
 
-schema_version: "0.2.0"
+schema_version: "0.3.0"
 
-# Reserved for v0.3. In v0.2, only `type: integration` is accepted.
+# Optional project metadata. In v0.3, only `type: integration` is accepted.
 # project:
 #   type: integration
+
+# Project-level applicability facts. These are not scores and not certifications.
+# They only explain why selected optional signals are intentionally absent.
+#
+# Natural PASS findings still win. Example: if diagnostics.py exists, the
+# diagnostics rule still passes even when `supports_diagnostics: false` is stale.
+# Correctness failures also stay locked.
+applicability:
+  supports_diagnostics: false
+  has_user_fixable_repairs: false
+  uses_config_flow: false
 
 # Per-rule overrides. Each entry softens a finding to:
 #   not_applicable — the rule legitimately does not apply to this project

@@ -2,14 +2,20 @@ from hasscheck.checker import run_check
 from hasscheck.models import RuleStatus
 
 
-def write_integration(root, *, diagnostics: bool = False, repairs: bool = False) -> None:
+def write_integration(
+    root, *, diagnostics: bool = False, repairs: bool = False
+) -> None:
     integration = root / "custom_components" / "demo"
     integration.mkdir(parents=True)
     (integration / "manifest.json").write_text('{"domain":"demo"}', encoding="utf-8")
     if diagnostics:
-        (integration / "diagnostics.py").write_text('"""Diagnostics fixture."""\n', encoding="utf-8")
+        (integration / "diagnostics.py").write_text(
+            '"""Diagnostics fixture."""\n', encoding="utf-8"
+        )
     if repairs:
-        (integration / "repairs.py").write_text('"""Repairs fixture."""\n', encoding="utf-8")
+        (integration / "repairs.py").write_text(
+            '"""Repairs fixture."""\n', encoding="utf-8"
+        )
 
 
 def findings_for(root):

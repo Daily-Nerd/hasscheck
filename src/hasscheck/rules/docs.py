@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from hasscheck.models import Applicability, Finding, FixSuggestion, RuleSeverity, RuleSource, RuleStatus
+from hasscheck.models import (
+    Applicability,
+    Finding,
+    FixSuggestion,
+    RuleSeverity,
+    RuleSource,
+    RuleStatus,
+)
 from hasscheck.rules.base import ProjectContext, RuleDefinition
 
 CATEGORY = "docs_support"
@@ -8,7 +15,11 @@ DOCS_SOURCE = "https://developers.home-assistant.io/docs/core/integration-qualit
 
 
 def readme_exists(context: ProjectContext) -> Finding:
-    candidates = [context.root / "README.md", context.root / "README.rst", context.root / "README.txt"]
+    candidates = [
+        context.root / "README.md",
+        context.root / "README.rst",
+        context.root / "README.txt",
+    ]
     existing = next((path for path in candidates if path.is_file()), None)
     exists = existing is not None
     return Finding(
@@ -23,9 +34,15 @@ def readme_exists(context: ProjectContext) -> Finding:
             if existing
             else "Repository does not contain a README file, so setup/support documentation cannot be inspected."
         ),
-        applicability=Applicability(reason="Custom integration repositories should explain installation, configuration, and support."),
+        applicability=Applicability(
+            reason="Custom integration repositories should explain installation, configuration, and support."
+        ),
         source=RuleSource(url=DOCS_SOURCE),
-        fix=None if exists else FixSuggestion(summary="Add README.md with installation, configuration, and support notes."),
+        fix=None
+        if exists
+        else FixSuggestion(
+            summary="Add README.md with installation, configuration, and support notes."
+        ),
         path=existing.name if existing else "README.md",
     )
 
