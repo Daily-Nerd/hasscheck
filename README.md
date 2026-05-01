@@ -282,6 +282,10 @@ HACS Acceptance: Not guaranteed
 
 The exact category order may change as rules evolve. The JSON schema is the durable contract.
 
+## Documentation
+
+Per-rule documentation pages with status behavior tables, fix instructions, and examples: [`docs/rules/`](docs/rules/README.md).
+
 ## Current rule set
 
 ### HACS structure
