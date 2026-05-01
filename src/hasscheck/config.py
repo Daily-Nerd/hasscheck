@@ -56,3 +56,15 @@ def load_config_file(path: Path) -> HassCheckConfig:
         return HassCheckConfig(**raw)
     except ValidationError as exc:
         raise ConfigError(f"Invalid {path.name}: {exc}") from exc
+
+
+def discover_config(repo_root: Path) -> HassCheckConfig | None:
+    """Look for hasscheck.yaml at repo_root exactly (no parent walk).
+
+    Returns a parsed HassCheckConfig if found, None if absent.
+    Propagates ConfigError if the file exists but is malformed.
+    """
+    candidate = repo_root / "hasscheck.yaml"
+    if not candidate.is_file():
+        return None
+    return load_config_file(candidate)

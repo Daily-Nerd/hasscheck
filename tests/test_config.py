@@ -11,6 +11,7 @@ from hasscheck.config import (
     HassCheckConfig,
     ProjectConfig,
     RuleOverride,
+    discover_config,
     load_config_file,
 )
 
@@ -209,3 +210,29 @@ def test_load_config_file_extra_fields_raises_config_error(tmp_path: Path) -> No
     )
     with pytest.raises(ConfigError):
         load_config_file(tmp_path / "hasscheck.yaml")
+
+
+# ---------- discover_config ----------
+
+def test_discover_config_returns_none_when_file_absent(tmp_path: Path) -> None:
+    assert discover_config(tmp_path) is None
+
+
+def test_discover_config_returns_config_when_file_present(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text("schema_version: '0.2.0'\n")
+    cfg = discover_config(tmp_path)
+    assert isinstance(cfg, HassCheckConfig)
+    assert cfg.schema_version == "0.2.0"
+
+
+def test_discover_config_propagates_config_error_on_malformed(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text("rules: [unclosed\n")
+    with pytest.raises(ConfigError):
+        discover_config(tmp_path)
+
+
+def test_discover_config_looks_only_at_repo_root_not_parents(tmp_path: Path) -> None:
+    subdir = tmp_path / "integration"
+    subdir.mkdir()
+    (tmp_path / "hasscheck.yaml").write_text("schema_version: '0.2.0'\n")
+    assert discover_config(subdir) is None
