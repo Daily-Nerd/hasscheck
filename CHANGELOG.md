@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `LICENSE` — MIT License at repository root, "Copyright (c) 2026 Daily Nerd"
+- `pyproject.toml` PyPI-grade metadata: `license = "MIT"` (SPDX/PEP 639), `authors`, `keywords`, `classifiers`, and `[project.urls]` (Homepage, Repository, Issues, Documentation)
+- ADR 0009 — Schema versioning policy: documents `SCHEMA_VERSION` bump triggers, additive-only stance, lockstep with `hasscheck-web`, and distinction from ADR 0006's ruleset versioning (policy-only; no version bump)
+
+### Changed
+- README "Current status" block reflects v0.7.0 as latest release and v0.8.0 as in-progress
+- README GitHub Action examples bumped from `@v0.6.0` to `@v0.7.0` (lines 69 and 109)
+
 ## [0.7.0] — 2026-05-01
 
 ### Added

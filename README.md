@@ -27,8 +27,8 @@ HassCheck starts as a local CLI. Public badges, hosted reports, and any future h
 
 ## Current status
 
-- **Latest release:** v0.6.0 — opt-in shields.io badge generator
-- **Current development target:** v0.7.0 — opt-in hosted reports (planning phase; see ADR 0008)
+- **Latest release:** v0.7.0 — opt-in hosted reports via GitHub OIDC
+- **Current development target:** v0.8.0 — license, packaging metadata, and schema-versioning policy (in progress)
 
 v0.6.0 includes:
 
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Daily-Nerd/hasscheck@v0.6.0
+      - uses: Daily-Nerd/hasscheck@v0.7.0
         with:
           comment-pr: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -106,7 +106,7 @@ This writes per-category JSON files and a `manifest.json` to `badges/`. Commit t
 Add `emit-badges: 'true'` to your HassCheck action step:
 
 ```yaml
-- uses: Daily-Nerd/hasscheck@v0.6.0
+- uses: Daily-Nerd/hasscheck@v0.7.0
   with:
     emit-badges: 'true'
     badges-out-dir: 'badges'
