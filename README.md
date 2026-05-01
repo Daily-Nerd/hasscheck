@@ -25,6 +25,27 @@ HassCheck turns scattered Home Assistant and HACS expectations into local checks
 
 HassCheck starts as a local CLI. Public badges, hosted reports, and any future hub should be opt-in only.
 
+## See it in action
+
+HassCheck is designed to produce concrete next steps, not a vague score.
+
+```bash
+uv run hasscheck check --path examples/bad_integration
+uv run hasscheck scaffold diagnostics --path examples/bad_integration --dry-run
+```
+
+See [`docs/demo.md`](docs/demo.md) for the full workflow.
+
+## How HassCheck relates to other tools
+
+| Tool | Purpose | HassCheck relationship |
+|---|---|---|
+| [hassfest](https://github.com/home-assistant/core/tree/dev/script/hassfest) | Validates Home Assistant integration metadata and compatibility expectations. | Complementary. HassCheck does not replace hassfest. |
+| [HACS publishing docs](https://www.hacs.xyz/docs/publish/start/) | Define repository structure and metadata expectations for HACS custom integrations. | HassCheck turns selected expectations into sourced local checks. |
+| [Home Assistant Integration Quality Scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/) | Official framework for graded core integrations. | HassCheck reports unofficial quality signals only; it does not assign official tiers. |
+
+HassCheck is intentionally not a replacement for hassfest and does not assign Home Assistant quality tiers. It provides maintainer-facing, sourced findings that help custom integration authors improve their repositories.
+
 ## Current status
 
 - **Latest release:** v0.7.0 — opt-in hosted reports via GitHub OIDC
@@ -271,6 +292,10 @@ HACS Acceptance: Not guaranteed
 ```
 
 The exact category order may change as rules evolve. The JSON schema is the durable contract.
+
+## Documentation
+
+Per-rule documentation pages with status behavior tables, fix instructions, and examples: [`docs/rules/`](docs/rules/README.md).
 
 ## Current rule set
 
