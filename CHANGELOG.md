@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-05-01
+
+### Added
+- Five README content-detection rules in a new `src/hasscheck/rules/docs_readme.py` module — all RECOMMENDED, overridable, WARN-on-missing; conservative heading-only heuristics with code-fence stripping (#55):
+  - `docs.installation.exists` — installation, install, hacs, manual installation, manual install
+  - `docs.configuration.exists` — configuration, configure, setup, options
+  - `docs.troubleshooting.exists` — troubleshooting, troubleshoot, known issues, known limitations, faq, support, debug
+  - `docs.removal.exists` — removal, remove, uninstall, uninstalling
+  - `docs.privacy.exists` — privacy, data, telemetry, cloud, local
+- `src/hasscheck/ast_utils.py` — public `parse_module(path) -> (ast.Module | None, str | None)`. Single source for AST file parsing previously duplicated inline in `config_flow.py` and `diagnostics.py` (#93)
+- `docs/rules/` — new directory containing an index of all 30 rules grouped by category, plus seven hand-written per-rule pages for the highest-leverage rules (manifest.domain.matches_directory, manifest.iot_class.valid, manifest.integration_type.valid, config_flow.user_step.exists, diagnostics.redaction.used, docs.installation.exists, docs.privacy.exists). Auto-generation from `RuleDefinition` metadata deferred to a future release (#58)
+- `docs/demo.md` — copy-paste walkthrough using the tracked `examples/bad_integration` fixture: check → explain → scaffold dry-run → re-check loop. Real captured output snippets (#59)
+- README "How HassCheck relates to other tools" section — comparison table positioning HassCheck against hassfest, HACS publishing docs, and the HA Integration Quality Scale. Explicit "complementary, not a replacement" framing (#57)
+- README "See it in action" section linking to `docs/demo.md`
+- README "Documentation" link pointing to `docs/rules/`
+- `examples/good_integration/README.md` extended with the five required sections (Installation / Configuration / Troubleshooting / Removal / Privacy) so the new positive integration test passes
+
+### Changed
+- Bumped `version` and `__version__` to `0.9.0`
+- `_parse_module` removed from `src/hasscheck/rules/config_flow.py` and `src/hasscheck/rules/diagnostics.py`; both now import `parse_module` from the shared `hasscheck.ast_utils`. `assert tree is not None` correlation-narrowing guards preserved at call sites
+- Rule count bumped from 25 to 30 (`tests/test_rules_meta.py`). Locked count unchanged (all five new rules are overridable)
+- README "Current rule set" extended with five new rows under "Docs and maintenance"
+
+### Notes
+- `SCHEMA_VERSION` unchanged at `0.3.0` — v0.9 adds no new finding fields (additive only per ADR 0009)
+- `DEFAULT_RULESET_ID` unchanged at `hasscheck-ha-2026.5` — same ruleset cycle as v0.8 per ADR 0006
+- Test count: 435 → **486** (+51 across the ast_utils extraction, README content rules, and integration tests)
+- Documentation-only PRs (#57 / #58 / #59 bundled in #98) preserve the unofficial / no-certification stance throughout — no "certify" / "approved" / "ready" / "safe" language anywhere
+
+[Compare v0.8.1...v0.9.0](https://github.com/Daily-Nerd/hasscheck/compare/v0.8.1...v0.9.0)
+
 ## [0.8.1] — 2026-05-01
 
 ### Fixed
@@ -182,7 +213,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Initial release](https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.1.0)
 
-[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.9.0
 [0.8.1]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.8.1
 [0.8.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.8.0
 [0.7.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.7.0
