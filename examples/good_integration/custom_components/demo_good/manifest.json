@@ -3,6 +3,9 @@
   "name": "Demo Good",
   "documentation": "https://example.com/demo_good",
   "issue_tracker": "https://example.com/demo_good/issues",
-  "codeowners": ["@demo"],
-  "version": "0.1.0"
+  "codeowners": [
+    "@demo"
+  ],
+  "version": "0.1.0",
+  "config_flow": true
 }
