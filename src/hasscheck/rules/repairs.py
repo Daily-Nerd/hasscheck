@@ -13,14 +13,13 @@ from hasscheck.rules.base import ProjectContext, RuleDefinition
 
 CATEGORY = "diagnostics_repairs"
 REPAIRS_SOURCE = "https://developers.home-assistant.io/docs/core/integration-quality-scale/rules/repair-issues/"
-VERSION = "1.0.0"
 
 
 def repairs_file_exists(context: ProjectContext) -> Finding:
     if context.integration_path is None:
         return Finding(
             rule_id="repairs.file.exists",
-            rule_version=VERSION,
+            rule_version="1.0.0",
             category=CATEGORY,
             status=RuleStatus.NOT_APPLICABLE,
             severity=RuleSeverity.RECOMMENDED,
@@ -46,7 +45,7 @@ def repairs_file_exists(context: ProjectContext) -> Finding:
     ):
         return Finding(
             rule_id="repairs.file.exists",
-            rule_version=VERSION,
+            rule_version="1.0.0",
             category=CATEGORY,
             status=RuleStatus.NOT_APPLICABLE,
             severity=RuleSeverity.RECOMMENDED,
@@ -64,7 +63,7 @@ def repairs_file_exists(context: ProjectContext) -> Finding:
 
     return Finding(
         rule_id="repairs.file.exists",
-        rule_version=VERSION,
+        rule_version="1.0.0",
         category=CATEGORY,
         status=RuleStatus.PASS if exists else RuleStatus.WARN,
         severity=RuleSeverity.RECOMMENDED,
@@ -92,7 +91,7 @@ def repairs_file_exists(context: ProjectContext) -> Finding:
 RULES = [
     RuleDefinition(
         id="repairs.file.exists",
-        version=VERSION,
+        version="1.0.0",
         category=CATEGORY,
         severity=RuleSeverity.RECOMMENDED,
         title="repairs.py exists",
