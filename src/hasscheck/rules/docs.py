@@ -40,5 +40,6 @@ RULES = [
         why="A README gives users installation, configuration, troubleshooting, and support context.",
         source_url=DOCS_SOURCE,
         check=readme_exists,
+        overridable=True,
     )
 ]

@@ -24,6 +24,7 @@ class RuleDefinition:
     why: str
     source_url: str
     check: Callable[[ProjectContext], Finding]
+    overridable: bool
 
     @property
     def source(self) -> RuleSource:

@@ -66,5 +66,6 @@ RULES = [
         why="Brand icons help users recognize integrations and are expected by HACS integration publishing docs.",
         source_url=HACS_SOURCE,
         check=brand_icon_exists,
+        overridable=True,
     )
 ]

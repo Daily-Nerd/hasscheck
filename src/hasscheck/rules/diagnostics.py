@@ -65,5 +65,6 @@ RULES = [
         why="Diagnostics help users and maintainers troubleshoot without exposing secrets when implemented with redaction.",
         source_url=DIAGNOSTICS_SOURCE,
         check=diagnostics_file_exists,
+        overridable=True,
     )
 ]

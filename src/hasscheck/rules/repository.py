@@ -40,5 +40,6 @@ RULES = [
         why="A license clarifies how users and contributors may use and distribute the integration.",
         source_url=LICENSE_SOURCE,
         check=license_exists,
+        overridable=True,
     )
 ]

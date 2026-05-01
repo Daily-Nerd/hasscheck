@@ -240,6 +240,7 @@ RULES = [
         why="Home Assistant integrations use manifest.json for integration metadata.",
         source_url=HACS_INTEGRATION_SOURCE,
         check=manifest_exists,
+        overridable=False,
     ),
     RuleDefinition(
         id="manifest.domain.exists",
@@ -250,6 +251,7 @@ RULES = [
         why="The domain is the stable integration identifier used by Home Assistant and HACS.",
         source_url=HACS_INTEGRATION_SOURCE,
         check=manifest_domain_exists,
+        overridable=False,
     ),
     RuleDefinition(
         id="manifest.name.exists",
@@ -260,6 +262,7 @@ RULES = [
         why="The name is the human-readable integration label exposed in Home Assistant and HACS metadata.",
         source_url=HACS_INTEGRATION_SOURCE,
         check=manifest_name_exists,
+        overridable=False,
     ),
     RuleDefinition(
         id="manifest.version.exists",
@@ -270,6 +273,7 @@ RULES = [
         why="HACS expects custom integration manifests to include a version for release and update metadata.",
         source_url=HACS_INTEGRATION_SOURCE,
         check=manifest_version_exists,
+        overridable=False,
     ),
     RuleDefinition(
         id="manifest.documentation.exists",
@@ -280,6 +284,7 @@ RULES = [
         why="Documentation gives users and HACS a stable path to setup and support information.",
         source_url=HACS_INTEGRATION_SOURCE,
         check=manifest_documentation_exists,
+        overridable=False,
     ),
     RuleDefinition(
         id="manifest.issue_tracker.exists",
@@ -290,6 +295,7 @@ RULES = [
         why="An issue tracker gives users a clear support path for custom integration problems.",
         source_url=HACS_INTEGRATION_SOURCE,
         check=manifest_issue_tracker_exists,
+        overridable=False,
     ),
     RuleDefinition(
         id="manifest.codeowners.exists",
@@ -300,5 +306,6 @@ RULES = [
         why="Code owners make maintainership explicit and are expected by HACS integration metadata.",
         source_url=HACS_INTEGRATION_SOURCE,
         check=manifest_codeowners_exists,
+        overridable=False,
     ),
 ]
