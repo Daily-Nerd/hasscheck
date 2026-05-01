@@ -83,3 +83,31 @@ def test_json_output_includes_overrides_applied(tmp_path) -> None:
     assert "overrides_applied" in payload["summary"]
     assert "count" in payload["summary"]["overrides_applied"]
     assert "rule_ids" in payload["summary"]["overrides_applied"]
+
+
+# ---------- Phase 6: terminal banner + JSON source field ----------
+
+def test_json_finding_applicability_source_present(tmp_path) -> None:
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--json"])
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    for finding in payload["findings"]:
+        assert "source" in finding["applicability"]
+
+
+def test_terminal_banner_shown_when_overrides_applied(tmp_path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text(
+        "rules:\n"
+        "  tests.folder.exists:\n"
+        "    status: not_applicable\n"
+        "    reason: no tests needed\n"
+    )
+    result = runner.invoke(app, ["check", "--path", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "1 override" in result.output.lower() or "override" in result.output.lower()
+
+
+def test_terminal_banner_not_shown_when_no_overrides(tmp_path) -> None:
+    result = runner.invoke(app, ["check", "--path", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "override" not in result.output.lower()

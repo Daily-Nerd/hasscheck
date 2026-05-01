@@ -33,6 +33,11 @@ def print_terminal_report(report: HassCheckReport, console: Console | None = Non
     console.print("HACS Acceptance: Not guaranteed")
     console.print()
 
+    if report.summary.overrides_applied.count > 0:
+        n = report.summary.overrides_applied.count
+        console.print(f"[cyan]{n} override(s) applied from hasscheck.yaml.[/cyan]")
+        console.print()
+
     table = Table(title="Findings")
     table.add_column("Status", no_wrap=True)
     table.add_column("Rule")
