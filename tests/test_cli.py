@@ -34,3 +34,52 @@ def test_explain_known_rule() -> None:
     assert result.exit_code == 0
     assert "manifest.domain.exists" in result.stdout
     assert "Source:" in result.stdout
+
+
+# ---------- Phase 5: --no-config flag + ConfigError handling ----------
+
+def test_no_config_flag_exists_in_help(tmp_path) -> None:
+    result = runner.invoke(app, ["check", "--help"])
+    assert result.exit_code == 0
+    assert "--no-config" in result.stdout
+
+
+def test_no_config_flag_skips_yaml(tmp_path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text(
+        "rules:\n"
+        "  tests.folder.exists:\n"
+        "    status: not_applicable\n"
+        "    reason: no tests needed\n"
+    )
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--json", "--no-config"])
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["summary"]["overrides_applied"]["count"] == 0
+
+
+def test_malformed_yaml_exits_nonzero(tmp_path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text("rules: [unclosed\n")
+    result = runner.invoke(app, ["check", "--path", str(tmp_path)])
+    assert result.exit_code != 0
+    assert "YAML" in result.output or "parse" in result.output.lower()
+
+
+def test_locked_rule_override_exits_nonzero(tmp_path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text(
+        "rules:\n"
+        "  manifest.exists:\n"
+        "    status: not_applicable\n"
+        "    reason: we do not need this\n"
+    )
+    result = runner.invoke(app, ["check", "--path", str(tmp_path)])
+    assert result.exit_code != 0
+    assert "manifest.exists" in result.output
+
+
+def test_json_output_includes_overrides_applied(tmp_path) -> None:
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--json"])
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert "overrides_applied" in payload["summary"]
+    assert "count" in payload["summary"]["overrides_applied"]
+    assert "rule_ids" in payload["summary"]["overrides_applied"]
