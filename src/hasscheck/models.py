@@ -10,7 +10,7 @@ from hasscheck import __version__
 
 SCHEMA_VERSION = "0.3.0"
 # See docs/decisions/0006-ruleset-versioning.md for bump policy.
-DEFAULT_RULESET_ID = "hasscheck-ha-2026.4"
+DEFAULT_RULESET_ID = "hasscheck-ha-2026.5"
 DEFAULT_SOURCE_CHECKED_AT = "2026-05-01"
 
 

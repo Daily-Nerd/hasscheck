@@ -97,3 +97,12 @@ def test_run_check_no_yaml_overrides_applied_is_empty(tmp_path) -> None:
 def test_run_check_schema_version_is_0_3_0(tmp_path) -> None:
     report = run_check(tmp_path)
     assert report.schema_version == "0.3.0"
+
+
+# ---------- v0.8: Ruleset ID bump ----------
+
+
+def test_default_ruleset_id_is_hasscheck_ha_2026_5() -> None:
+    from hasscheck.models import DEFAULT_RULESET_ID
+
+    assert DEFAULT_RULESET_ID == "hasscheck-ha-2026.5"
