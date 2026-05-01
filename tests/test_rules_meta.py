@@ -13,8 +13,12 @@ from __future__ import annotations
 from hasscheck.rules.registry import RULES
 
 # Canonical audit (from sdd/config-file-support/mixed-status-rule-audit):
-# 19 rules total (v0.8 adds manifest.domain.matches_directory),
-# 11 locked overridable=False, 8 overridable=True.
+# 23 rules total (v0.8 PR2 adds 4 manifest metadata rules):
+#   - manifest.iot_class.exists (overridable=True, RECOMMENDED)
+#   - manifest.iot_class.valid (overridable=True, RECOMMENDED)
+#   - manifest.integration_type.exists (overridable=True, RECOMMENDED)
+#   - manifest.integration_type.valid (overridable=True, RECOMMENDED)
+# 11 locked overridable=False, 12 overridable=True.
 EXPECTED_LOCKED_RULE_IDS = {
     "hacs.custom_components.exists",
     "hacs.file.parseable",  # mixed-status: WARN missing, FAIL invalid JSON
@@ -38,11 +42,16 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
     "repo.license.exists",
     "tests.folder.exists",
     "ci.github_actions.exists",
+    # v0.8 PR2 — manifest metadata validation (RECOMMENDED, overridable=True)
+    "manifest.iot_class.exists",
+    "manifest.iot_class.valid",
+    "manifest.integration_type.exists",
+    "manifest.integration_type.valid",
 }
 
 
-def test_total_rule_count_is_nineteen() -> None:
-    assert len(RULES) == 19, f"expected 19 rules, got {len(RULES)}"
+def test_total_rule_count_is_twenty_three() -> None:
+    assert len(RULES) == 23, f"expected 23 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:
