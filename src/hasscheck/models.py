@@ -134,6 +134,7 @@ class ProjectInfo(BaseModel):
     type: Literal["integration", "unknown"] = "unknown"
     domain: str | None = None
     integration_path: str | None = None
+    repo_slug: str | None = None
 
 
 class ToolInfo(BaseModel):

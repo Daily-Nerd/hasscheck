@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ADR 0008 — hosted reports publish contract (two-repo split, GitHub OIDC auth, schema lockstep, last-50 retention, free-for-all v0.7, monetization constraints)
 - `docs/architecture/publish-handshake.md` — client-side OIDC flow, request/response shapes, error semantics, withdrawal commands
 - `docs/README.md` refreshed: project status table through v0.6, links to all architecture docs and ADRs 0001-0008, OSS/proprietary split note
+- `CHANGELOG.md` — Keep a Changelog 1.1.0 format, populated retroactively from v0.1.0 through v0.6.0
+- `src/hasscheck/slug.py` — best-effort `owner/repo` detection from git remote with manifest `issue_tracker` fallback
+- `ProjectInfo.repo_slug: str | None` field on the JSON report (additive per ADR 0006)
 
 ### Changed
 - README "Current status" reflects v0.6.0 latest + v0.7.0 in-planning
