@@ -42,7 +42,7 @@ def load_template(name: str) -> str:
     )
 
 
-def render(template: str, variables: dict[str, str]) -> str:
+def render(template: str, **variables: str) -> str:
     """Substitute $-style variables in *template* using *variables*.
 
     Uses stdlib string.Template (safe_substitute is NOT used — missing keys
@@ -50,7 +50,7 @@ def render(template: str, variables: dict[str, str]) -> str:
 
     Args:
         template: Raw template string with $variable placeholders.
-        variables: Mapping of variable name to substitution value.
+        **variables: Variable name and substitution value pairs.
 
     Returns:
         Rendered string.

@@ -75,29 +75,29 @@ class TestLoadTemplate:
 class TestRender:
     def test_render_substitutes_single_variable(self) -> None:
         template = "Hello $domain!"
-        result = render(template, {"domain": "my_integration"})
+        result = render(template, domain="my_integration")
         assert result == "Hello my_integration!"
 
     def test_render_substitutes_multiple_variables(self) -> None:
         template = "domain=$domain version=$version"
-        result = render(template, {"domain": "abc", "version": "1.0"})
+        result = render(template, domain="abc", version="1.0")
         assert result == "domain=abc version=1.0"
 
     def test_render_leaves_unrelated_content_intact(self) -> None:
         template = "no variables here"
-        result = render(template, {})
+        result = render(template)
         assert result == "no variables here"
 
     def test_render_raises_on_missing_key(self) -> None:
         """string.Template raises KeyError when a variable has no mapping."""
         template = "$domain and $missing"
         with pytest.raises(KeyError):
-            render(template, {"domain": "abc"})
+            render(template, domain="abc")
 
     def test_render_empty_substitution_map(self) -> None:
-        """Template with no variables should pass through with empty mapping."""
+        """Template with no variables should pass through with no kwargs."""
         template = "static content"
-        result = render(template, {})
+        result = render(template)
         assert result == "static content"
 
 
