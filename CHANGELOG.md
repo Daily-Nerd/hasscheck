@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ProjectInfo.repo_slug: str | None` field on the JSON report (additive per ADR 0006)
 - `hasscheck publish` CLI command — opt-in upload to a hosted service via GitHub OIDC. Supports `--withdraw --report-id <id>` and `--withdraw-all`. Endpoint and token resolution: CLI flag > env var (`HASSCHECK_PUBLISH_ENDPOINT`, `HASSCHECK_OIDC_TOKEN`) > default (`https://hasscheck.io`).
 - `httpx>=0.27` runtime dependency (publish client only)
+- `hasscheck init` CLI command — bootstraps a repo with `hasscheck.yaml` and `.github/workflows/hasscheck.yml`. Supports `--dry-run`, `--force`, `--skip-action`. Refuses to overwrite existing files unless `--force`.
+- `src/hasscheck/scaffold/templates/hasscheck.yaml.tmpl` — conservative `hasscheck.yaml` template used by `init`
 
 ### Changed
 - README "Current status" reflects v0.6.0 latest + v0.7.0 in-planning

@@ -12,6 +12,7 @@ from hasscheck.badges import generate_badges
 from hasscheck.badges.policy import BadgePolicyError
 from hasscheck.checker import run_check
 from hasscheck.config import ConfigError
+from hasscheck.init import init_project
 from hasscheck.models import HassCheckReport, RuleStatus
 from hasscheck.output import print_terminal_report, report_to_json, report_to_md
 from hasscheck.publish import (
@@ -326,6 +327,53 @@ def publish(
         raise typer.Exit(code=1) from exc
 
     typer.echo(f"Published report {result.report_id} to {result.report_url}")
+
+
+@app.command()
+def init(
+    path: Path = typer.Option(
+        Path("."), "--path", "-p", help="Repository path to initialize."
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Print would-be content; do not write."
+    ),
+    force: bool = typer.Option(
+        False, "--force", help="Overwrite existing hasscheck.yaml / workflow."
+    ),
+    skip_action: bool = typer.Option(
+        False,
+        "--skip-action",
+        help="Skip generating .github/workflows/hasscheck.yml.",
+    ),
+) -> None:
+    """Bootstrap a repository for HassCheck.
+
+    Creates a conservative `hasscheck.yaml` and the GitHub Actions workflow.
+    Refuses to overwrite existing files unless `--force` is passed.
+
+    Examples:
+      hasscheck init --path .
+      hasscheck init --dry-run
+      hasscheck init --skip-action
+      hasscheck init --force
+    """
+    resolved = path.resolve()
+    if not resolved.exists() or not resolved.is_dir():
+        console.print(f"[red]Error:[/] Path '{path}' is not a valid directory.")
+        raise typer.Exit(code=1)
+
+    try:
+        artifacts = init_project(
+            resolved, dry_run=dry_run, force=force, skip_action=skip_action
+        )
+    except FileExistsError as exc:
+        console.print(f"[red]Error:[/] {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if dry_run:
+        return
+    for artifact in artifacts:
+        console.print(f"[green]Created:[/] {artifact.target}")
 
 
 app.add_typer(scaffold_app, name="scaffold")
