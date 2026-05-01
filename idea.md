@@ -7,6 +7,15 @@ Working name: **HassCheck**
 > HassCheck turns scattered Home Assistant and HACS expectations into sourced,
 > explainable, actionable checks for custom integration maintainers.
 
+> ⚠️ **This document is the original product brief.** It captures the founding
+> vision and is preserved as-is. For current implementation status,
+> architecture decisions, and per-feature design, see [`docs/`](./docs/README.md).
+>
+> **Implementation status:**
+> - v0.1.0 — shipped, tagged `v0.1.0` (`56b9cc5`).
+> - v0.2.0 — in progress on branch `feature/config-file-support`. See
+>   [`docs/architecture/config-file.md`](./docs/architecture/config-file.md).
+
 ## Executive correction
 
 HassCheck should **not** start as a scoring, ranking, certification, or public
