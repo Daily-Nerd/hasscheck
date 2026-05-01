@@ -25,16 +25,17 @@ HassCheck starts as a local CLI. Public badges, hosted reports, and any future h
 
 ## Current status
 
-HassCheck is at the v0.1.0 walking-skeleton stage.
+HassCheck is at **v0.2.0**.
 
-It already has:
+It includes:
 
-- Typer CLI
+- Typer CLI with `check`, `explain`, and `schema` commands
 - Rich terminal output
-- Pydantic JSON report schema
+- Pydantic JSON report schema (stable, additive-only versioning)
 - Rule IDs and rule versions
 - Source links and source timestamps
 - Applicability-aware statuses
+- Per-rule config overrides via `hasscheck.yaml`
 - Example good/partial/bad integration fixtures
 - Pytest coverage for the current rule set
 
@@ -72,11 +73,47 @@ Run the CLI without installing globally:
 .venv/bin/python -m hasscheck schema
 ```
 
+### Skip config file
+
+```bash
+.venv/bin/python -m hasscheck check --path . --no-config
+```
+
 ### Explain a rule
 
 ```bash
 .venv/bin/python -m hasscheck explain manifest.domain.exists
 ```
+
+## Configuration
+
+HassCheck reads `hasscheck.yaml` at the repository root when present. The file lets you
+mark RECOMMENDED rules as `not_applicable` or `manual_review` for your specific project.
+
+```yaml
+# hasscheck.yaml
+schema_version: "0.2.0"
+
+rules:
+  repairs.file.exists:
+    status: not_applicable
+    reason: No user-fixable repair scenarios in this integration.
+
+  diagnostics.file.exists:
+    status: manual_review
+    reason: Diagnostics planned but not yet implemented; tracked in #42.
+```
+
+**Rules for overrides:**
+
+- `status` must be `not_applicable` or `manual_review` — you cannot force a finding to `pass`.
+- `reason` is required — it is the audit trail.
+- REQUIRED rules (e.g. `manifest.exists`) cannot be overridden.
+- Run `hasscheck explain <rule-id>` to check if a rule is overridable.
+- Use `--no-config` to ignore `hasscheck.yaml` (useful for CI debugging).
+
+See `hasscheck.example.yaml` in this repository for a full annotated example.
+See `docs/architecture/config-file.md` for the design rationale.
 
 ## Finding statuses
 
