@@ -1,0 +1,77 @@
+name: Feature request
+description: Suggest an improvement or new capability for hasscheck.
+title: "feat: "
+labels:
+  - enhancement
+  - type:feature
+  - status:needs-review
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing an improvement. Strong feature requests explain the pain before the solution.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight checklist
+      description: Please confirm these before opening the issue.
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I read the README and relevant docs.
+          required: true
+        - label: I understand changes go through the maintainer approval workflow before implementation.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem description
+      description: What pain point or limitation are you running into?
+      placeholder: I am trying to ... but hasscheck currently ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: Describe the user-facing behavior you want.
+      placeholder: hasscheck should ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected-area
+    attributes:
+      label: Affected area
+      description: Which part of the project would this affect most?
+      options:
+        - rules
+        - CLI
+        - config
+        - output
+        - CI
+        - docs
+        - release
+        - other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds or other approaches did you consider?
+      placeholder: I considered ... but ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add examples, links, screenshots, or related issues.
+    validations:
+      required: false
