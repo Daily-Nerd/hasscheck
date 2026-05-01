@@ -397,7 +397,7 @@ def test_publish_withdraw_non_tty_aborts(tmp_path, monkeypatch) -> None:
 
 def test_publish_help_contains_force_flag(tmp_path) -> None:
     """--force is documented in publish help text."""
-    result = runner.invoke(app, ["publish", "--help"])
+    result = runner.invoke(app, ["publish", "--help"], env={"COLUMNS": "200"})
     assert result.exit_code == 0
     assert "--force" in result.output
     assert (
