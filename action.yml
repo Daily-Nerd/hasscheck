@@ -15,6 +15,14 @@ inputs:
   github-token:
     description: GitHub token for posting PR comments. Required when comment-pr is true.
     default: ''
+  emit-badges:
+    description: 'Emit shields.io endpoint JSON badge files (opt-in). Set to "true" to enable.'
+    required: false
+    default: 'false'
+  badges-out-dir:
+    description: 'Directory to write badge JSON files when emit-badges is true.'
+    required: false
+    default: 'badges'
 
 outputs:
   exit-code:
@@ -67,6 +75,23 @@ runs:
           --edit-last 2>/dev/null || \
         gh pr comment "${{ github.event.pull_request.number }}" \
           --body-file hasscheck-report.md
+
+    - name: Generate badges
+      if: inputs.emit-badges == 'true'
+      shell: bash
+      run: |
+        .venv/bin/python -m hasscheck badge \
+          --path "${{ inputs.path }}" \
+          --out-dir "${{ inputs.badges-out-dir }}" \
+          ${{ inputs.no-config == 'true' && '--no-config' || '' }}
+
+    - name: Upload badges artifact
+      if: inputs.emit-badges == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: hasscheck-badges
+        path: ${{ inputs.badges-out-dir }}/
+        if-no-files-found: warn
 
     - name: Assert result
       shell: bash
