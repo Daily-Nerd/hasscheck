@@ -10,7 +10,7 @@ runner = CliRunner()
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
 examples_good_integration = EXAMPLES / "good_integration"
-examples_bad_integration = EXAMPLES / "bad_integration"
+examples_partial_integration = EXAMPLES / "partial_integration"
 
 
 # 1. Basic invocation — writes badges to tmp dir
@@ -29,7 +29,13 @@ def test_badge_command_writes_files(tmp_path: Path) -> None:
 def test_badge_command_exits_0_on_fail_findings(tmp_path: Path) -> None:
     result = runner.invoke(
         app,
-        ["badge", "--path", str(examples_bad_integration), "--out-dir", str(tmp_path)],
+        [
+            "badge",
+            "--path",
+            str(examples_partial_integration),
+            "--out-dir",
+            str(tmp_path),
+        ],
     )
     assert result.exit_code == 0
 
