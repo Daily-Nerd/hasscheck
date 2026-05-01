@@ -1,10 +1,10 @@
 """Integration tests against the bad_integration fixture.
 
-Design: D3 — whitelist-asserts only on the 7 v0.8 rule IDs that the fixture
-was designed to exercise. Other rules are NOT asserted here — keeps the test
-stable as more rules land in PR2/PR3/PR4.
+Design: D3 — whitelist-asserts only on the rule IDs that the fixture was
+designed to exercise. Other rules are NOT asserted here — keeps the test
+stable as more rules land.
 
-Extend this file when adding fixture coverage for new rules (PR2–PR4 tasks).
+Extend this file when adding fixture coverage for new rules.
 """
 
 from __future__ import annotations
@@ -78,3 +78,40 @@ def test_diagnostics_redaction_warns_on_bad_integration_fixture() -> None:
     f = findings["diagnostics.redaction.used"]
     assert f.status is RuleStatus.WARN
     assert "likely exposes secrets" in f.message
+
+
+# ---------------------------------------------------------------------------
+# PR5 / issue #55: README content rules — bad_integration README is intentionally
+# sparse (no installation/config/troubleshooting/removal/privacy sections)
+# ---------------------------------------------------------------------------
+
+
+def test_installation_section_warns_on_bad_integration_fixture() -> None:
+    """bad_integration README has no Installation section — docs.installation.exists must WARN."""
+    findings = _findings_by_id()
+    f = findings["docs.installation.exists"]
+    assert f.status is RuleStatus.WARN
+
+
+def test_configuration_section_warns_on_bad_integration_fixture() -> None:
+    """bad_integration README has no Configuration section — must WARN."""
+    findings = _findings_by_id()
+    assert findings["docs.configuration.exists"].status is RuleStatus.WARN
+
+
+def test_troubleshooting_section_warns_on_bad_integration_fixture() -> None:
+    """bad_integration README has no Troubleshooting section — must WARN."""
+    findings = _findings_by_id()
+    assert findings["docs.troubleshooting.exists"].status is RuleStatus.WARN
+
+
+def test_removal_section_warns_on_bad_integration_fixture() -> None:
+    """bad_integration README has no Removal section — must WARN."""
+    findings = _findings_by_id()
+    assert findings["docs.removal.exists"].status is RuleStatus.WARN
+
+
+def test_privacy_section_warns_on_bad_integration_fixture() -> None:
+    """bad_integration README has no Privacy section — must WARN."""
+    findings = _findings_by_id()
+    assert findings["docs.privacy.exists"].status is RuleStatus.WARN

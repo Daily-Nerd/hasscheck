@@ -13,9 +13,13 @@ from __future__ import annotations
 from hasscheck.rules.registry import RULES
 
 # Canonical audit (from sdd/config-file-support/mixed-status-rule-audit):
-# 25 rules total (v0.8 PR4 adds 1 diagnostics rule):
-#   - diagnostics.redaction.used (overridable=True, RECOMMENDED)
-# 11 locked overridable=False, 14 overridable=True.
+# 30 rules total (v0.9 issue #55 adds 5 README content rules):
+#   - docs.installation.exists (overridable=True, RECOMMENDED)
+#   - docs.configuration.exists (overridable=True, RECOMMENDED)
+#   - docs.troubleshooting.exists (overridable=True, RECOMMENDED)
+#   - docs.removal.exists (overridable=True, RECOMMENDED)
+#   - docs.privacy.exists (overridable=True, RECOMMENDED)
+# 11 locked overridable=False, 19 overridable=True.
 EXPECTED_LOCKED_RULE_IDS = {
     "hacs.custom_components.exists",
     "hacs.file.parseable",  # mixed-status: WARN missing, FAIL invalid JSON
@@ -46,11 +50,17 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
     "manifest.iot_class.valid",
     "manifest.integration_type.exists",
     "manifest.integration_type.valid",
+    # v0.9 issue #55 — README content rules (RECOMMENDED, overridable=True)
+    "docs.installation.exists",
+    "docs.configuration.exists",
+    "docs.troubleshooting.exists",
+    "docs.removal.exists",
+    "docs.privacy.exists",
 }
 
 
-def test_total_rule_count_is_twenty_five() -> None:
-    assert len(RULES) == 25, f"expected 25 rules, got {len(RULES)}"
+def test_total_rule_count_is_thirty() -> None:
+    assert len(RULES) == 30, f"expected 30 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:
