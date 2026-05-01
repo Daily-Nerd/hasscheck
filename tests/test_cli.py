@@ -123,3 +123,21 @@ def test_terminal_banner_not_shown_when_no_overrides(tmp_path) -> None:
     result = runner.invoke(app, ["check", "--path", str(tmp_path)])
     assert result.exit_code == 0
     assert "override" not in result.output.lower()
+
+
+def test_terminal_overridden_finding_has_config_marker(tmp_path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text(
+        "rules:\n"
+        "  tests.folder.exists:\n"
+        "    status: not_applicable\n"
+        "    reason: no tests needed\n"
+    )
+    result = runner.invoke(app, ["check", "--path", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "(config)" in result.output
+
+
+def test_terminal_non_overridden_finding_no_config_marker(tmp_path) -> None:
+    result = runner.invoke(app, ["check", "--path", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "(config)" not in result.output

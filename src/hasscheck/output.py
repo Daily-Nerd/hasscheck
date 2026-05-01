@@ -43,5 +43,6 @@ def print_terminal_report(report: HassCheckReport, console: Console | None = Non
     table.add_column("Rule")
     table.add_column("Message")
     for finding in report.findings:
-        table.add_row(STATUS_ICON[finding.status], finding.rule_id, finding.message)
+        marker = " (config)" if finding.applicability.source == "config" else ""
+        table.add_row(STATUS_ICON[finding.status], f"{finding.rule_id}{marker}", finding.message)
     console.print(table)
