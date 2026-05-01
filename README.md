@@ -288,6 +288,7 @@ The exact category order may change as rules evolve. The JSON schema is the dura
 | --- | --- |
 | `manifest.exists` | Integration has `manifest.json`. |
 | `manifest.domain.exists` | Manifest defines `domain`. |
+| `manifest.domain.matches_directory` | Manifest `domain` matches the integration directory name. |
 | `manifest.name.exists` | Manifest defines `name`. |
 | `manifest.version.exists` | Manifest defines `version`. |
 | `manifest.documentation.exists` | Manifest defines `documentation`. |
