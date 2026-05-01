@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 
+from hasscheck.config import HassCheckConfig, apply_overrides, discover_config
 from hasscheck.detect import detect_project
 from hasscheck.models import CategorySignal, HassCheckReport, ProjectInfo, ReportSummary, RuleStatus
 from hasscheck.rules.registry import RULES
@@ -18,10 +19,28 @@ CATEGORY_LABELS = {
 }
 
 
-def run_check(path: Path | str) -> HassCheckReport:
+def run_check(
+    path: Path | str,
+    *,
+    config: HassCheckConfig | None = None,
+    no_config: bool = False,
+) -> HassCheckReport:
+    if config is not None and no_config:
+        raise ValueError("Cannot pass both config= and no_config=True; pick one.")
+
     root = Path(path).resolve()
+
+    if config is None and not no_config:
+        config = discover_config(root)
+
     context = detect_project(root)
     findings = [rule.check(context) for rule in RULES]
+
+    from hasscheck.models import OverridesApplied
+    overrides_applied = OverridesApplied()
+
+    if config is not None:
+        findings, overrides_applied = apply_overrides(findings, config)
 
     possible: dict[str, int] = defaultdict(int)
     awarded: dict[str, int] = defaultdict(int)
@@ -49,6 +68,6 @@ def run_check(path: Path | str) -> HassCheckReport:
             domain=context.domain,
             integration_path=str(context.integration_path.relative_to(root)) if context.integration_path else None,
         ),
-        summary=ReportSummary(categories=categories),
+        summary=ReportSummary(categories=categories, overrides_applied=overrides_applied),
         findings=findings,
     )
