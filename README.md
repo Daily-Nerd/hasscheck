@@ -27,10 +27,11 @@ HassCheck starts as a local CLI. Public badges, hosted reports, and any future h
 
 ## Current status
 
-HassCheck is at **v0.4.0**.
+HassCheck is at **v0.5.0**.
 
 It includes:
 
+- GitHub Action (`uses: Daily-Nerd/hasscheck@v0.5.0`) with PR comment and JSON artifact upload
 - Typer CLI with `check`, `explain`, `schema`, and `scaffold` commands
 - Rich terminal output with per-finding fix suggestions
 - `scaffold github-action` — generate a GitHub Actions CI workflow
@@ -45,6 +46,42 @@ It includes:
 - Project applicability context via `hasscheck.yaml`
 - Example good/partial/bad integration fixtures
 - Pytest coverage for the current rule set
+
+## GitHub Action
+
+Add HassCheck to any integration repository's CI with one step:
+
+```yaml
+name: HassCheck
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  hasscheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Daily-Nerd/hasscheck@v0.5.0
+        with:
+          comment-pr: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Inputs:**
+
+| Input | Default | Description |
+|---|---|---|
+| `path` | `.` | Repository path to inspect |
+| `no-config` | `false` | Ignore `hasscheck.yaml` if present |
+| `comment-pr` | `false` | Post findings as a PR comment |
+| `github-token` | `''` | Required when `comment-pr: true` |
+
+**Outputs:** `exit-code` — `0` when no FAIL findings, `1` when one or more FAIL findings.
+
+The action uploads `hasscheck-report.json` as a build artifact on every run.
 
 ## Install for local development
 
@@ -71,7 +108,7 @@ Run the CLI without installing globally:
 ### Emit JSON
 
 ```bash
-.venv/bin/python -m hasscheck check --path . --json
+.venv/bin/python -m hasscheck check --path . --format json
 ```
 
 ### Print the JSON schema
@@ -252,7 +289,7 @@ JSON output includes:
 Example:
 
 ```bash
-.venv/bin/python -m hasscheck check --path examples/good_integration --json
+.venv/bin/python -m hasscheck check --path examples/good_integration --format json
 ```
 
 Use `hasscheck schema` to inspect the full report schema.
@@ -292,7 +329,7 @@ Then run the release checks:
 ```bash
 .venv/bin/python -m pytest -q
 .venv/bin/python -m hasscheck check --path examples/good_integration
-.venv/bin/python -m hasscheck check --path examples/good_integration --json
+.venv/bin/python -m hasscheck check --path examples/good_integration --format json
 .venv/bin/python -m hasscheck schema
 .venv/bin/python -m hasscheck explain manifest.domain.exists
 ```
