@@ -7,9 +7,10 @@ if the set of locked rules drifts from the canonical audit.
 If a future PR sets overridable inconsistently with the audit, this test
 fails — by design.
 """
+
 from __future__ import annotations
 
-from hasscheck.rules.registry import RULES, RULES_BY_ID
+from hasscheck.rules.registry import RULES
 
 # Canonical audit (from sdd/config-file-support/mixed-status-rule-audit):
 # 18 rules total, 10 locked overridable=False, 8 overridable=True.
@@ -44,7 +45,9 @@ def test_total_rule_count_is_eighteen() -> None:
 
 def test_every_rule_declares_overridable_bool() -> None:
     for rule in RULES:
-        assert hasattr(rule, "overridable"), f"{rule.id} is missing the overridable field"
+        assert hasattr(rule, "overridable"), (
+            f"{rule.id} is missing the overridable field"
+        )
         assert isinstance(rule.overridable, bool), (
             f"{rule.id}.overridable must be bool, got {type(rule.overridable).__name__}"
         )

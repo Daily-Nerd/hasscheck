@@ -6,8 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-
-SCHEMA_VERSION = "0.2.0"
+SCHEMA_VERSION = "0.3.0"
 DEFAULT_RULESET_ID = "hasscheck-ha-2026.4"
 DEFAULT_SOURCE_CHECKED_AT = "2026-05-01"
 
@@ -81,7 +80,7 @@ class OverridesApplied(BaseModel):
     rule_ids: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def _invariant(self) -> "OverridesApplied":
+    def _invariant(self) -> OverridesApplied:
         if self.count != len(self.rule_ids):
             raise ValueError(
                 f"overrides_applied invariant violated: count={self.count} but "
@@ -92,6 +91,29 @@ class OverridesApplied(BaseModel):
         return self
 
 
+class ApplicabilityApplied(BaseModel):
+    count: int = 0
+    rule_ids: list[str] = Field(default_factory=list)
+    flags: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _invariant(self) -> ApplicabilityApplied:
+        if self.count != len(self.rule_ids):
+            raise ValueError(
+                f"applicability_applied invariant violated: count={self.count} but "
+                f"rule_ids has {len(self.rule_ids)} entries"
+            )
+        if self.rule_ids != sorted(self.rule_ids):
+            raise ValueError(
+                "applicability_applied.rule_ids must be alphabetically sorted"
+            )
+        if self.flags != sorted(self.flags):
+            raise ValueError(
+                "applicability_applied.flags must be alphabetically sorted"
+            )
+        return self
+
+
 class ReportSummary(BaseModel):
     overall: Literal["informational_only"] = "informational_only"
     security_review: Literal["not_performed"] = "not_performed"
@@ -99,6 +121,9 @@ class ReportSummary(BaseModel):
     hacs_acceptance: Literal["not_guaranteed"] = "not_guaranteed"
     categories: list[CategorySignal] = Field(default_factory=list)
     overrides_applied: OverridesApplied = Field(default_factory=OverridesApplied)
+    applicability_applied: ApplicabilityApplied = Field(
+        default_factory=ApplicabilityApplied
+    )
 
 
 class ProjectInfo(BaseModel):
@@ -110,7 +135,7 @@ class ProjectInfo(BaseModel):
 
 class ToolInfo(BaseModel):
     name: Literal["hasscheck"] = "hasscheck"
-    version: str = "0.2.1"
+    version: str = "0.3.0"
 
 
 class RulesetInfo(BaseModel):

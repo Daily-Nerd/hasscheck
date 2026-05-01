@@ -25,7 +25,7 @@ HassCheck starts as a local CLI. Public badges, hosted reports, and any future h
 
 ## Current status
 
-HassCheck is at **v0.2.0**.
+HassCheck is at **v0.3.0**.
 
 It includes:
 
@@ -36,6 +36,7 @@ It includes:
 - Source links and source timestamps
 - Applicability-aware statuses
 - Per-rule config overrides via `hasscheck.yaml`
+- Project applicability context via `hasscheck.yaml`
 - Example good/partial/bad integration fixtures
 - Pytest coverage for the current rule set
 
@@ -87,22 +88,34 @@ Run the CLI without installing globally:
 
 ## Configuration
 
-HassCheck reads `hasscheck.yaml` at the repository root when present. The file lets you
-mark RECOMMENDED rules as `not_applicable` or `manual_review` for your specific project.
+HassCheck reads `hasscheck.yaml` at the repository root when present.
+
+The file supports two separate kinds of user intent:
+
+1. **Project applicability context** — declare project-level facts once, so selected rules can return `not_applicable` without repetitive per-rule overrides.
+2. **Per-rule overrides** — mark specific RECOMMENDED rules as `not_applicable` or `manual_review` with a written reason.
 
 ```yaml
 # hasscheck.yaml
-schema_version: "0.2.0"
+schema_version: "0.3.0"
+
+applicability:
+  supports_diagnostics: false
+  has_user_fixable_repairs: false
+  uses_config_flow: false
 
 rules:
-  repairs.file.exists:
-    status: not_applicable
-    reason: No user-fixable repair scenarios in this integration.
-
-  diagnostics.file.exists:
+  repo.license.exists:
     status: manual_review
-    reason: Diagnostics planned but not yet implemented; tracked in #42.
+    reason: License decision pending before public release.
 ```
+
+**Rules for project applicability:**
+
+- Flags only explain intentionally missing optional signals.
+- Natural `pass` findings still win — existing files are not hidden by stale config.
+- Correctness failures stay locked. For example, `uses_config_flow: false` does not hide a `config_flow.py` / `manifest.json` mismatch.
+- Applied decisions are disclosed in JSON as `summary.applicability_applied` and marked in terminal findings with `(config)`.
 
 **Rules for overrides:**
 
@@ -113,7 +126,7 @@ rules:
 - Use `--no-config` to ignore `hasscheck.yaml` (useful for CI debugging).
 
 See `hasscheck.example.yaml` in this repository for a full annotated example.
-See `docs/architecture/config-file.md` for the design rationale.
+See `docs/architecture/config-file.md` and `docs/architecture/project-applicability-context.md` for the design rationale.
 
 ## Finding statuses
 
@@ -207,6 +220,7 @@ JSON output includes:
 - project metadata
 - ruleset metadata
 - category summaries
+- config disclosure summaries (`overrides_applied` and `applicability_applied`)
 - findings with rule IDs, rule versions, statuses, applicability, source URLs, and fix suggestions
 
 Example:
@@ -237,9 +251,9 @@ Run HassCheck against the current repository:
 .venv/bin/python -m hasscheck check --path .
 ```
 
-## Release checklist for v0.1.0
+## Release checklist for v0.3.0
 
-Before tagging v0.1.0:
+Before tagging v0.3.0:
 
 ```bash
 .venv/bin/python -m pytest -q
@@ -252,13 +266,13 @@ Before tagging v0.1.0:
 Then tag:
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
-## Non-goals for v0.1.0
+## Non-goals for v0.3.0
 
-HassCheck v0.1.0 does not attempt:
+HassCheck v0.3.0 does not attempt:
 
 - Security certification
 - Official Home Assistant quality tier assignment
@@ -267,6 +281,8 @@ HassCheck v0.1.0 does not attempt:
 - Full semantic correctness checks
 - Public crawling or ranking of random repositories
 - Automatic PRs to third-party repos
+- Source-code auto-detection of project applicability
+- Multi-integration repository support
 
 ## Philosophy
 

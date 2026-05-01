@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import json
 
-from hasscheck.models import Applicability, Finding, FixSuggestion, RuleSeverity, RuleSource, RuleStatus
+from hasscheck.models import (
+    Applicability,
+    Finding,
+    FixSuggestion,
+    RuleSeverity,
+    RuleSource,
+    RuleStatus,
+)
 from hasscheck.rules.base import ProjectContext, RuleDefinition
 
 HACS_SOURCE = "https://www.hacs.xyz/docs/publish/integration/"
@@ -23,14 +30,17 @@ def custom_components_exists(context: ProjectContext) -> Finding:
             if exists
             else "Repository does not contain custom_components/, so HassCheck cannot find a custom integration."
         ),
-        applicability=Applicability(reason="HACS custom integration repositories need a custom_components directory."),
+        applicability=Applicability(
+            reason="HACS custom integration repositories need a custom_components directory."
+        ),
         source=RuleSource(url=HACS_SOURCE),
         fix=None
         if exists
-        else FixSuggestion(summary="Create custom_components/<domain>/ and place the integration files there."),
+        else FixSuggestion(
+            summary="Create custom_components/<domain>/ and place the integration files there."
+        ),
         path="custom_components",
     )
-
 
 
 def hacs_file_parseable(context: ProjectContext) -> Finding:
@@ -44,9 +54,13 @@ def hacs_file_parseable(context: ProjectContext) -> Finding:
             severity=RuleSeverity.RECOMMENDED,
             title="hacs.json exists and parses",
             message="hacs.json is missing. HACS metadata cannot be inspected yet.",
-            applicability=Applicability(reason="HACS repositories use hacs.json for repository metadata."),
+            applicability=Applicability(
+                reason="HACS repositories use hacs.json for repository metadata."
+            ),
             source=RuleSource(url=HACS_SOURCE),
-            fix=FixSuggestion(summary="Add a repository-level hacs.json file, even if it starts as an empty JSON object."),
+            fix=FixSuggestion(
+                summary="Add a repository-level hacs.json file, even if it starts as an empty JSON object."
+            ),
             path="hacs.json",
         )
 
@@ -61,7 +75,9 @@ def hacs_file_parseable(context: ProjectContext) -> Finding:
             severity=RuleSeverity.RECOMMENDED,
             title="hacs.json exists and parses",
             message=f"hacs.json is present but is not valid JSON: {exc.msg}.",
-            applicability=Applicability(reason="hacs.json must parse before HassCheck can inspect HACS metadata."),
+            applicability=Applicability(
+                reason="hacs.json must parse before HassCheck can inspect HACS metadata."
+            ),
             source=RuleSource(url=HACS_SOURCE),
             fix=FixSuggestion(summary="Fix hacs.json syntax, then rerun HassCheck."),
             path="hacs.json",
@@ -75,7 +91,9 @@ def hacs_file_parseable(context: ProjectContext) -> Finding:
         severity=RuleSeverity.RECOMMENDED,
         title="hacs.json exists and parses",
         message="hacs.json is present and valid JSON.",
-        applicability=Applicability(reason="HACS repositories use hacs.json for repository metadata."),
+        applicability=Applicability(
+            reason="HACS repositories use hacs.json for repository metadata."
+        ),
         source=RuleSource(url=HACS_SOURCE),
         fix=None,
         path="hacs.json",

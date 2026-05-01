@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from hasscheck.models import Applicability, Finding, FixSuggestion, RuleSeverity, RuleSource, RuleStatus
+from hasscheck.models import (
+    Applicability,
+    Finding,
+    FixSuggestion,
+    RuleSeverity,
+    RuleSource,
+    RuleStatus,
+)
 from hasscheck.rules.base import ProjectContext, RuleDefinition
 
 CATEGORY = "tests_ci"
@@ -22,9 +29,15 @@ def tests_folder_exists(context: ProjectContext) -> Finding:
             if exists
             else "Repository does not contain a tests directory; automated test coverage cannot be inspected."
         ),
-        applicability=Applicability(reason="Tests help maintainers keep integration behavior stable as Home Assistant evolves."),
+        applicability=Applicability(
+            reason="Tests help maintainers keep integration behavior stable as Home Assistant evolves."
+        ),
         source=RuleSource(url=TESTS_SOURCE),
-        fix=None if exists else FixSuggestion(summary="Add a tests/ directory with pytest-based integration tests."),
+        fix=None
+        if exists
+        else FixSuggestion(
+            summary="Add a tests/ directory with pytest-based integration tests."
+        ),
         path="tests",
     )
 

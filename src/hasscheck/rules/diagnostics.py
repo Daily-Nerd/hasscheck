@@ -12,7 +12,9 @@ from hasscheck.models import (
 from hasscheck.rules.base import ProjectContext, RuleDefinition
 
 CATEGORY = "diagnostics_repairs"
-DIAGNOSTICS_SOURCE = "https://developers.home-assistant.io/docs/core/integration/diagnostics/"
+DIAGNOSTICS_SOURCE = (
+    "https://developers.home-assistant.io/docs/core/integration/diagnostics/"
+)
 
 
 def diagnostics_file_exists(context: ProjectContext) -> Finding:
@@ -30,12 +32,37 @@ def diagnostics_file_exists(context: ProjectContext) -> Finding:
                 reason="custom_components/<domain>/ must exist before HassCheck can inspect diagnostics.py.",
             ),
             source=RuleSource(url=DIAGNOSTICS_SOURCE),
-            fix=FixSuggestion(summary="Create custom_components/<domain>/ before adding diagnostics.py."),
+            fix=FixSuggestion(
+                summary="Create custom_components/<domain>/ before adding diagnostics.py."
+            ),
             path="custom_components/<domain>/diagnostics.py",
         )
 
     path = context.integration_path / "diagnostics.py"
     exists = path.is_file()
+    if (
+        not exists
+        and context.applicability
+        and context.applicability.supports_diagnostics is False
+    ):
+        return Finding(
+            rule_id="diagnostics.file.exists",
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.RECOMMENDED,
+            title="diagnostics.py exists",
+            message="Project config declares diagnostics are not supported by this integration.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="hasscheck.yaml declares supports_diagnostics: false.",
+                source="config",
+            ),
+            source=RuleSource(url=DIAGNOSTICS_SOURCE),
+            fix=None,
+            path=str(path.relative_to(context.root)),
+        )
+
     return Finding(
         rule_id="diagnostics.file.exists",
         rule_version="1.0.0",
@@ -48,9 +75,15 @@ def diagnostics_file_exists(context: ProjectContext) -> Finding:
             if exists
             else "Integration does not include diagnostics.py; downloadable troubleshooting data support cannot be inspected."
         ),
-        applicability=Applicability(reason="Diagnostics help users provide support data while redacting sensitive information."),
+        applicability=Applicability(
+            reason="Diagnostics help users provide support data while redacting sensitive information."
+        ),
         source=RuleSource(url=DIAGNOSTICS_SOURCE),
-        fix=None if exists else FixSuggestion(summary="Add diagnostics.py with redaction for sensitive values."),
+        fix=None
+        if exists
+        else FixSuggestion(
+            summary="Add diagnostics.py with redaction for sensitive values."
+        ),
         path=str(path.relative_to(context.root)),
     )
 

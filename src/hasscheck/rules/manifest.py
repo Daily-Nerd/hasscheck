@@ -27,7 +27,11 @@ def _manifest_path(context: ProjectContext):
 
 def _manifest_display_path(context: ProjectContext) -> str:
     path = _manifest_path(context)
-    return "custom_components/<domain>/manifest.json" if path is None else str(path.relative_to(context.root))
+    return (
+        "custom_components/<domain>/manifest.json"
+        if path is None
+        else str(path.relative_to(context.root))
+    )
 
 
 def _read_manifest(context: ProjectContext) -> tuple[dict[str, Any] | None, str | None]:
@@ -46,7 +50,9 @@ def _read_manifest(context: ProjectContext) -> tuple[dict[str, Any] | None, str 
     return payload, None
 
 
-def _not_applicable_for_missing_manifest(rule_id: str, title: str, field_name: str, fix_summary: str) -> Finding:
+def _not_applicable_for_missing_manifest(
+    rule_id: str, title: str, field_name: str, fix_summary: str
+) -> Finding:
     return Finding(
         rule_id=rule_id,
         rule_version="1.0.0",
@@ -65,7 +71,9 @@ def _not_applicable_for_missing_manifest(rule_id: str, title: str, field_name: s
     )
 
 
-def _invalid_manifest_finding(rule_id: str, title: str, error: str, path: str) -> Finding:
+def _invalid_manifest_finding(
+    rule_id: str, title: str, error: str, path: str
+) -> Finding:
     return Finding(
         rule_id=rule_id,
         rule_version="1.0.0",
@@ -74,7 +82,9 @@ def _invalid_manifest_finding(rule_id: str, title: str, error: str, path: str) -
         severity=RuleSeverity.REQUIRED,
         title=title,
         message=f"manifest.json is not valid JSON: {error}.",
-        applicability=Applicability(reason="manifest.json exists but cannot be parsed."),
+        applicability=Applicability(
+            reason="manifest.json exists but cannot be parsed."
+        ),
         source=RuleSource(url=HACS_INTEGRATION_SOURCE),
         fix=FixSuggestion(summary="Fix manifest.json syntax, then rerun HassCheck."),
         path=path,
@@ -95,7 +105,9 @@ def _required_string_field_rule(
         path = _manifest_path(context)
         display_path = _manifest_display_path(context)
         if path is None or not path.is_file():
-            return _not_applicable_for_missing_manifest(rule_id, title, field_name, fix_summary)
+            return _not_applicable_for_missing_manifest(
+                rule_id, title, field_name, fix_summary
+            )
 
         payload, error = _read_manifest(context)
         if error is not None:
@@ -134,10 +146,14 @@ def _codeowners_rule(context: ProjectContext) -> Finding:
 
     payload, error = _read_manifest(context)
     if error is not None:
-        return _invalid_manifest_finding("manifest.codeowners.exists", title, error, display_path)
+        return _invalid_manifest_finding(
+            "manifest.codeowners.exists", title, error, display_path
+        )
 
     value = payload.get("codeowners") if payload else None
-    is_present = isinstance(value, list) and any(isinstance(item, str) and item.strip() for item in value)
+    is_present = isinstance(value, list) and any(
+        isinstance(item, str) and item.strip() for item in value
+    )
     return Finding(
         rule_id="manifest.codeowners.exists",
         rule_version="1.0.0",
@@ -150,9 +166,13 @@ def _codeowners_rule(context: ProjectContext) -> Finding:
             if is_present
             else "manifest.json does not define a non-empty codeowners list."
         ),
-        applicability=Applicability(reason="HACS expects custom integration manifests to define codeowners."),
+        applicability=Applicability(
+            reason="HACS expects custom integration manifests to define codeowners."
+        ),
         source=RuleSource(url=HACS_INTEGRATION_SOURCE),
-        fix=None if is_present else FixSuggestion(summary="Add a non-empty codeowners list to manifest.json."),
+        fix=None
+        if is_present
+        else FixSuggestion(summary="Add a non-empty codeowners list to manifest.json."),
         path=display_path,
     )
 
@@ -221,11 +241,15 @@ def manifest_exists(context: ProjectContext) -> Finding:
             if exists
             else "Integration manifest is missing, so Home Assistant and HACS metadata cannot be inspected."
         ),
-        applicability=Applicability(reason="Every Home Assistant integration needs a manifest.json file."),
+        applicability=Applicability(
+            reason="Every Home Assistant integration needs a manifest.json file."
+        ),
         source=RuleSource(url=HACS_INTEGRATION_SOURCE),
         fix=None
         if exists
-        else FixSuggestion(summary="Add custom_components/<domain>/manifest.json with the required integration metadata."),
+        else FixSuggestion(
+            summary="Add custom_components/<domain>/manifest.json with the required integration metadata."
+        ),
         path=display,
     )
 

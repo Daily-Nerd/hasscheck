@@ -1,11 +1,20 @@
 import json
+from pathlib import Path
 
 from typer.testing import CliRunner
 
 from hasscheck.cli import app
 
-
 runner = CliRunner()
+
+
+def write_minimal_integration(root: Path) -> None:
+    integration = root / "custom_components" / "demo"
+    integration.mkdir(parents=True)
+    (integration / "manifest.json").write_text(
+        json.dumps({"domain": "demo"}),
+        encoding="utf-8",
+    )
 
 
 def test_check_json_outputs_report(tmp_path) -> None:
@@ -13,7 +22,7 @@ def test_check_json_outputs_report(tmp_path) -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
-    assert payload["schema_version"] == "0.2.0"
+    assert payload["schema_version"] == "0.3.0"
     assert payload["summary"]["security_review"] == "not_performed"
     assert payload["summary"]["official_ha_tier"] == "not_assigned"
     assert payload["summary"]["hacs_acceptance"] == "not_guaranteed"
@@ -50,6 +59,7 @@ def test_explain_shows_overridable_true_for_softable_rule() -> None:
 
 # ---------- Phase 5: --no-config flag + ConfigError handling ----------
 
+
 def test_no_config_flag_exists_in_help(tmp_path) -> None:
     result = runner.invoke(app, ["check", "--help"])
     assert result.exit_code == 0
@@ -63,7 +73,9 @@ def test_no_config_flag_skips_yaml(tmp_path) -> None:
         "    status: not_applicable\n"
         "    reason: no tests needed\n"
     )
-    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--json", "--no-config"])
+    result = runner.invoke(
+        app, ["check", "--path", str(tmp_path), "--json", "--no-config"]
+    )
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert payload["summary"]["overrides_applied"]["count"] == 0
@@ -97,7 +109,19 @@ def test_json_output_includes_overrides_applied(tmp_path) -> None:
     assert "rule_ids" in payload["summary"]["overrides_applied"]
 
 
+def test_json_output_includes_applicability_applied(tmp_path) -> None:
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--json"])
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["summary"]["applicability_applied"] == {
+        "count": 0,
+        "rule_ids": [],
+        "flags": [],
+    }
+
+
 # ---------- Phase 6: terminal banner + JSON source field ----------
+
 
 def test_json_finding_applicability_source_present(tmp_path) -> None:
     result = runner.invoke(app, ["check", "--path", str(tmp_path), "--json"])
@@ -141,3 +165,41 @@ def test_terminal_non_overridden_finding_no_config_marker(tmp_path) -> None:
     result = runner.invoke(app, ["check", "--path", str(tmp_path)])
     assert result.exit_code == 0
     assert "(config)" not in result.output
+
+
+# ---------- v0.3: project applicability disclosure ----------
+
+
+def test_terminal_banner_shown_when_applicability_applied(tmp_path) -> None:
+    write_minimal_integration(tmp_path)
+    (tmp_path / "hasscheck.yaml").write_text(
+        "applicability:\n"
+        "  supports_diagnostics: false\n"
+        "  has_user_fixable_repairs: false\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["check", "--path", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "2 applicability decision(s) applied from hasscheck.yaml." in result.output
+
+
+def test_terminal_banner_not_shown_when_no_applicability_applied(tmp_path) -> None:
+    result = runner.invoke(app, ["check", "--path", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "applicability decision" not in result.output.lower()
+
+
+def test_terminal_applicability_finding_has_config_marker(tmp_path) -> None:
+    write_minimal_integration(tmp_path)
+    (tmp_path / "hasscheck.yaml").write_text(
+        "applicability:\n  supports_diagnostics: false\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["check", "--path", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "diagnostics.file.exists (config)" in result.output

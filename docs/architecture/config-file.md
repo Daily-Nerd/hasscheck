@@ -1,6 +1,6 @@
-# Config file: `hasscheck.yaml` (v0.2)
+# Config file: `hasscheck.yaml`
 
-> Status: in design. This document evolves as v0.2 ships.
+> Status: shipped in v0.2 and extended in v0.3.
 
 ## Why
 
@@ -13,12 +13,23 @@ Without an override mechanism, those warnings become nagging lint noise.
 v0.2 introduces `hasscheck.yaml` so maintainers can declare, with a
 written reason, that a rule does not apply to their project.
 
+v0.3 adds project-level applicability context for common facts that multiple
+rules can consume without repetitive per-rule overrides. See
+[`project-applicability-context.md`](project-applicability-context.md).
+
 ## Shape
 
 ```yaml
 # hasscheck.yaml — at the repo root
+schema_version: "0.3.0"
+
 project:
   type: integration
+
+applicability:
+  supports_diagnostics: false
+  has_user_fixable_repairs: false
+  uses_config_flow: false
 
 rules:
   repairs.file.exists:
@@ -65,6 +76,19 @@ honest:
 Math stays consistent with v0.1 (overridden findings excluded from
 `points_possible`). Trust comes from disclosure, not punishment.
 
+v0.3 adds a second disclosure field:
+
+```json
+"applicability_applied": {
+  "count": 2,
+  "rule_ids": ["diagnostics.file.exists", "repairs.file.exists"],
+  "flags": ["has_user_fixable_repairs", "supports_diagnostics"]
+}
+```
+
+This field is separate from `overrides_applied` because project applicability
+and per-rule overrides are different sources of user intent.
+
 ### Overridable rules in v0.2
 
 Of the 18 v0.1 rules, **8 are overridable** by `hasscheck.yaml`:
@@ -77,7 +101,7 @@ tests.folder.exists           ci.github_actions.exists
 
 The other 10 are locked (9 REQUIRED + 1 mixed-status).
 
-## What is NOT in v0.2
+## What moved past v0.2
 
 The original brief (`idea.md` section 6) shows two blocks in
 `hasscheck.yaml`. Only Block B (per-rule overrides) ships in v0.2.
@@ -85,8 +109,8 @@ The original brief (`idea.md` section 6) shows two blocks in
 | Feature | Status |
 |---|---|
 | Per-rule overrides (Block B) | ✅ v0.2 |
-| Project-level applicability flags (Block A — `auth_required`, `has_devices`, …) | ⏭️ deferred to v0.3 |
-| Auto-detection of applicability from project code | ⏭️ deferred to v0.3 |
+| Project-level applicability flags (Block A, limited to consumed flags) | ✅ v0.3 |
+| Auto-detection of applicability from project code | ⏭️ future work |
 | Multi-integration support (multiple subdirs in `custom_components/`) | ⏭️ orthogonal, separate work |
 
 See [`../decisions/0002-block-a-deferred-to-v03.md`](../decisions/0002-block-a-deferred-to-v03.md).
@@ -114,8 +138,8 @@ reports, the future hub) can see what was overridden:
 | Value | Meaning |
 |---|---|
 | `default` | The rule's built-in applicability decision (no override, no auto-detection). |
-| `detected` | (v0.3) The rule auto-detected applicability from the project. |
-| `config` | `hasscheck.yaml` overrode the finding. |
+| `detected` | Reserved for future source-code auto-detection. |
+| `config` | `hasscheck.yaml` changed or explained the finding. |
 
 ## Validation behavior
 
