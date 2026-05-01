@@ -9,6 +9,7 @@ on:
       - "scripts/**"
       - "tests/**"
       - "pre-commit-config.yaml"
+      - "pyproject.toml"
   push:
     branches:
       - main
@@ -17,6 +18,7 @@ on:
       - "scripts/**"
       - "tests/**"
       - "pre-commit-config.yaml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

@@ -551,3 +551,88 @@ def test_load_config_file_with_v03_applicability(tmp_path: Path) -> None:
     assert cfg.schema_version == "0.3.0"
     assert cfg.applicability is not None
     assert cfg.applicability.supports_diagnostics is False
+
+
+# ---------- PublishConfig ----------
+
+
+def test_publish_config_defaults_endpoint_none() -> None:
+    from hasscheck.config import PublishConfig
+
+    pc = PublishConfig()
+    assert pc.endpoint is None
+
+
+def test_publish_config_accepts_valid_endpoint() -> None:
+    from hasscheck.config import PublishConfig
+
+    pc = PublishConfig(endpoint="https://custom.example")
+    assert pc.endpoint == "https://custom.example"
+
+
+def test_publish_config_rejects_unknown_key() -> None:
+    from hasscheck.config import PublishConfig
+
+    with pytest.raises(ValidationError):
+        PublishConfig(unknown_key="foo")  # type: ignore[call-arg]
+
+
+def test_hasscheck_config_publish_defaults_to_none() -> None:
+    cfg = HassCheckConfig()
+    assert cfg.publish is None
+
+
+def test_hasscheck_config_accepts_publish_block() -> None:
+    from hasscheck.config import PublishConfig
+
+    cfg = HassCheckConfig(publish=PublishConfig(endpoint="https://custom.example"))
+    assert cfg.publish is not None
+    assert cfg.publish.endpoint == "https://custom.example"
+
+
+def test_load_config_file_missing_publish_block_returns_none(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text("schema_version: '0.3.0'\n")
+    cfg = load_config_file(tmp_path / "hasscheck.yaml")
+    assert cfg.publish is None
+
+
+def test_load_config_file_publish_block_with_endpoint(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.3.0'\npublish:\n  endpoint: 'https://custom.example'\n"
+    )
+    cfg = load_config_file(tmp_path / "hasscheck.yaml")
+    assert cfg.publish is not None
+    assert cfg.publish.endpoint == "https://custom.example"
+
+
+def test_load_config_file_publish_block_null_endpoint(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.3.0'\npublish:\n  endpoint: null\n"
+    )
+    cfg = load_config_file(tmp_path / "hasscheck.yaml")
+    assert cfg.publish is not None
+    assert cfg.publish.endpoint is None
+
+
+def test_load_config_file_publish_unknown_key_raises_config_error(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.3.0'\npublish:\n  unknown_key: foo\n"
+    )
+    with pytest.raises(ConfigError):
+        load_config_file(tmp_path / "hasscheck.yaml")
+
+
+def test_load_config_file_v03_backward_compat_no_publish(tmp_path: Path) -> None:
+    """Existing 0.3.0 configs without a publish block stay valid."""
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.3.0'\n"
+        "rules:\n"
+        "  repairs.file.exists:\n"
+        "    status: not_applicable\n"
+        "    reason: no repairs\n"
+    )
+    cfg = load_config_file(tmp_path / "hasscheck.yaml")
+    assert cfg.schema_version == "0.3.0"
+    assert cfg.publish is None

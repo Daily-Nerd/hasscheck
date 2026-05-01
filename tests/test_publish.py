@@ -41,6 +41,66 @@ def test_resolve_endpoint_strips_trailing_slash():
     assert resolve_endpoint("https://example.com/") == "https://example.com"
 
 
+# ---------------------------------------------------------------------------
+# Config-tier endpoint resolution (v0.8)
+
+
+def _make_config_with_endpoint(endpoint: str | None):
+    """Build a HassCheckConfig with publish.endpoint set."""
+    from hasscheck.config import HassCheckConfig, PublishConfig
+
+    return HassCheckConfig(publish=PublishConfig(endpoint=endpoint))
+
+
+def test_resolve_endpoint_config_tier_wins_when_cli_and_env_absent(monkeypatch):
+    monkeypatch.delenv(ENDPOINT_ENV_VAR, raising=False)
+    cfg = _make_config_with_endpoint("https://cfg.example")
+    result = resolve_endpoint(None, config=cfg)
+    assert result == "https://cfg.example"
+
+
+def test_resolve_endpoint_env_beats_config_tier(monkeypatch):
+    monkeypatch.setenv(ENDPOINT_ENV_VAR, "https://env.example")
+    cfg = _make_config_with_endpoint("https://cfg.example")
+    result = resolve_endpoint(None, config=cfg)
+    assert result == "https://env.example"
+
+
+def test_resolve_endpoint_cli_beats_all_tiers(monkeypatch):
+    monkeypatch.setenv(ENDPOINT_ENV_VAR, "https://env.example")
+    cfg = _make_config_with_endpoint("https://cfg.example")
+    result = resolve_endpoint("https://cli.example/", config=cfg)
+    assert result == "https://cli.example"
+
+
+def test_resolve_endpoint_default_when_all_tiers_absent(monkeypatch):
+    monkeypatch.delenv(ENDPOINT_ENV_VAR, raising=False)
+    result = resolve_endpoint(None, config=None)
+    assert result == DEFAULT_ENDPOINT
+
+
+def test_resolve_endpoint_config_none_skips_without_error(monkeypatch):
+    monkeypatch.delenv(ENDPOINT_ENV_VAR, raising=False)
+    result = resolve_endpoint(None, config=None)
+    assert result == DEFAULT_ENDPOINT
+
+
+def test_resolve_endpoint_config_publish_none_skips_without_error(monkeypatch):
+    monkeypatch.delenv(ENDPOINT_ENV_VAR, raising=False)
+    from hasscheck.config import HassCheckConfig
+
+    cfg = HassCheckConfig()  # no publish block → publish is None
+    result = resolve_endpoint(None, config=cfg)
+    assert result == DEFAULT_ENDPOINT
+
+
+def test_resolve_endpoint_config_tier_strips_trailing_slash(monkeypatch):
+    monkeypatch.delenv(ENDPOINT_ENV_VAR, raising=False)
+    cfg = _make_config_with_endpoint("https://cfg.example/")
+    result = resolve_endpoint(None, config=cfg)
+    assert result == "https://cfg.example"
+
+
 def test_resolve_oidc_token_from_cli(monkeypatch):
     monkeypatch.delenv(OIDC_TOKEN_ENV_VAR, raising=False)
     assert resolve_oidc_token("cli-tok") == "cli-tok"
