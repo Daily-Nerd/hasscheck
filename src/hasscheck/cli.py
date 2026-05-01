@@ -14,8 +14,17 @@ from hasscheck.checker import run_check
 from hasscheck.config import ConfigError
 from hasscheck.models import HassCheckReport, RuleStatus
 from hasscheck.output import print_terminal_report, report_to_json, report_to_md
+from hasscheck.publish import (
+    PublishError,
+    publish_report,
+    resolve_endpoint,
+    resolve_oidc_token,
+    split_slug,
+    withdraw_report,
+)
 from hasscheck.rules.registry import RULES_BY_ID
 from hasscheck.scaffold.cli import scaffold_app
+from hasscheck.slug import detect_repo_slug
 
 # CLI philosophy: developer-friendly but scriptable. Human output is explanatory;
 # --format controls output: terminal (default), json (machine-readable), or md (Markdown).
@@ -195,6 +204,128 @@ def badge(
     typer.echo(f"Wrote {len(artifacts)} badge(s) to {out_dir}")
     for a in artifacts:
         typer.echo(f"  {a.filename}: {a.label_left} — {a.label_right}")
+
+
+@app.command()
+def publish(
+    path: Path = typer.Option(
+        Path("."), "--path", "-p", help="Repository path to inspect and publish."
+    ),
+    to: str | None = typer.Option(
+        None,
+        "--to",
+        help=(
+            "Publish endpoint URL. Defaults to $HASSCHECK_PUBLISH_ENDPOINT or "
+            "https://hasscheck.io."
+        ),
+    ),
+    oidc_token: str | None = typer.Option(
+        None,
+        "--oidc-token",
+        help="GitHub OIDC token. Falls back to $HASSCHECK_OIDC_TOKEN.",
+    ),
+    no_config: bool = typer.Option(
+        False,
+        "--no-config",
+        help="Ignore hasscheck.yaml even if present (useful for CI debugging).",
+    ),
+    withdraw: bool = typer.Option(
+        False,
+        "--withdraw",
+        help="Withdraw a single report. Requires --report-id.",
+    ),
+    withdraw_all: bool = typer.Option(
+        False,
+        "--withdraw-all",
+        help="Withdraw all reports for the slug. Mutually exclusive with --withdraw.",
+    ),
+    report_id: str | None = typer.Option(
+        None, "--report-id", help="Report ID to withdraw (with --withdraw)."
+    ),
+    slug: str | None = typer.Option(
+        None,
+        "--slug",
+        help=(
+            "owner/repo slug for withdrawal commands. Auto-detected from git "
+            "remote when omitted."
+        ),
+    ),
+) -> None:
+    """Opt-in upload of a HassCheck report to a hosted service.
+
+    Publishing requires a GitHub Actions OIDC token. The CLI never publishes
+    by default — invoke this command explicitly or set the action input
+    `emit-publish: 'true'`.
+
+    Examples:
+      hasscheck publish --path .
+      hasscheck publish --path . --to https://my-host.example
+      hasscheck publish --withdraw --report-id abc123
+      hasscheck publish --withdraw-all
+    """
+    if withdraw and withdraw_all:
+        typer.echo(
+            "hasscheck: error: --withdraw and --withdraw-all are mutually exclusive.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    if withdraw and report_id is None:
+        typer.echo("hasscheck: error: --withdraw requires --report-id.", err=True)
+        raise typer.Exit(code=1)
+
+    if not path.exists():
+        console.print(f"[red]Error:[/] Path '{path}' does not exist.")
+        raise typer.Exit(code=1)
+
+    try:
+        endpoint = resolve_endpoint(to)
+        token = resolve_oidc_token(oidc_token)
+    except PublishError as exc:
+        typer.echo(f"hasscheck: error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    if withdraw or withdraw_all:
+        resolved_slug = slug or detect_repo_slug(path.resolve())
+        if resolved_slug is None:
+            typer.echo(
+                "hasscheck: error: could not detect repo slug; pass --slug owner/repo.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        try:
+            owner, repo = split_slug(resolved_slug)
+            withdraw_report(
+                endpoint=endpoint,
+                oidc_token=token,
+                owner=owner,
+                repo=repo,
+                report_id=report_id,
+            )
+        except PublishError as exc:
+            typer.echo(f"hasscheck: error: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+        target = (
+            f"report {report_id}" if report_id else f"all reports for {resolved_slug}"
+        )
+        typer.echo(f"Withdrew {target} from {endpoint}.")
+        return
+
+    try:
+        result = publish_report(
+            path,
+            endpoint=endpoint,
+            oidc_token=token,
+            no_config=no_config,
+        )
+    except ConfigError as exc:
+        typer.echo(f"hasscheck: error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    except PublishError as exc:
+        typer.echo(f"hasscheck: error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"Published report {result.report_id} to {result.report_url}")
 
 
 app.add_typer(scaffold_app, name="scaffold")
