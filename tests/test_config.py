@@ -1,6 +1,8 @@
 """Tests for hasscheck.config — YAML schema models and override engine."""
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -9,6 +11,7 @@ from hasscheck.config import (
     HassCheckConfig,
     ProjectConfig,
     RuleOverride,
+    load_config_file,
 )
 
 
@@ -130,3 +133,79 @@ def test_config_error_is_exception() -> None:
 def test_config_error_carries_message() -> None:
     err = ConfigError("rule 'foo' is not overridable")
     assert "foo" in str(err)
+
+
+# ---------- load_config_file ----------
+
+def test_load_config_file_minimal_valid(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text("schema_version: '0.2.0'\n")
+    cfg = load_config_file(tmp_path / "hasscheck.yaml")
+    assert cfg.schema_version == "0.2.0"
+    assert cfg.rules == {}
+
+
+def test_load_config_file_empty_file_returns_defaults(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text("")
+    cfg = load_config_file(tmp_path / "hasscheck.yaml")
+    assert isinstance(cfg, HassCheckConfig)
+    assert cfg.rules == {}
+
+
+def test_load_config_file_with_rule_override(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.2.0'\n"
+        "rules:\n"
+        "  repairs.file.exists:\n"
+        "    status: not_applicable\n"
+        "    reason: no repair scenarios\n"
+    )
+    cfg = load_config_file(tmp_path / "hasscheck.yaml")
+    assert "repairs.file.exists" in cfg.rules
+    assert cfg.rules["repairs.file.exists"].status == "not_applicable"
+
+
+def test_load_config_file_malformed_yaml_raises_config_error(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text("rules: [unclosed\n")
+    with pytest.raises(ConfigError) as exc_info:
+        load_config_file(tmp_path / "hasscheck.yaml")
+    assert "YAML" in str(exc_info.value) or "parse" in str(exc_info.value).lower()
+
+
+def test_load_config_file_non_mapping_raises_config_error(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text("- item1\n- item2\n")
+    with pytest.raises(ConfigError) as exc_info:
+        load_config_file(tmp_path / "hasscheck.yaml")
+    assert "mapping" in str(exc_info.value).lower()
+
+
+def test_load_config_file_forbidden_status_raises_config_error(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text(
+        "rules:\n"
+        "  repairs.file.exists:\n"
+        "    status: pass\n"
+        "    reason: some reason\n"
+    )
+    with pytest.raises(ConfigError):
+        load_config_file(tmp_path / "hasscheck.yaml")
+
+
+def test_load_config_file_missing_reason_raises_config_error(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text(
+        "rules:\n"
+        "  repairs.file.exists:\n"
+        "    status: not_applicable\n"
+    )
+    with pytest.raises(ConfigError):
+        load_config_file(tmp_path / "hasscheck.yaml")
+
+
+def test_load_config_file_extra_fields_raises_config_error(tmp_path: Path) -> None:
+    (tmp_path / "hasscheck.yaml").write_text(
+        "rules:\n"
+        "  repairs.file.exists:\n"
+        "    status: not_applicable\n"
+        "    reason: ok\n"
+        "    severity: low\n"
+    )
+    with pytest.raises(ConfigError):
+        load_config_file(tmp_path / "hasscheck.yaml")
