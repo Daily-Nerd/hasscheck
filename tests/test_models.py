@@ -1,7 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from hasscheck.models import Applicability, OverridesApplied, RuleStatus, HassCheckReport
+from hasscheck.models import (
+    Applicability,
+    OverridesApplied,
+    ReportSummary,
+    RuleStatus,
+    HassCheckReport,
+)
 
 
 def test_rule_status_includes_applicability_states() -> None:
@@ -59,3 +65,10 @@ def test_overrides_applied_count_must_match_rule_ids_length() -> None:
 def test_overrides_applied_rule_ids_must_be_alphabetical() -> None:
     with pytest.raises(ValidationError):
         OverridesApplied(count=2, rule_ids=["b.rule", "a.rule"])
+
+
+def test_report_summary_overrides_applied_default_is_empty_overrides_applied() -> None:
+    summary = ReportSummary()
+    assert summary.overrides_applied == OverridesApplied()
+    assert summary.overrides_applied.count == 0
+    assert summary.overrides_applied.rule_ids == []

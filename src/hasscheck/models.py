@@ -98,6 +98,7 @@ class ReportSummary(BaseModel):
     official_ha_tier: Literal["not_assigned"] = "not_assigned"
     hacs_acceptance: Literal["not_guaranteed"] = "not_guaranteed"
     categories: list[CategorySignal] = Field(default_factory=list)
+    overrides_applied: OverridesApplied = Field(default_factory=OverridesApplied)
 
 
 class ProjectInfo(BaseModel):
