@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from hasscheck.models import Applicability, RuleStatus, HassCheckReport
+from hasscheck.models import Applicability, OverridesApplied, RuleStatus, HassCheckReport
 
 
 def test_rule_status_includes_applicability_states() -> None:
@@ -37,3 +37,25 @@ def test_applicability_source_accepts_known_values() -> None:
 def test_applicability_source_rejects_unknown_values() -> None:
     with pytest.raises(ValidationError):
         Applicability(reason="why", source="invalid")
+
+
+def test_overrides_applied_default_is_empty() -> None:
+    oa = OverridesApplied()
+    assert oa.count == 0
+    assert oa.rule_ids == []
+
+
+def test_overrides_applied_with_valid_data_constructs() -> None:
+    oa = OverridesApplied(count=2, rule_ids=["a.rule", "b.rule"])
+    assert oa.count == 2
+    assert oa.rule_ids == ["a.rule", "b.rule"]
+
+
+def test_overrides_applied_count_must_match_rule_ids_length() -> None:
+    with pytest.raises(ValidationError):
+        OverridesApplied(count=2, rule_ids=["only.one"])
+
+
+def test_overrides_applied_rule_ids_must_be_alphabetical() -> None:
+    with pytest.raises(ValidationError):
+        OverridesApplied(count=2, rule_ids=["b.rule", "a.rule"])

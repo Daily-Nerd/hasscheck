@@ -4,7 +4,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 SCHEMA_VERSION = "0.1.0"
@@ -74,6 +74,22 @@ class CategorySignal(BaseModel):
     label: str
     points_awarded: int
     points_possible: int
+
+
+class OverridesApplied(BaseModel):
+    count: int = 0
+    rule_ids: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _invariant(self) -> "OverridesApplied":
+        if self.count != len(self.rule_ids):
+            raise ValueError(
+                f"overrides_applied invariant violated: count={self.count} but "
+                f"rule_ids has {len(self.rule_ids)} entries"
+            )
+        if self.rule_ids != sorted(self.rule_ids):
+            raise ValueError("overrides_applied.rule_ids must be alphabetically sorted")
+        return self
 
 
 class ReportSummary(BaseModel):
