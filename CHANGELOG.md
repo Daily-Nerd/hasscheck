@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-05-01
+
+### Fixed
+- `tests/test_check_version.py` no longer fails pytest collection. Added `pythonpath = ["src", "."]` to `[tool.pytest.ini_options]` and an empty `scripts/__init__.py` so `from scripts.check_version import ...` resolves. The previous `--ignore=tests/test_check_version.py` workaround used during the v0.8.0 SDD cycle is no longer needed (#91)
+- Pylance type narrowing on `src/hasscheck/rules/manifest.py:50` and `:155`. `json.loads()` returns `Any`, so explicit `cast(dict[str, Any], payload)` and `cast(list[Any], value)` calls preserve the typed shape across `isinstance` narrowing. No behavior change (#92)
+
+### Changed
+- Bumped `version` and `__version__` to `0.8.1`
+
+[Compare v0.8.0...v0.8.1](https://github.com/Daily-Nerd/hasscheck/compare/v0.8.0...v0.8.1)
+
 ## [0.8.0] — 2026-05-01
 
 ### Added
@@ -171,7 +182,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Initial release](https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.1.0)
 
-[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.8.1
 [0.8.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.8.0
 [0.7.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.7.0
 [0.6.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.6.0
