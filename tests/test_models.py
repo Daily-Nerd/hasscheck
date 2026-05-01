@@ -116,7 +116,7 @@ def test_pyproject_version_matches_tool_info() -> None:
     pyproject = tomllib.loads(
         (Path(__file__).parent.parent / "pyproject.toml").read_text()
     )
-    assert pyproject["project"]["version"] == ToolInfo().version == "0.3.0"
+    assert pyproject["project"]["version"] == ToolInfo().version == "0.4.0"
 
 
 def test_yaml_importable() -> None:

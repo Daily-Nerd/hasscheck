@@ -27,12 +27,16 @@ HassCheck starts as a local CLI. Public badges, hosted reports, and any future h
 
 ## Current status
 
-HassCheck is at **v0.3.0**.
+HassCheck is at **v0.4.0**.
 
 It includes:
 
-- Typer CLI with `check`, `explain`, and `schema` commands
-- Rich terminal output
+- Typer CLI with `check`, `explain`, `schema`, and `scaffold` commands
+- Rich terminal output with per-finding fix suggestions
+- `scaffold github-action` — generate a GitHub Actions CI workflow
+- `scaffold diagnostics` — generate a `diagnostics.py` starter with redaction helpers
+- `scaffold repairs` — generate a `repairs.py` starter with `ConfirmRepairFlow` skeleton
+- Applicability-aware scaffold refusal (respects `hasscheck.yaml` flags)
 - Pydantic JSON report schema (stable, additive-only versioning)
 - Rule IDs and rule versions
 - Source links and source timestamps
@@ -87,6 +91,26 @@ Run the CLI without installing globally:
 ```bash
 .venv/bin/python -m hasscheck explain manifest.domain.exists
 ```
+
+### Scaffold a GitHub Actions workflow
+
+```bash
+.venv/bin/python -m hasscheck scaffold github-action --path .
+```
+
+### Scaffold a diagnostics.py starter
+
+```bash
+.venv/bin/python -m hasscheck scaffold diagnostics --path .
+```
+
+### Scaffold a repairs.py starter
+
+```bash
+.venv/bin/python -m hasscheck scaffold repairs --path .
+```
+
+Use `--dry-run` to preview without writing, `--force` to overwrite an existing file.
 
 ## Configuration
 
@@ -284,9 +308,9 @@ Pushing a tag that matches `v*.*.*` triggers the release workflow. The workflow 
 
 This workflow does **not** publish to PyPI and does **not** attach built package artifacts. PyPI publishing is a separate release step.
 
-## Non-goals for v0.3.0
+## Non-goals for v0.4.0
 
-HassCheck v0.3.0 does not attempt:
+HassCheck v0.4.0 does not attempt:
 
 - Security certification
 - Official Home Assistant quality tier assignment
