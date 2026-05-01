@@ -50,7 +50,9 @@ def github_actions_exists(context: ProjectContext) -> Finding:
         fix=None
         if exists
         else FixSuggestion(
-            summary="Add a .github/workflows/*.yml workflow that runs HassCheck and tests."
+            summary="Add a .github/workflows/*.yml workflow that runs tests.",
+            command="hasscheck scaffold github-action",
+            docs_url="https://docs.github.com/actions/using-workflows/about-workflows",
         ),
         path=str(path.relative_to(context.root)) if exists else ".github/workflows",
     )
