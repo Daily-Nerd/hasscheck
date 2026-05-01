@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from hasscheck.models import (
     Applicability,
@@ -88,7 +88,7 @@ def _read_manifest(context: ProjectContext) -> tuple[dict[str, Any] | None, str 
     if not isinstance(payload, dict):
         return None, "manifest root must be a JSON object"
 
-    return payload, None
+    return cast(dict[str, Any], payload), None
 
 
 def _not_applicable_for_missing_manifest(
@@ -193,7 +193,7 @@ def _codeowners_rule(context: ProjectContext) -> Finding:
 
     value = payload.get("codeowners") if payload else None
     is_present = isinstance(value, list) and any(
-        isinstance(item, str) and item.strip() for item in value
+        isinstance(item, str) and item.strip() for item in cast(list[Any], value)
     )
     return Finding(
         rule_id="manifest.codeowners.exists",
