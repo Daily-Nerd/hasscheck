@@ -13,7 +13,7 @@ def test_check_json_outputs_report(tmp_path) -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
-    assert payload["schema_version"] == "0.1.0"
+    assert payload["schema_version"] == "0.2.0"
     assert payload["summary"]["security_review"] == "not_performed"
     assert payload["summary"]["official_ha_tier"] == "not_assigned"
     assert payload["summary"]["hacs_acceptance"] == "not_guaranteed"

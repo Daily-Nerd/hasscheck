@@ -7,7 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-SCHEMA_VERSION = "0.1.0"
+SCHEMA_VERSION = "0.2.0"
 DEFAULT_RULESET_ID = "hasscheck-ha-2026.4"
 DEFAULT_SOURCE_CHECKED_AT = "2026-05-01"
 
@@ -110,7 +110,7 @@ class ProjectInfo(BaseModel):
 
 class ToolInfo(BaseModel):
     name: Literal["hasscheck"] = "hasscheck"
-    version: str = "0.1.0"
+    version: str = "0.2.0"
 
 
 class RulesetInfo(BaseModel):
