@@ -6,7 +6,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from hasscheck.badges.endpoint import to_shields_endpoint
-from hasscheck.badges.policy import assert_label_is_clean
+from hasscheck.badges.policy import BADGE_MANIFEST_SCHEMA_VERSION, assert_label_is_clean
 from hasscheck.badges.status import category_to_status, umbrella_status
 from hasscheck.models import HassCheckReport
 
@@ -89,7 +89,7 @@ def generate_badges(
 
     # Write manifest
     manifest = {
-        "schema_version": "0.6.0",
+        "schema_version": BADGE_MANIFEST_SCHEMA_VERSION,
         "artifacts": [a.model_dump() for a in artifacts],
     }
     (out_dir / "manifest.json").write_text(

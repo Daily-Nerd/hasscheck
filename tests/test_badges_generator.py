@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from hasscheck.badges.generator import generate_badges
+from hasscheck.badges.policy import BADGE_MANIFEST_SCHEMA_VERSION
 from hasscheck.models import (
     CategorySignal,
     HassCheckReport,
@@ -35,7 +36,7 @@ def test_generate_badges_writes_manifest(tmp_path: Path) -> None:
     manifest_path = tmp_path / "manifest.json"
     assert manifest_path.exists()
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
-    assert data["schema_version"] == "0.6.0"
+    assert data["schema_version"] == BADGE_MANIFEST_SCHEMA_VERSION
     assert isinstance(data["artifacts"], list)
 
 
@@ -128,7 +129,7 @@ def test_generate_badges_manifest_schema_version(tmp_path: Path) -> None:
     )
     generate_badges(report, out_dir=tmp_path)
     data = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
-    assert data["schema_version"] == "0.6.0"
+    assert data["schema_version"] == BADGE_MANIFEST_SCHEMA_VERSION
 
 
 def test_generate_badges_endpoint_json_valid(tmp_path: Path) -> None:

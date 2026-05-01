@@ -33,6 +33,9 @@ PRESENT_ABSENT_CATEGORIES: frozenset[str] = frozenset(
     }
 )
 
+# Bump only when badge manifest JSON structure changes.
+BADGE_MANIFEST_SCHEMA_VERSION: str = "0.6.0"
+
 
 def assert_label_is_clean(label: str) -> None:
     lower = label.lower()
