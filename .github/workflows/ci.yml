@@ -4,9 +4,19 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "tests/**"
+      - "pre-commit-config.yaml"
   push:
     branches:
       - main
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "tests/**"
+      - "pre-commit-config.yaml"
 
 permissions:
   contents: read
@@ -43,10 +53,13 @@ jobs:
           cache-dependency-glob: uv.lock
 
       - name: Install dependencies
-        run: uv sync --locked --dev --python ${{ matrix.python-version }}
+        run: uv sync --locked --dev --python ${{ matrix.python-version }} --no-install-project
 
       - name: Run pre-commit
         run: .venv/bin/pre-commit run --all-files --show-diff-on-failure
+
+      - name: Check version consistency
+        run: .venv/bin/python scripts/check_version.py
 
       - name: Run tests
         run: .venv/bin/python -m pytest -q

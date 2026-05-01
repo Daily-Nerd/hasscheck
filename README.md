@@ -253,9 +253,17 @@ Run HassCheck against the current repository:
 .venv/bin/python -m hasscheck check --path .
 ```
 
-## Release checklist for v0.3.0
+## Release process
 
-Before tagging v0.3.0:
+Releases are source-only GitHub Releases created from version tags.
+
+Before tagging a new version, make sure all version declarations match `pyproject.toml`:
+
+```bash
+.venv/bin/python scripts/check_version.py
+```
+
+Then run the release checks:
 
 ```bash
 .venv/bin/python -m pytest -q
@@ -265,12 +273,16 @@ Before tagging v0.3.0:
 .venv/bin/python -m hasscheck explain manifest.domain.exists
 ```
 
-Then tag:
+Then create and push an annotated version tag:
 
 ```bash
-git tag v0.3.0
-git push origin v0.3.0
+git tag -a vX.Y.Z -m "vX.Y.Z — short release summary"
+git push origin vX.Y.Z
 ```
+
+Pushing a tag that matches `v*.*.*` triggers the release workflow. The workflow creates a GitHub Release for that tag with generated notes and a source-only artifact notice.
+
+This workflow does **not** publish to PyPI and does **not** attach built package artifacts. PyPI publishing is a separate release step.
 
 ## Non-goals for v0.3.0
 
