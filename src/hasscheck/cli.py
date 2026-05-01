@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from enum import StrEnum
 from pathlib import Path
 
 import typer
@@ -10,12 +11,20 @@ from hasscheck import __version__
 from hasscheck.checker import run_check
 from hasscheck.config import ConfigError
 from hasscheck.models import HassCheckReport
-from hasscheck.output import print_terminal_report, report_to_json
+from hasscheck.output import print_terminal_report, report_to_json, report_to_md
 from hasscheck.rules.registry import RULES_BY_ID
 from hasscheck.scaffold.cli import scaffold_app
 
 # CLI philosophy: developer-friendly but scriptable. Human output is explanatory;
-# --json is stable and machine-readable for CI, badges, and future hosted reports.
+# --format controls output: terminal (default), json (machine-readable), or md (Markdown).
+
+
+class OutputFormat(StrEnum):
+    TERMINAL = "terminal"
+    JSON = "json"
+    MD = "md"
+
+
 app = typer.Typer(
     name="hasscheck",
     help="Unofficial sourced checks for Home Assistant custom integration repos.",
@@ -48,8 +57,11 @@ def check(
     path: Path = typer.Option(
         Path("."), "--path", "-p", help="Repository path to inspect."
     ),
-    json_output: bool = typer.Option(
-        False, "--json", help="Emit the stable JSON report."
+    format: OutputFormat = typer.Option(
+        OutputFormat.TERMINAL,
+        "--format",
+        "-f",
+        help="Output format: terminal, json, or md.",
     ),
     no_config: bool = typer.Option(
         False,
@@ -64,7 +76,8 @@ def check(
 
     Examples:
       hasscheck check --path .
-      hasscheck check --path . --json
+      hasscheck check --path . --format json
+      hasscheck check --path . --format md
       hasscheck check --path . --no-config
     """
     if not path.exists():
@@ -80,11 +93,12 @@ def check(
         typer.echo(f"hasscheck: error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
-    if json_output:
+    if format == OutputFormat.JSON:
         typer.echo(report_to_json(report), nl=False)
-        return
-
-    print_terminal_report(report, console)
+    elif format == OutputFormat.MD:
+        typer.echo(report_to_md(report), nl=False)
+    else:
+        print_terminal_report(report, console)
 
 
 @app.command()
@@ -104,7 +118,7 @@ def explain(
     if rule is None:
         console.print(f"[red]Error:[/] Unknown rule '{rule_id}'.")
         console.print(
-            "[yellow]Suggestion:[/] Run 'hasscheck check --json' to see emitted rule IDs."
+            "[yellow]Suggestion:[/] Run 'hasscheck check --format json' to see emitted rule IDs."
         )
         raise typer.Exit(code=1)
 

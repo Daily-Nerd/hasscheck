@@ -19,7 +19,7 @@ def write_minimal_integration(root: Path) -> None:
 
 
 def test_check_json_outputs_report(tmp_path) -> None:
-    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--json"])
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--format", "json"])
 
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
@@ -81,7 +81,7 @@ def test_no_config_flag_skips_yaml(tmp_path) -> None:
         "    reason: no tests needed\n"
     )
     result = runner.invoke(
-        app, ["check", "--path", str(tmp_path), "--json", "--no-config"]
+        app, ["check", "--path", str(tmp_path), "--format", "json", "--no-config"]
     )
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
@@ -108,7 +108,7 @@ def test_locked_rule_override_exits_nonzero(tmp_path) -> None:
 
 
 def test_json_output_includes_overrides_applied(tmp_path) -> None:
-    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--json"])
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--format", "json"])
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert "overrides_applied" in payload["summary"]
@@ -117,7 +117,7 @@ def test_json_output_includes_overrides_applied(tmp_path) -> None:
 
 
 def test_json_output_includes_applicability_applied(tmp_path) -> None:
-    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--json"])
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--format", "json"])
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert payload["summary"]["applicability_applied"] == {
@@ -131,7 +131,7 @@ def test_json_output_includes_applicability_applied(tmp_path) -> None:
 
 
 def test_json_finding_applicability_source_present(tmp_path) -> None:
-    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--json"])
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--format", "json"])
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     for finding in payload["findings"]:
@@ -210,3 +210,30 @@ def test_terminal_applicability_finding_has_config_marker(tmp_path) -> None:
 
     assert result.exit_code == 0
     assert "diagnostics.file.exists (config)" in result.output
+
+
+# ---------- --format option ----------
+
+
+def test_format_md_outputs_markdown_heading(tmp_path) -> None:
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--format", "md"])
+
+    assert result.exit_code == 0
+    assert "## HassCheck Signals" in result.output
+
+
+def test_format_terminal_explicit_does_not_output_markdown(tmp_path) -> None:
+    result = runner.invoke(
+        app, ["check", "--path", str(tmp_path), "--format", "terminal"]
+    )
+
+    assert result.exit_code == 0
+    assert "## HassCheck Signals" not in result.output
+
+
+def test_format_json_shortflag_outputs_json(tmp_path) -> None:
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "-f", "json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["schema_version"] == "0.3.0"
