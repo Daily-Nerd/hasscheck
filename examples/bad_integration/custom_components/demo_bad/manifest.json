@@ -1,0 +1,10 @@
+{
+  "domain": "wrong_domain",
+  "name": "Demo Bad",
+  "documentation": "https://example.com/demo_bad",
+  "issue_tracker": "https://example.com/demo_bad/issues",
+  "codeowners": ["@demo"],
+  "version": "0.1.0",
+  "config_flow": true,
+  "iot_class": "not_a_valid_class"
+}
