@@ -13,7 +13,8 @@ from __future__ import annotations
 from hasscheck.rules.registry import RULES
 
 # Canonical audit (from sdd/config-file-support/mixed-status-rule-audit):
-# 18 rules total, 10 locked overridable=False, 8 overridable=True.
+# 19 rules total (v0.8 adds manifest.domain.matches_directory),
+# 11 locked overridable=False, 8 overridable=True.
 EXPECTED_LOCKED_RULE_IDS = {
     "hacs.custom_components.exists",
     "hacs.file.parseable",  # mixed-status: WARN missing, FAIL invalid JSON
@@ -24,6 +25,7 @@ EXPECTED_LOCKED_RULE_IDS = {
     "manifest.documentation.exists",
     "manifest.issue_tracker.exists",
     "manifest.codeowners.exists",
+    "manifest.domain.matches_directory",  # v0.8 PR1 — non-overridable REQUIRED
     "config_flow.manifest_flag_consistent",
 }
 
@@ -39,8 +41,8 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
 }
 
 
-def test_total_rule_count_is_eighteen() -> None:
-    assert len(RULES) == 18, f"expected 18 rules, got {len(RULES)}"
+def test_total_rule_count_is_nineteen() -> None:
+    assert len(RULES) == 19, f"expected 19 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:

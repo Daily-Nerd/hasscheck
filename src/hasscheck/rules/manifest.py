@@ -224,6 +224,130 @@ manifest_issue_tracker_exists = _required_string_field_rule(
 )
 manifest_codeowners_exists = _codeowners_rule
 
+# ---------------------------------------------------------------------------
+# manifest.domain.matches_directory — PR1 (#51)
+# Source: https://developers.home-assistant.io/docs/creating_integration_manifest
+# ---------------------------------------------------------------------------
+
+HA_MANIFEST_DOCS_URL = (
+    "https://developers.home-assistant.io/docs/creating_integration_manifest"
+)
+
+
+def manifest_domain_matches_directory(context: ProjectContext) -> Finding:
+    rule_id = "manifest.domain.matches_directory"
+    title = "manifest.json domain matches integration directory"
+
+    if context.integration_path is None:
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.REQUIRED,
+            title=title,
+            message="No integration directory was detected, so domain consistency cannot be inspected yet.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="custom_components/<domain>/ must exist before HassCheck can inspect domain consistency.",
+            ),
+            source=RuleSource(url=HA_MANIFEST_DOCS_URL),
+            fix=FixSuggestion(
+                summary="Create custom_components/<domain>/ and manifest.json first."
+            ),
+            path="custom_components/<domain>/manifest.json",
+        )
+
+    manifest_path = context.integration_path / "manifest.json"
+    display = str(manifest_path.relative_to(context.root))
+
+    if not manifest_path.is_file():
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.REQUIRED,
+            title=title,
+            message="manifest.json is missing, so the domain field cannot be inspected yet.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="manifest.json must exist before HassCheck can inspect manifest.domain.",
+            ),
+            source=RuleSource(url=HA_MANIFEST_DOCS_URL),
+            fix=FixSuggestion(
+                summary="Add manifest.json with a domain field that matches the integration directory name."
+            ),
+            path=display,
+        )
+
+    payload, error = _read_manifest(context)
+    if error is not None:
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.FAIL,
+            severity=RuleSeverity.REQUIRED,
+            title=title,
+            message=f"manifest.json is not valid JSON: {error}.",
+            applicability=Applicability(
+                reason="manifest.json exists but cannot be parsed."
+            ),
+            source=RuleSource(url=HA_MANIFEST_DOCS_URL),
+            fix=FixSuggestion(
+                summary="Fix manifest.json syntax, then rerun HassCheck."
+            ),
+            path=display,
+        )
+
+    dir_name = context.integration_path.name
+    manifest_domain = payload.get("domain") if payload else None
+
+    if isinstance(manifest_domain, str) and manifest_domain == dir_name:
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.PASS,
+            severity=RuleSeverity.REQUIRED,
+            title=title,
+            message=f'manifest.json domain matches integration directory "{dir_name}".',
+            applicability=Applicability(
+                reason="The manifest domain must match the integration directory name."
+            ),
+            source=RuleSource(url=HA_MANIFEST_DOCS_URL),
+            fix=None,
+            path=display,
+        )
+
+    manifest_domain_display = (
+        manifest_domain if isinstance(manifest_domain, str) else "(missing)"
+    )
+    return Finding(
+        rule_id=rule_id,
+        rule_version="1.0.0",
+        category=CATEGORY,
+        status=RuleStatus.FAIL,
+        severity=RuleSeverity.REQUIRED,
+        title=title,
+        message=(
+            f'manifest.json domain "{manifest_domain_display}" does not match '
+            f'integration directory "{dir_name}".'
+        ),
+        applicability=Applicability(
+            reason="The manifest domain must match the integration directory name."
+        ),
+        source=RuleSource(url=HA_MANIFEST_DOCS_URL),
+        fix=FixSuggestion(
+            summary=(
+                "Rename the integration directory or update manifest.domain so both "
+                "use the same stable domain."
+            )
+        ),
+        path=display,
+    )
+
 
 def manifest_exists(context: ProjectContext) -> Finding:
     path = _manifest_path(context)
@@ -330,6 +454,22 @@ RULES = [
         why="Code owners make maintainership explicit and are expected by HACS integration metadata.",
         source_url=HACS_INTEGRATION_SOURCE,
         check=manifest_codeowners_exists,
+        overridable=False,
+    ),
+    RuleDefinition(
+        id="manifest.domain.matches_directory",
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.REQUIRED,
+        title="manifest.json domain matches integration directory",
+        why=(
+            "The manifest domain must match the name of the integration directory under "
+            "custom_components/. A mismatch causes Home Assistant to silently misidentify "
+            "the integration, breaking HACS discovery and core platform loading. "
+            "Note: this rule cannot be overridden via hasscheck.yaml."
+        ),
+        source_url=HA_MANIFEST_DOCS_URL,
+        check=manifest_domain_matches_directory,
         overridable=False,
     ),
 ]
