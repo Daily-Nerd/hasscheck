@@ -3,8 +3,8 @@ from __future__ import annotations
 import ast
 import re
 from dataclasses import dataclass
-from pathlib import Path
 
+from hasscheck.ast_utils import parse_module
 from hasscheck.models import (
     Applicability,
     ApplicabilityStatus,
@@ -27,24 +27,6 @@ _DIAGNOSTICS_FUNC_NAMES = frozenset(
     {"async_get_config_entry_diagnostics", "async_get_device_diagnostics"}
 )
 _LOCAL_REDACT_RE = re.compile(r"^_?redact(_.*)?$")
-
-
-def _parse_module(path: Path) -> tuple[ast.Module | None, str | None]:
-    """Return (parsed_tree, None) on success, (None, error_msg) on failure.
-
-    Three states:
-    - (tree, None)  — parsed OK
-    - (None, msg)   — file could not be read or has a syntax error
-    - (None, None)  — file does not exist (caller should check before calling)
-    """
-    try:
-        source = path.read_text(encoding="utf-8")
-    except OSError as exc:
-        return None, str(exc)
-    try:
-        return ast.parse(source), None
-    except SyntaxError as exc:
-        return None, exc.msg or "syntax error"
 
 
 @dataclass(frozen=True)
@@ -287,7 +269,7 @@ def diagnostics_redaction_used(context: ProjectContext) -> Finding:
     rel_path = str(diagnostics_path.relative_to(context.root))
 
     # Parse the file
-    tree, error = _parse_module(diagnostics_path)
+    tree, error = parse_module(diagnostics_path)
 
     if error is not None:
         return Finding(
