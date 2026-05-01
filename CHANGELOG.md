@@ -7,14 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-05-01
+
 ### Added
+- Seven new rules covering manifest correctness, config flow, and diagnostics safety:
+  - `manifest.domain.matches_directory` (REQUIRED, non-overridable) — catches manifest `domain` vs. `custom_components/<dir>` identity drift (#51)
+  - `manifest.iot_class.exists` / `manifest.iot_class.valid` (RECOMMENDED, overridable) — verified against HA dev docs allowed set (#52)
+  - `manifest.integration_type.exists` / `manifest.integration_type.valid` (RECOMMENDED, overridable) — verified against HA dev docs allowed set (#52)
+  - `config_flow.user_step.exists` (RECOMMENDED, overridable) — AST-walks `config_flow.py` for `async_step_user` AsyncFunctionDef at any depth (#54)
+  - `diagnostics.redaction.used` (RECOMMENDED, overridable) — AST detects `async_redact_data` calls or local `^_?redact(_.*)?$` helpers; flags raw `entry.data` / `entry.options` / `dict(entry.data)` returns with strong "likely exposes secrets" wording (#53)
+- Inline `_parse_module(path) -> (ast.Module | None, str | None)` 3-state parser pattern in `config_flow.py` and `diagnostics.py` (extract to `ast_utils.py` deferred to v0.9)
+- `examples/bad_integration/custom_components/demo_bad/` — tracked negative fixture demonstrating five representative failures (manifest domain mismatch, invalid `iot_class`, missing `integration_type`, missing `async_step_user`, raw `entry.data` diagnostics) (#50)
+- `publish.endpoint` block in `hasscheck.yaml` — new fourth precedence tier (CLI flag > env var > config > default) for `hasscheck publish`. `PublishConfig` Pydantic sub-model with `extra="forbid"`
+- `--force` flag on `hasscheck publish` — required for non-interactive callers; without it, withdraw branches prompt via `typer.confirm(abort=True)` with report ID + endpoint + irreversibility note
+- `--enable-publish` flag on `hasscheck init` — selects sibling workflow template (`github_action_publish.yml.tmpl`) with `id-token: write` permission and `emit-publish: 'true'` step
 - `LICENSE` — MIT License at repository root, "Copyright (c) 2026 Daily Nerd"
 - `pyproject.toml` PyPI-grade metadata: `license = "MIT"` (SPDX/PEP 639), `authors`, `keywords`, `classifiers`, and `[project.urls]` (Homepage, Repository, Issues, Documentation)
-- ADR 0009 — Schema versioning policy: documents `SCHEMA_VERSION` bump triggers, additive-only stance, lockstep with `hasscheck-web`, and distinction from ADR 0006's ruleset versioning (policy-only; no version bump)
+- ADR 0009 — Schema versioning policy: documents `SCHEMA_VERSION` bump triggers, additive-only stance, lockstep with `hasscheck-web`, and distinction from ADR 0006's ruleset versioning
 
 ### Changed
-- README "Current status" block reflects v0.7.0 as latest release and v0.8.0 as in-progress
-- README GitHub Action examples bumped from `@v0.6.0` to `@v0.7.0` (lines 69 and 109)
+- Bumped `version` and `__version__` to `0.8.0`
+- `DEFAULT_RULESET_ID` bumped from `hasscheck-ha-2026.4` to `hasscheck-ha-2026.5` (per ADR 0006 — new rules added)
+- `resolve_endpoint(cli_value, *, config: HassCheckConfig | None = None)` — keyword-only `config` param; existing call sites unchanged
+- `hasscheck publish` CLI handler now loads `hasscheck.yaml` via `discover_config()` before endpoint resolution; malformed YAML surfaces as `ConfigError` rather than opaque `PublishError`
+- Diagnostics scaffold template (`src/hasscheck/scaffold/templates/diagnostics.py.tmpl`) and golden updated to pass `diagnostics.redaction.used`
+- `cross-reference` header comments added to both `github_action.yml.tmpl` and `github_action_publish.yml.tmpl` to mitigate two-template drift
+- README "Current status" block reflects v0.7.0 as latest release and v0.8.0 as in-progress at the time of writing
+- README GitHub Action examples bumped from `@v0.6.0` to `@v0.7.0`
+- README "Current rule set" tables extended with the seven new rules
+
+### Notes
+- **Breaking for non-interactive `hasscheck publish --withdraw` callers**: pipelines must add `--force` to bypass the confirmation prompt (deliberate; `typer.confirm(abort=True)` is the gate)
+- `SCHEMA_VERSION` unchanged at `0.3.0` — v0.8 adds no new finding fields (additive only per ADR 0009)
+- Test count: ~330 → 430 (+100 across the four rule-depth PRs and the publish-polish PR)
+
+[Compare v0.7.0...v0.8.0](https://github.com/Daily-Nerd/hasscheck/compare/v0.7.0...v0.8.0)
 
 ## [0.7.0] — 2026-05-01
 
@@ -144,7 +171,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Initial release](https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.1.0)
 
-[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.8.0
 [0.7.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.7.0
 [0.6.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.6.0
 [0.5.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.5.0
