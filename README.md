@@ -27,24 +27,26 @@ HassCheck starts as a local CLI. Public badges, hosted reports, and any future h
 
 ## Current status
 
-HassCheck is at **v0.5.0**.
+- **Latest release:** v0.6.0 — opt-in shields.io badge generator
+- **Current development target:** v0.7.0 — opt-in hosted reports (planning phase; see ADR 0008)
 
-It includes:
+v0.6.0 includes:
 
-- GitHub Action (`uses: Daily-Nerd/hasscheck@v0.5.0`) with PR comment and JSON artifact upload
-- Typer CLI with `check`, `explain`, `schema`, and `scaffold` commands
+- GitHub Action (`uses: Daily-Nerd/hasscheck@v0.6.0`) with PR comment, JSON artifact upload, and opt-in badge artifact
+- Typer CLI with `check`, `explain`, `schema`, `scaffold`, and `badge` commands
 - Rich terminal output with per-finding fix suggestions
 - `scaffold github-action` — generate a GitHub Actions CI workflow
 - `scaffold diagnostics` — generate a `diagnostics.py` starter with redaction helpers
 - `scaffold repairs` — generate a `repairs.py` starter with `ConfirmRepairFlow` skeleton
 - Applicability-aware scaffold refusal (respects `hasscheck.yaml` flags)
+- `hasscheck badge` — opt-in shields.io endpoint JSON for per-category quality signals
 - Pydantic JSON report schema (stable, additive-only versioning)
 - Rule IDs and rule versions
 - Source links and source timestamps
 - Applicability-aware statuses
 - Per-rule config overrides via `hasscheck.yaml`
 - Project applicability context via `hasscheck.yaml`
-- Example good/partial/bad integration fixtures
+- Example good and partial integration fixtures
 - Pytest coverage for the current rule set
 
 ## GitHub Action
@@ -64,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Daily-Nerd/hasscheck@v0.5.0
+      - uses: Daily-Nerd/hasscheck@v0.6.0
         with:
           comment-pr: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -100,7 +102,7 @@ This writes per-category JSON files and a `manifest.json` to `badges/`. Commit t
 Add `emit-badges: 'true'` to your HassCheck action step:
 
 ```yaml
-- uses: Daily-Nerd/hasscheck@v1
+- uses: Daily-Nerd/hasscheck@v0.6.0
   with:
     emit-badges: 'true'
     badges-out-dir: 'badges'
@@ -387,9 +389,9 @@ Pushing a tag that matches `v*.*.*` triggers the release workflow. The workflow 
 
 This workflow does **not** publish to PyPI and does **not** attach built package artifacts. PyPI publishing is a separate release step.
 
-## Non-goals for v0.4.0
+## Non-goals
 
-HassCheck v0.4.0 does not attempt:
+HassCheck does not attempt:
 
 - Security certification
 - Official Home Assistant quality tier assignment
