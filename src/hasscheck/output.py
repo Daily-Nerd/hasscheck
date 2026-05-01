@@ -5,7 +5,7 @@ import json
 from rich.console import Console
 from rich.table import Table
 
-from hasscheck.models import HassCheckReport, RuleStatus
+from hasscheck.models import Finding, HassCheckReport, RuleStatus
 
 STATUS_ICON = {
     RuleStatus.PASS: "✅ PASS",
@@ -59,3 +59,33 @@ def print_terminal_report(
             STATUS_ICON[finding.status], f"{finding.rule_id}{marker}", finding.message
         )
     console.print(table)
+
+    _print_fix_suggestions(report.findings, console)
+
+
+_NON_PASS_STATUSES = {
+    RuleStatus.WARN,
+    RuleStatus.FAIL,
+    RuleStatus.NOT_APPLICABLE,
+    RuleStatus.MANUAL_REVIEW,
+}
+
+
+def _print_fix_suggestions(findings: list[Finding], console: Console) -> None:
+    fixable = [
+        f for f in findings if f.status in _NON_PASS_STATUSES and f.fix is not None
+    ]
+    if not fixable:
+        return
+
+    console.print()
+    console.print("[bold]Fix suggestions[/bold]")
+    for finding in fixable:
+        fix = finding.fix
+        assert fix is not None  # narrowing — guaranteed by the filter above
+        console.print(f"  {finding.rule_id}")
+        console.print(f"    {fix.summary}")
+        if fix.command is not None:
+            console.print(f"    Run: {fix.command}")
+        if fix.docs_url is not None:
+            console.print(f"    Docs: {fix.docs_url}")
