@@ -82,7 +82,9 @@ def diagnostics_file_exists(context: ProjectContext) -> Finding:
         fix=None
         if exists
         else FixSuggestion(
-            summary="Add diagnostics.py with redaction for sensitive values."
+            summary="Add diagnostics.py with redaction for sensitive values.",
+            command="hasscheck scaffold diagnostics",
+            docs_url="https://developers.home-assistant.io/docs/core/integration/diagnostics/",
         ),
         path=str(path.relative_to(context.root)),
     )
