@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ast
 import json
+from pathlib import Path
 from typing import Any
 
 from hasscheck.models import (
@@ -17,6 +19,12 @@ from hasscheck.rules.base import ProjectContext, RuleDefinition
 CATEGORY = "modern_ha_patterns"
 CONFIG_FLOW_SOURCE = (
     "https://developers.home-assistant.io/docs/core/integration/config_flow"
+)
+# Source: https://developers.home-assistant.io/docs/config_entries_config_flow_handler/
+# _SOURCE_CHECKED_AT = "2026-05-01"
+USER_STEP_SOURCE = (
+    "https://developers.home-assistant.io/docs/config_entries_config_flow_handler/"
+    "#defining-the-flow"
 )
 MANIFEST_SOURCE = (
     "https://developers.home-assistant.io/docs/creating_integration_manifest"
@@ -55,6 +63,167 @@ def _read_manifest(context: ProjectContext) -> tuple[dict[str, Any] | None, str 
         return None, "manifest root must be a JSON object"
 
     return payload, None
+
+
+def _parse_module(path: Path) -> tuple[ast.Module | None, str | None]:
+    """Return (parsed_tree, None) on success, (None, error_msg) on failure.
+
+    Three states:
+    - (tree, None)  — parsed OK
+    - (None, msg)   — file could not be read or has a syntax error
+    - (None, None)  — file does not exist (caller should check before calling)
+    """
+    try:
+        source = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return None, str(exc)
+    try:
+        return ast.parse(source), None
+    except SyntaxError as exc:
+        return None, exc.msg or "syntax error"
+
+
+def _has_async_function(tree: ast.Module, name: str) -> bool:
+    """Return True if tree contains any AsyncFunctionDef with the given name.
+
+    Uses ast.walk so it finds the function at any nesting depth
+    (module-level or as a class method).
+    """
+    return any(
+        isinstance(node, ast.AsyncFunctionDef) and node.name == name
+        for node in ast.walk(tree)
+    )
+
+
+def config_flow_user_step_exists(context: ProjectContext) -> Finding:
+    """Check that config_flow.py defines async_step_user."""
+    # Guard: no integration directory
+    if context.integration_path is None:
+        return Finding(
+            rule_id="config_flow.user_step.exists",
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.RECOMMENDED,
+            title="config_flow.py defines async_step_user",
+            message="No integration directory was detected.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="custom_components/<domain>/ must exist before HassCheck can inspect config_flow.py.",
+            ),
+            source=RuleSource(url=USER_STEP_SOURCE),
+            fix=None,
+            path="custom_components/<domain>/config_flow.py",
+        )
+
+    config_flow_path = context.integration_path / "config_flow.py"
+
+    # Guard: applicability flag opts out
+    if context.applicability and context.applicability.uses_config_flow is False:
+        return Finding(
+            rule_id="config_flow.user_step.exists",
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.RECOMMENDED,
+            title="config_flow.py defines async_step_user",
+            message="Project config declares this integration does not use config flow UI setup.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="hasscheck.yaml declares uses_config_flow: false.",
+                source="config",
+            ),
+            source=RuleSource(url=USER_STEP_SOURCE),
+            fix=None,
+            path=_display_path(
+                config_flow_path, context, "custom_components/<domain>/config_flow.py"
+            ),
+        )
+
+    # Guard: config_flow.py does not exist
+    if not config_flow_path.is_file():
+        return Finding(
+            rule_id="config_flow.user_step.exists",
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.RECOMMENDED,
+            title="config_flow.py defines async_step_user",
+            message="config_flow.py does not exist; async_step_user presence cannot be checked.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="config_flow.py must exist before this rule can run.",
+            ),
+            source=RuleSource(url=USER_STEP_SOURCE),
+            fix=None,
+            path=_display_path(
+                config_flow_path, context, "custom_components/<domain>/config_flow.py"
+            ),
+        )
+
+    # Parse the file
+    tree, error = _parse_module(config_flow_path)
+
+    if error is not None:
+        return Finding(
+            rule_id="config_flow.user_step.exists",
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.WARN,
+            severity=RuleSeverity.RECOMMENDED,
+            title="config_flow.py defines async_step_user",
+            message=f"config_flow.py could not be parsed ({error}); async_step_user presence cannot be determined.",
+            applicability=Applicability(
+                reason="config_flow.py exists but has a syntax error."
+            ),
+            source=RuleSource(url=USER_STEP_SOURCE),
+            fix=FixSuggestion(summary="Fix syntax errors in config_flow.py."),
+            path=_display_path(
+                config_flow_path, context, "custom_components/<domain>/config_flow.py"
+            ),
+        )
+
+    # error is None here, so tree must be a parsed Module
+    assert tree is not None
+    if _has_async_function(tree, "async_step_user"):
+        return Finding(
+            rule_id="config_flow.user_step.exists",
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.PASS,
+            severity=RuleSeverity.RECOMMENDED,
+            title="config_flow.py defines async_step_user",
+            message="config_flow.py defines async_step_user.",
+            applicability=Applicability(
+                reason="async_step_user is the standard entry point for UI-driven config flow setup."
+            ),
+            source=RuleSource(url=USER_STEP_SOURCE),
+            fix=None,
+            path=_display_path(
+                config_flow_path, context, "custom_components/<domain>/config_flow.py"
+            ),
+        )
+
+    return Finding(
+        rule_id="config_flow.user_step.exists",
+        rule_version="1.0.0",
+        category=CATEGORY,
+        status=RuleStatus.WARN,
+        severity=RuleSeverity.RECOMMENDED,
+        title="config_flow.py defines async_step_user",
+        message="config_flow.py does not define async_step_user; users cannot start setup from the UI.",
+        applicability=Applicability(
+            reason="async_step_user is the standard entry point for UI-driven config flow setup."
+        ),
+        source=RuleSource(url=USER_STEP_SOURCE),
+        fix=FixSuggestion(
+            summary="Add async_step_user to your ConfigFlow class in config_flow.py.",
+            docs_url=USER_STEP_SOURCE,
+        ),
+        path=_display_path(
+            config_flow_path, context, "custom_components/<domain>/config_flow.py"
+        ),
+    )
 
 
 def config_flow_file_exists(context: ProjectContext) -> Finding:
@@ -302,7 +471,27 @@ def config_flow_manifest_flag_consistent(context: ProjectContext) -> Finding:
     )
 
 
+_USER_STEP_WHY = (
+    "async_step_user is the standard entry point for Home Assistant config flows "
+    "initiated by the user from the UI. Without it, users cannot set up this "
+    "integration from Settings → Devices & Services. "
+    "Note: this rule uses AST inspection and cannot detect async_step_user that is "
+    "defined only in a base class, mixin, or via dynamic attribute assignment — "
+    "those cases will produce a false WARN."
+)
+
 RULES = [
+    RuleDefinition(
+        id="config_flow.user_step.exists",
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title="config_flow.py defines async_step_user",
+        why=_USER_STEP_WHY,
+        source_url=USER_STEP_SOURCE,
+        check=config_flow_user_step_exists,
+        overridable=True,
+    ),
     RuleDefinition(
         id="config_flow.file.exists",
         version="1.0.0",

@@ -13,12 +13,9 @@ from __future__ import annotations
 from hasscheck.rules.registry import RULES
 
 # Canonical audit (from sdd/config-file-support/mixed-status-rule-audit):
-# 23 rules total (v0.8 PR2 adds 4 manifest metadata rules):
-#   - manifest.iot_class.exists (overridable=True, RECOMMENDED)
-#   - manifest.iot_class.valid (overridable=True, RECOMMENDED)
-#   - manifest.integration_type.exists (overridable=True, RECOMMENDED)
-#   - manifest.integration_type.valid (overridable=True, RECOMMENDED)
-# 11 locked overridable=False, 12 overridable=True.
+# 24 rules total (v0.8 PR3 adds 1 config_flow rule):
+#   - config_flow.user_step.exists (overridable=True, RECOMMENDED)
+# 11 locked overridable=False, 13 overridable=True.
 EXPECTED_LOCKED_RULE_IDS = {
     "hacs.custom_components.exists",
     "hacs.file.parseable",  # mixed-status: WARN missing, FAIL invalid JSON
@@ -35,6 +32,7 @@ EXPECTED_LOCKED_RULE_IDS = {
 
 EXPECTED_OVERRIDABLE_RULE_IDS = {
     "config_flow.file.exists",
+    "config_flow.user_step.exists",  # v0.8 PR3 — AST inspection (RECOMMENDED, overridable=True)
     "diagnostics.file.exists",
     "repairs.file.exists",
     "brand.icon.exists",
@@ -50,8 +48,8 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
 }
 
 
-def test_total_rule_count_is_twenty_three() -> None:
-    assert len(RULES) == 23, f"expected 23 rules, got {len(RULES)}"
+def test_total_rule_count_is_twenty_four() -> None:
+    assert len(RULES) == 24, f"expected 24 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:

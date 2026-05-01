@@ -50,3 +50,17 @@ def test_integration_type_exists_warns_on_bad_integration_fixture() -> None:
     """Fixture has no integration_type field — must WARN."""
     findings = _findings_by_id()
     assert findings["manifest.integration_type.exists"].status is RuleStatus.WARN
+
+
+# ---------------------------------------------------------------------------
+# PR3: config_flow.user_step.exists must WARN (fixture has async_step_setup,
+#       not async_step_user)
+# ---------------------------------------------------------------------------
+
+
+def test_config_flow_user_step_warns_on_bad_integration_fixture() -> None:
+    """Fixture config_flow.py defines async_step_setup but not async_step_user — must WARN."""
+    findings = _findings_by_id()
+    f = findings["config_flow.user_step.exists"]
+    assert f.status is RuleStatus.WARN
+    assert "async_step_user" in f.message
