@@ -272,3 +272,136 @@ def test_exit_code_zero_for_warn_only_findings() -> None:
     non_fail = all(f["status"] != "fail" for f in payload["findings"])
     assert non_fail
     assert result.exit_code == 0
+
+
+# ---------- publish --withdraw confirm guard (v0.8) ----------
+
+
+def test_publish_withdraw_confirm_yes(tmp_path, monkeypatch) -> None:
+    """User answers y → withdraw_report is called, exit 0."""
+    monkeypatch.setenv("HASSCHECK_OIDC_TOKEN", "tok")
+    called = {}
+
+    def fake_withdraw(**kw):
+        called.update(kw)
+
+    monkeypatch.setattr("hasscheck.cli.withdraw_report", fake_withdraw)
+    write_minimal_integration(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "publish",
+            "--path",
+            str(tmp_path),
+            "--withdraw",
+            "--report-id",
+            "rep_x",
+            "--slug",
+            "owner/repo",
+        ],
+        input="y\n",
+    )
+    assert result.exit_code == 0
+    assert called.get("report_id") == "rep_x"
+
+
+def test_publish_withdraw_confirm_no(tmp_path, monkeypatch) -> None:
+    """User answers n → withdraw_report NOT called, exit != 0."""
+    monkeypatch.setenv("HASSCHECK_OIDC_TOKEN", "tok")
+    called = {}
+
+    def fake_withdraw(**kw):
+        called.update(kw)
+
+    monkeypatch.setattr("hasscheck.cli.withdraw_report", fake_withdraw)
+    write_minimal_integration(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "publish",
+            "--path",
+            str(tmp_path),
+            "--withdraw",
+            "--report-id",
+            "rep_x",
+            "--slug",
+            "owner/repo",
+        ],
+        input="n\n",
+    )
+    assert result.exit_code != 0
+    assert not called
+
+
+def test_publish_withdraw_force_skips_prompt(tmp_path, monkeypatch) -> None:
+    """--force bypasses confirm prompt entirely."""
+    monkeypatch.setenv("HASSCHECK_OIDC_TOKEN", "tok")
+    called = {}
+
+    def fake_withdraw(**kw):
+        called.update(kw)
+
+    monkeypatch.setattr("hasscheck.cli.withdraw_report", fake_withdraw)
+    write_minimal_integration(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "publish",
+            "--path",
+            str(tmp_path),
+            "--withdraw",
+            "--report-id",
+            "rep_x",
+            "--slug",
+            "owner/repo",
+            "--force",
+        ],
+    )
+    assert result.exit_code == 0
+    assert called.get("report_id") == "rep_x"
+    assert "Withdraw" not in result.output
+
+
+def test_publish_withdraw_non_tty_aborts(tmp_path, monkeypatch) -> None:
+    """Empty stdin (non-TTY / CI without --force) → exit != 0, no withdraw call."""
+    monkeypatch.setenv("HASSCHECK_OIDC_TOKEN", "tok")
+    called = {}
+
+    def fake_withdraw(**kw):
+        called.update(kw)
+
+    monkeypatch.setattr("hasscheck.cli.withdraw_report", fake_withdraw)
+    write_minimal_integration(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "publish",
+            "--path",
+            str(tmp_path),
+            "--withdraw",
+            "--report-id",
+            "rep_x",
+            "--slug",
+            "owner/repo",
+        ],
+        input="",
+    )
+    assert result.exit_code != 0
+    assert not called
+    assert "Aborted" in result.output or "Aborted" in (result.stderr or "")
+
+
+def test_publish_help_contains_force_flag(tmp_path) -> None:
+    """--force is documented in publish help text."""
+    result = runner.invoke(app, ["publish", "--help"])
+    assert result.exit_code == 0
+    assert "--force" in result.output
+    assert (
+        "CI" in result.output
+        or "non-TTY" in result.output
+        or "skip" in result.output.lower()
+    )

@@ -251,6 +251,11 @@ def publish(
             "remote when omitted."
         ),
     ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Skip the withdraw confirmation prompt. Required in CI / non-TTY.",
+    ),
 ) -> None:
     """Opt-in upload of a HassCheck report to a hosted service.
 
@@ -302,6 +307,20 @@ def publish(
             raise typer.Exit(code=1)
         try:
             owner, repo = split_slug(resolved_slug)
+        except PublishError as exc:
+            typer.echo(f"hasscheck: error: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+        if not force:
+            target_desc = (
+                f"report {report_id}"
+                if report_id
+                else f"all reports for {owner}/{repo}"
+            )
+            typer.confirm(
+                f"Withdraw {target_desc} from {endpoint}? This is irreversible and cannot be undone.",
+                abort=True,
+            )
+        try:
             withdraw_report(
                 endpoint=endpoint,
                 oidc_token=token,
