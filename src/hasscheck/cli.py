@@ -10,7 +10,7 @@ from rich.console import Console
 from hasscheck import __version__
 from hasscheck.checker import run_check
 from hasscheck.config import ConfigError
-from hasscheck.models import HassCheckReport
+from hasscheck.models import HassCheckReport, RuleStatus
 from hasscheck.output import print_terminal_report, report_to_json, report_to_md
 from hasscheck.rules.registry import RULES_BY_ID
 from hasscheck.scaffold.cli import scaffold_app
@@ -99,6 +99,9 @@ def check(
         typer.echo(report_to_md(report), nl=False)
     else:
         print_terminal_report(report, console)
+
+    if any(f.status == RuleStatus.FAIL for f in report.findings):
+        raise typer.Exit(code=1)
 
 
 @app.command()

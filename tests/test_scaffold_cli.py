@@ -119,7 +119,7 @@ def test_check_command_shows_scaffold_hint_for_missing_workflow(
     # tmp_path has no .github/ directory so ci.github_actions.exists → WARN
     result = runner.invoke(app, ["check", "--path", str(tmp_path)])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "hasscheck scaffold github-action" in result.output
 
 
@@ -248,7 +248,7 @@ def test_check_command_shows_diagnostics_scaffold_hint(tmp_path: Path) -> None:
 
     result = runner.invoke(app, ["check", "--path", str(tmp_path)])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "hasscheck scaffold diagnostics" in result.output
 
 
@@ -376,5 +376,5 @@ def test_check_command_shows_repairs_scaffold_hint(tmp_path: Path) -> None:
 
     result = runner.invoke(app, ["check", "--path", str(tmp_path)])
 
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "hasscheck scaffold repairs" in result.output

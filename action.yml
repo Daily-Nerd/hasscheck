@@ -1,0 +1,73 @@
+name: HassCheck
+description: Check a Home Assistant custom integration repository for quality signals.
+author: Daily-Nerd
+
+inputs:
+  path:
+    description: Repository path to inspect.
+    default: '.'
+  no-config:
+    description: Ignore hasscheck.yaml if present.
+    default: 'false'
+  comment-pr:
+    description: Post findings as a PR comment. Requires github-token.
+    default: 'false'
+  github-token:
+    description: GitHub token for posting PR comments. Required when comment-pr is true.
+    default: ''
+
+outputs:
+  exit-code:
+    description: Exit code from hasscheck (0 = no failures, 1 = one or more FAIL findings).
+    value: ${{ steps.run.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install hasscheck
+      shell: bash
+      run: pip install "${{ github.action_path }}"
+
+    - name: Run hasscheck
+      id: run
+      shell: bash
+      run: |
+        set +e
+        ARGS=""
+        if [ "${{ inputs.no-config }}" = "true" ]; then
+          ARGS="--no-config"
+        fi
+        hasscheck check --path "${{ inputs.path }}" --format json $ARGS > hasscheck-report.json
+        echo "exit-code=$?" >> "$GITHUB_OUTPUT"
+
+    - name: Upload JSON report
+      uses: actions/upload-artifact@v4
+      with:
+        name: hasscheck-report
+        path: hasscheck-report.json
+
+    - name: Generate markdown report
+      if: inputs.comment-pr == 'true'
+      shell: bash
+      run: |
+        ARGS=""
+        if [ "${{ inputs.no-config }}" = "true" ]; then
+          ARGS="--no-config"
+        fi
+        hasscheck check --path "${{ inputs.path }}" --format md $ARGS > hasscheck-report.md || true
+
+    - name: Post PR comment
+      if: inputs.comment-pr == 'true' && inputs.github-token != '' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        gh pr comment "${{ github.event.pull_request.number }}" \
+          --body-file hasscheck-report.md \
+          --edit-last 2>/dev/null || \
+        gh pr comment "${{ github.event.pull_request.number }}" \
+          --body-file hasscheck-report.md
+
+    - name: Assert result
+      shell: bash
+      run: exit ${{ steps.run.outputs.exit-code }}
