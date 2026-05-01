@@ -87,3 +87,12 @@ def test_locked_set_and_overridable_set_partition_all_rules() -> None:
     all_ids = {rule.id for rule in RULES}
     assert all_ids == EXPECTED_LOCKED_RULE_IDS | EXPECTED_OVERRIDABLE_RULE_IDS
     assert not (EXPECTED_LOCKED_RULE_IDS & EXPECTED_OVERRIDABLE_RULE_IDS)
+
+
+def test_no_duplicate_rule_ids() -> None:
+    from hasscheck.rules.registry import RULES
+
+    ids = [rule.id for rule in RULES]
+    assert len(ids) == len(set(ids)), (
+        f"Duplicate rule IDs: {[id for id in ids if ids.count(id) > 1]}"
+    )

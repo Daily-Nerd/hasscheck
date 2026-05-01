@@ -106,7 +106,7 @@ def check(
 
 @app.command()
 def schema() -> None:
-    """Print the v0.1 JSON schema used by HassCheck reports."""
+    """Print the JSON schema for HassCheck reports."""
     typer.echo(json.dumps(HassCheckReport.model_json_schema(), indent=2))
 
 
