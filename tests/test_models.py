@@ -72,3 +72,50 @@ def test_report_summary_overrides_applied_default_is_empty_overrides_applied() -
     assert summary.overrides_applied == OverridesApplied()
     assert summary.overrides_applied.count == 0
     assert summary.overrides_applied.rule_ids == []
+
+
+# ---------- Phase 8.2: JSON contract — additive-only verification ----------
+
+def test_json_contract_v01_fields_still_present(tmp_path) -> None:
+    """All v0.1 JSON paths must exist in v0.2 output — no breaking changes."""
+    import json
+    from hasscheck.checker import run_check
+    from hasscheck.output import report_to_json
+
+    report = run_check(tmp_path)
+    payload = json.loads(report_to_json(report))
+
+    assert "schema_version" in payload
+    assert "tool" in payload
+    assert "name" in payload["tool"]
+    assert "version" in payload["tool"]
+    assert "project" in payload
+    assert "summary" in payload
+    assert "overall" in payload["summary"]
+    assert "security_review" in payload["summary"]
+    assert "official_ha_tier" in payload["summary"]
+    assert "hacs_acceptance" in payload["summary"]
+    assert "categories" in payload["summary"]
+    assert "findings" in payload
+    finding = payload["findings"][0]
+    assert "rule_id" in finding
+    assert "status" in finding
+    assert "applicability" in finding
+    assert "status" in finding["applicability"]
+    assert "reason" in finding["applicability"]
+
+
+def test_json_contract_v02_additive_fields_present(tmp_path) -> None:
+    """New v0.2 fields present without breaking v0.1 consumers."""
+    import json
+    from hasscheck.checker import run_check
+    from hasscheck.output import report_to_json
+
+    report = run_check(tmp_path)
+    payload = json.loads(report_to_json(report))
+
+    assert "overrides_applied" in payload["summary"]
+    assert "count" in payload["summary"]["overrides_applied"]
+    assert "rule_ids" in payload["summary"]["overrides_applied"]
+    finding = payload["findings"][0]
+    assert "source" in finding["applicability"]
