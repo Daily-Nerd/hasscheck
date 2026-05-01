@@ -24,7 +24,7 @@ inputs:
     required: false
     default: 'badges'
   emit-publish:
-    description: 'Publish the report to a hosted HassCheck service (opt-in). Set to "true" to enable. Requires `permissions: id-token: write` on the workflow.'
+    description: 'Publish the report to a hosted HassCheck service (opt-in). Set to "true" to enable. Requires `permissions: id-token: write` on the workflow. The hosted endpoint launches alongside the public release; until then, set `publish-endpoint` to a self-hosted URL or omit `emit-publish` entirely.'
     required: false
     default: 'false'
   publish-endpoint:
