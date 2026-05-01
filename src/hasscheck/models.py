@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from hasscheck import __version__
+
 SCHEMA_VERSION = "0.3.0"
 DEFAULT_RULESET_ID = "hasscheck-ha-2026.4"
 DEFAULT_SOURCE_CHECKED_AT = "2026-05-01"
@@ -135,7 +137,7 @@ class ProjectInfo(BaseModel):
 
 class ToolInfo(BaseModel):
     name: Literal["hasscheck"] = "hasscheck"
-    version: str = "0.3.0"
+    version: str = __version__
 
 
 class RulesetInfo(BaseModel):
