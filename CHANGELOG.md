@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-05-02
+
+### Added
+- **Integration test detection rules** in a new `src/hasscheck/rules/tests.py` module — heuristic static inspection (no pytest execution) detecting whether the integration's `tests/` folder covers config flow, setup entry, and unload paths (#108):
+  - `tests.config_flow.detected` — filename pattern `^test_config_flow.*\.py$` OR AST imports of `config_flow` OR function names like `test_config_flow_*` / `test_async_step_*`
+  - `tests.setup_entry.detected` — AST references to `async_setup_entry` / `async_unload_entry` OR function names like `test_setup_entry_*`
+  - `tests.unload.detected` — AST references to `async_unload_entry` OR function names like `test_unload_*` / `test_async_unload*`
+- **Maintenance signal rules** in a new `src/hasscheck/rules/maintenance.py` module — local git only, no GitHub API (#109):
+  - `maintenance.recent_commit.detected` — `git log -1 --format=%ct` HEAD timestamp; PASS within 12 months, WARN otherwise, NOT_APPLICABLE if no `.git/` or git not on PATH
+  - `maintenance.recent_release.detected` — most recent tag timestamp via `git for-each-ref refs/tags`; PASS within 12 months, WARN if older, NOT_APPLICABLE if no tags (unreleased ≠ abandoned)
+  - `maintenance.changelog.exists` — file presence at repo root for any of `CHANGELOG.md`, `CHANGELOG`, `HISTORY.md`, `HISTORY`, `RELEASES.md`, `NEWS.md`
+- **Auto-generated per-rule docs from `RuleDefinition` metadata** (#104):
+  - `src/hasscheck/docs_render.py` — renderer module (`render_page`, `write_page`, `render_all`, `check_drift`)
+  - `hasscheck docs-render` Typer subcommand with `--check` mode for CI drift detection
+  - `<!-- HANDWRITTEN BELOW THIS LINE -->` marker convention preserves user-written examples below the auto-section
+  - 41 new auto-generated pages cover every rule that previously sat in the index with "(no docs page yet)"; the 7 hand-written pages from v0.9 were migrated into the marker convention
+  - `tests/test_docs_rules_coverage.py` — parametrized meta-test asserting every registered rule has a `docs/rules/<rule_id>.md`, plus an orphan-page check for rules that were removed
+  - `.github/workflows/ci.yml` — drift check step that fails CI if a rule's metadata changed without regenerating docs
+- **Demo recording assets** in `docs/` (#105):
+  - `docs/demo.sh` — deterministic shell script copying `examples/bad_integration` to `mktemp -d` and running check → explain → scaffold dry-run → scaffold → re-check
+  - `docs/recording.md` — instructions for the asciinema rec + agg pipeline, acceptance criteria reminders, README embed snippet
+  - README "See it in action" placeholder for `docs/demo.gif` once it lands
+
+### Changed
+- Bumped `version` and `__version__` to `0.11.0`
+- `docs/rules/README.md` — all 41 `(no docs page yet)` rows replaced with real links; rule count header bumped to 48
+- `docs/demo.md` — leading callout linking to `demo.gif` and `recording.md`
+
+### Notes
+- `SCHEMA_VERSION` unchanged at `0.3.0` — v0.11 adds no new finding fields (additive only per ADR 0009)
+- `DEFAULT_RULESET_ID` unchanged at `hasscheck-ha-2026.5` — same ruleset cycle as v0.8 / v0.9 / v0.10 per ADR 0006
+- Rule count: 42 → **48** (+6 — three test detection + three maintenance signal)
+- Test count: 606 → **737** (+131 — 33 test-detection + 25 maintenance + 24 docs-renderer + 49 docs-coverage parametrized)
+- `_MAX_AGE_MONTHS = 12` for maintenance rules is hardcoded; **#117** tracks the per-rule settings infrastructure that will make it configurable via `hasscheck.yaml`
+- Demo `.cast` + `.gif` artifacts intentionally not in this release — they require an interactive PTY to record. Maintainer commits them as a follow-up
+
+[Compare v0.10.0...v0.11.0](https://github.com/Daily-Nerd/hasscheck/compare/v0.10.0...v0.11.0)
+
 ## [0.10.0] — 2026-05-01
 
 ### Added
@@ -256,7 +294,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Initial release](https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.1.0)
 
-[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.11.0
 [0.10.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.10.0
 [0.9.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.9.0
 [0.8.1]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.8.1
