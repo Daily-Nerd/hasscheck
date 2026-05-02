@@ -14,6 +14,9 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from packaging.requirements import InvalidRequirement, Requirement
+from packaging.utils import canonicalize_name
+
 from hasscheck.models import ReportTarget, ReportValidity
 
 
@@ -144,13 +147,27 @@ def _compute_manifest_hash(raw_bytes: bytes) -> str:
 
 
 def _compute_requirements_hash(requirements: list[str] | None) -> str | None:
-    """Compute SHA-256 of LF-joined sorted PEP 508 strings (D1).
+    """Compute SHA-256 of LF-joined sorted normalized PEP 508 strings.
 
-    Empty list or None → returns None (NOT a hash of empty string).
+    Normalization:
+    - Package name: lowercased, hyphens/underscores unified via canonicalize_name.
+    - Whitespace around specifiers: stripped by Requirement.__str__.
+    - Extras: normalized to lowercase, sorted (packaging behaviour).
+    - Invalid PEP 508 entries: used as-is (raw string fallback).
+
+    Empty list or None → returns None.
     """
     if not requirements:
         return None
-    joined = "\n".join(sorted(requirements))
+    normalized: list[str] = []
+    for req_str in requirements:
+        try:
+            req = Requirement(req_str)
+            req.name = canonicalize_name(req.name)
+            normalized.append(str(req))
+        except InvalidRequirement:
+            normalized.append(req_str)
+    joined = "\n".join(sorted(normalized))
     return hashlib.sha256(joined.encode("utf-8")).hexdigest()
 
 
