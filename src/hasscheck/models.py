@@ -35,7 +35,7 @@ class RuleSeverity(StrEnum):
     INFORMATIONAL = "informational"
 
 
-ApplicabilitySource = Literal["default", "detected", "config"]
+ApplicabilitySource = Literal["default", "detected", "config", "profile"]
 
 IntegrationVersionSource = Literal[
     "manifest",

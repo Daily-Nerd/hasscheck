@@ -84,16 +84,22 @@ class PublishConfig(BaseModel):
 _GATE_SUPPORTED_FROM = "0.6.0"
 _PRE_GATE_VERSIONS = {"0.2.0", "0.3.0", "0.4.0", "0.5.0"}
 
+_PROFILE_SUPPORTED_FROM = "0.7.0"
+_PRE_PROFILE_VERSIONS = {"0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0"}
+
 
 class HassCheckConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0"] = "0.6.0"
+    schema_version: Literal["0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0"] = (
+        "0.7.0"
+    )
     project: ProjectConfig | None = None
     applicability: ProjectApplicability | None = None
     rules: dict[str, RuleOverride] = Field(default_factory=dict)
     publish: PublishConfig | None = None
     gate: GateConfig | None = None
+    profile: str | None = None
 
     @model_validator(mode="after")
     def _schema_version_matches_fields(self) -> HassCheckConfig:
@@ -105,6 +111,11 @@ class HassCheckConfig(BaseModel):
             raise ValueError(
                 f"schema_version {self.schema_version!r} does not support the "
                 f"'gate' field; upgrade to {_GATE_SUPPORTED_FROM!r}"
+            )
+        if self.profile is not None and self.schema_version in _PRE_PROFILE_VERSIONS:
+            raise ValueError(
+                f"schema_version {self.schema_version!r} does not support the "
+                f"'profile' field; upgrade to {_PROFILE_SUPPORTED_FROM!r}"
             )
         return self
 
