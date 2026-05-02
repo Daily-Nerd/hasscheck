@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import UTC, datetime
 from pathlib import Path
 
 from hasscheck.config import HassCheckConfig, apply_overrides, discover_config
@@ -16,6 +17,7 @@ from hasscheck.models import (
 from hasscheck.provenance import detect_provenance
 from hasscheck.rules.registry import RULES
 from hasscheck.slug import detect_repo_slug
+from hasscheck.target import _read_manifest_version, build_validity, detect_target
 
 APPLICABILITY_FLAGS_BY_RULE = {
     "diagnostics.file.exists": "supports_diagnostics",
@@ -69,6 +71,11 @@ def run_check(
         applicability=config.applicability if config else None,
         rule_settings=rule_settings,
     )
+
+    now = datetime.now(UTC)
+    target = detect_target(root, context.integration_path, context.domain)
+    validity = build_validity(checked_at=now)
+
     findings = [rule.check(context) for rule in RULES]
 
     config_applicability_rule_ids = sorted(
@@ -113,6 +120,14 @@ def run_check(
         for category, points_possible in sorted(possible.items())
     ]
 
+    # Populate manifest_hash and requirements_hash for ProjectInfo
+    _manifest_hash: str | None = None
+    _requirements_hash: str | None = None
+    if context.integration_path is not None:
+        _, _manifest_hash, _requirements_hash = _read_manifest_version(
+            context.integration_path
+        )
+
     return HassCheckReport(
         project=ProjectInfo(
             path=str(root),
@@ -122,6 +137,12 @@ def run_check(
             if context.integration_path
             else None,
             repo_slug=detect_repo_slug(root, context.integration_path),
+            integration_version=target.integration_version if target else None,
+            integration_version_source=target.integration_version_source
+            if target
+            else "unknown",
+            manifest_hash=_manifest_hash,
+            requirements_hash=_requirements_hash,
         ),
         summary=ReportSummary(
             categories=categories,
@@ -129,5 +150,7 @@ def run_check(
             applicability_applied=applicability_applied,
         ),
         findings=findings,
-        provenance=detect_provenance(),
+        provenance=detect_provenance(now=now),
+        target=target,
+        validity=validity,
     )
