@@ -271,3 +271,41 @@ class TestCheckApplicabilityGate:
         result = check_applicability_gate(config, "repairs")
         assert result is not None
         assert "has_user_fixable_repairs" in result
+
+
+# ---------------------------------------------------------------------------
+# hasscheck.yaml template — gate block and schema version (#148)
+# ---------------------------------------------------------------------------
+
+
+class TestHasscheckYamlTemplate:
+    """Verify the scaffold template produces valid YAML and mentions all gate modes."""
+
+    def _load_raw_template(self) -> str:
+        from importlib.resources import files
+
+        return (
+            files("hasscheck.scaffold.templates")
+            .joinpath("hasscheck.yaml.tmpl")
+            .read_text(encoding="utf-8")
+        )
+
+    def test_scaffold_template_valid_yaml_without_gate_comment(self) -> None:
+        """Template with gate comment block stripped still parses as valid HassCheckConfig."""
+        import yaml
+
+        raw = self._load_raw_template()
+        # Strip comment-only lines to get pure YAML
+        lines = [ln for ln in raw.splitlines() if not ln.strip().startswith("#")]
+        stripped = "\n".join(lines)
+        parsed = yaml.safe_load(stripped)
+        if parsed is None:
+            parsed = {}
+        cfg = HassCheckConfig(**parsed)
+        assert cfg.gate is None
+
+    def test_scaffold_template_contains_all_four_modes(self) -> None:
+        """Raw template text must mention all four gate modes."""
+        raw = self._load_raw_template()
+        for mode in ("advisory", "strict-required", "hacs-publish", "upgrade-radar"):
+            assert mode in raw, f"Template missing gate mode: {mode}"

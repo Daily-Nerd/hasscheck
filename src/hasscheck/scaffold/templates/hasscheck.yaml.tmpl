@@ -2,7 +2,7 @@
 # Docs: https://github.com/Daily-Nerd/hasscheck#configuration
 # ADRs: docs/decisions/0001, 0003, 0004 (in the hasscheck repo)
 
-schema_version: "0.3.0"
+schema_version: "0.6.0"
 
 # Project applicability — declare only facts you are confident about.
 # Uncomment any flag below where you know the answer.
@@ -13,6 +13,17 @@ schema_version: "0.3.0"
 #   supports_diagnostics: false
 #   has_user_fixable_repairs: false
 #   uses_config_flow: true
+
+# Quality gate — controls when `hasscheck check` exits non-zero.
+# Uncomment one mode below and remove the others.
+#
+# gate:
+#   mode: advisory        # Never blocks CI; all findings are informational.
+#   mode: strict-required # Blocks on REQUIRED findings that are FAIL or WARN.
+#   mode: hacs-publish    # Blocks on REQUIRED or RECOMMENDED findings (FAIL/WARN).
+#   mode: upgrade-radar   # Blocks on version.* findings that are FAIL or WARN.
+#
+# Without this stanza the legacy behaviour applies: any FAIL exits non-zero.
 
 # Per-rule overrides — softens specific RECOMMENDED rules.
 # Cannot force a finding to "pass". Cannot soften REQUIRED rules.

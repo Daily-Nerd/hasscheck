@@ -21,8 +21,9 @@ def test_init_yaml_is_valid_hasscheck_config(tmp_path):
     init_project(tmp_path)
     parsed = yaml.safe_load((tmp_path / "hasscheck.yaml").read_text())
     config = HassCheckConfig(**parsed)
-    assert config.schema_version == "0.3.0"
+    assert config.schema_version == "0.6.0"
     assert config.rules == {}
+    assert config.gate is None
 
 
 def test_init_dry_run_does_not_write(tmp_path, capsys):
