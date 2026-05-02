@@ -358,6 +358,14 @@ Per-rule documentation pages with status behavior tables, fix instructions, and 
 | `tests.unload.detected` | `tests/` references `async_unload_entry` or unload test functions. |
 | `ci.github_actions.exists` | Repository has `.github/workflows/*.yml` or `.yaml`. |
 
+### Maintenance
+
+| Rule ID | Signal |
+| --- | --- |
+| `maintenance.recent_commit.detected` | HEAD commit is within the last 12 months (local git history). |
+| `maintenance.recent_release.detected` | Most recent version tag is within the last 12 months (local git tags). |
+| `maintenance.changelog.exists` | Repository has a changelog file (`CHANGELOG.md`, `HISTORY.md`, etc.). |
+
 ## JSON report contract
 
 JSON output includes:

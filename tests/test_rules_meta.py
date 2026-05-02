@@ -13,11 +13,11 @@ from __future__ import annotations
 from hasscheck.rules.registry import RULES
 
 # Canonical audit (from sdd/config-file-support/mixed-status-rule-audit):
-# 45 rules total (v0.11 issue #108 adds 3 integration test detection rules):
-#   - tests.config_flow.detected (overridable=True, RECOMMENDED)
-#   - tests.setup_entry.detected (overridable=True, RECOMMENDED)
-#   - tests.unload.detected (overridable=True, RECOMMENDED)
-# 12 locked overridable=False, 33 overridable=True.
+# 48 rules total (v0.11 issue #109 adds 3 maintenance signal rules):
+#   - maintenance.recent_commit.detected (overridable=True, RECOMMENDED)
+#   - maintenance.recent_release.detected (overridable=True, RECOMMENDED)
+#   - maintenance.changelog.exists (overridable=True, RECOMMENDED)
+# 12 locked overridable=False, 36 overridable=True.
 EXPECTED_LOCKED_RULE_IDS = {
     "hacs.custom_components.exists",
     "hacs.file.parseable",  # mixed-status: WARN missing, FAIL invalid JSON
@@ -73,11 +73,15 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
     "tests.config_flow.detected",
     "tests.setup_entry.detected",
     "tests.unload.detected",
+    # v0.11 issue #109 — maintenance signal rules (RECOMMENDED, overridable=True)
+    "maintenance.recent_commit.detected",
+    "maintenance.recent_release.detected",
+    "maintenance.changelog.exists",
 }
 
 
-def test_total_rule_count_is_forty_five() -> None:
-    assert len(RULES) == 45, f"expected 45 rules, got {len(RULES)}"
+def test_total_rule_count_is_forty_eight() -> None:
+    assert len(RULES) == 48, f"expected 48 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:
