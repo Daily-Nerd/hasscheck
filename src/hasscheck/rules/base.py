@@ -76,7 +76,7 @@ class RuleDefinition:
     title: str
     why: str
     source_url: str
-    check: Callable[[ProjectContext], Finding]
+    check: Callable[[ProjectContext], Finding] = field(hash=False, compare=False)
     overridable: bool
 
     # --- optional metadata (new — appended AFTER overridable) ---
