@@ -23,6 +23,11 @@ APPLICABILITY_FLAGS_BY_RULE = {
     "config_flow.file.exists": "uses_config_flow",
     "config_flow.manifest_flag_consistent": "uses_config_flow",
     "config_flow.user_step.exists": "uses_config_flow",
+    # v0.10 issue #101 — advanced config_flow rules
+    "config_flow.reauth_step.exists": "uses_config_flow",
+    "config_flow.reconfigure_step.exists": "uses_config_flow",
+    "config_flow.unique_id.set": "uses_config_flow",
+    "config_flow.connection_test": "uses_config_flow",
 }
 
 CATEGORY_LABELS = {

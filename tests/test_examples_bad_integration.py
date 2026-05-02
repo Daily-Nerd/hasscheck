@@ -144,3 +144,34 @@ def test_requirements_no_git_warns_on_bad_integration_fixture() -> None:
     f = findings["manifest.requirements.no_git_or_url_specs"]
     assert f.status is RuleStatus.WARN
     assert "git+https://github.com/example/lib.git" in f.message
+
+
+# ---------------------------------------------------------------------------
+# issue #101: config_flow advanced rules — bad fixture has async_step_setup
+# (no reauth, no reconfigure, no unique_id, no discovery-flow step)
+# All four must WARN.
+# ---------------------------------------------------------------------------
+
+
+def test_reauth_step_warns_on_bad_integration_fixture() -> None:
+    """Fixture config_flow.py has no reauth step — must WARN."""
+    findings = _findings_by_id()
+    assert findings["config_flow.reauth_step.exists"].status is RuleStatus.WARN
+
+
+def test_reconfigure_step_warns_on_bad_integration_fixture() -> None:
+    """Fixture config_flow.py has no reconfigure step — must WARN."""
+    findings = _findings_by_id()
+    assert findings["config_flow.reconfigure_step.exists"].status is RuleStatus.WARN
+
+
+def test_unique_id_set_warns_on_bad_integration_fixture() -> None:
+    """Fixture config_flow.py has no async_set_unique_id call — must WARN."""
+    findings = _findings_by_id()
+    assert findings["config_flow.unique_id.set"].status is RuleStatus.WARN
+
+
+def test_connection_test_warns_on_bad_integration_fixture() -> None:
+    """Fixture config_flow.py has no discovery-flow step — connection_test must WARN."""
+    findings = _findings_by_id()
+    assert findings["config_flow.connection_test"].status is RuleStatus.WARN
