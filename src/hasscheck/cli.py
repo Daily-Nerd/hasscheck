@@ -11,10 +11,10 @@ from hasscheck import __version__
 from hasscheck.badges import generate_badges
 from hasscheck.badges.policy import BadgePolicyError
 from hasscheck.checker import run_check
-from hasscheck.config import ConfigError, discover_config
+from hasscheck.config import ConfigError, GateConfig, GateMode, discover_config
 from hasscheck.docs_render import check_drift, render_all
 from hasscheck.init import init_project
-from hasscheck.models import HassCheckReport, RuleStatus
+from hasscheck.models import Finding, HassCheckReport, RuleSeverity, RuleStatus
 from hasscheck.output import print_terminal_report, report_to_json, report_to_md
 from hasscheck.publish import (
     PublishError,
@@ -46,6 +46,42 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 console = Console()
+
+
+def should_exit_nonzero(findings: list[Finding], gate: GateConfig | None) -> bool:
+    """Determine whether the CLI should exit non-zero based on findings and gate config.
+
+    When gate is None, uses legacy behavior: exits non-zero on any FAIL finding.
+    When gate is set, applies the gate mode policy to decide the exit signal.
+    The gate trigger threshold is ``status in {FAIL, WARN}`` for all named modes.
+
+    There is no ``case _`` in the match — a missing branch would be a bug, not a
+    runtime fallback. Python will raise ``ValueError`` on an unhandled StrEnum value.
+    """
+    if gate is None:
+        return any(f.status == RuleStatus.FAIL for f in findings)
+
+    triggered = {RuleStatus.FAIL, RuleStatus.WARN}
+    match gate.mode:
+        case GateMode.ADVISORY:
+            return False
+        case GateMode.STRICT_REQUIRED:
+            return any(
+                f.severity == RuleSeverity.REQUIRED and f.status in triggered
+                for f in findings
+            )
+        case GateMode.HACS_PUBLISH:
+            # TODO(hacs-tags): refine once rules carry tags=("hacs",)
+            return any(
+                f.severity in {RuleSeverity.REQUIRED, RuleSeverity.RECOMMENDED}
+                and f.status in triggered
+                for f in findings
+            )
+        case GateMode.UPGRADE_RADAR:
+            return any(
+                f.rule_id.startswith("version.") and f.status in triggered
+                for f in findings
+            )
 
 
 def version_callback(value: bool) -> None:
@@ -115,7 +151,14 @@ def check(
     else:
         print_terminal_report(report, console)
 
-    if any(f.status == RuleStatus.FAIL for f in report.findings):
+    # intentional: gate evaluated separately from run_check for clean separation
+    # between the report-production logic and the exit-code policy.
+    try:
+        cfg = discover_config(path.resolve()) if not no_config else None
+    except ConfigError:
+        cfg = None
+    _gate = cfg.gate if cfg else None
+    if should_exit_nonzero(report.findings, _gate):
         raise typer.Exit(code=1)
 
 

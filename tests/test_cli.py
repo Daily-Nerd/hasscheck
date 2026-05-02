@@ -1,10 +1,20 @@
 import json
 from pathlib import Path
 
+import pytest
 from typer.main import get_command
 from typer.testing import CliRunner
 
-from hasscheck.cli import app
+from hasscheck.cli import app, should_exit_nonzero
+from hasscheck.config import GateConfig, GateMode
+from hasscheck.models import (
+    Applicability,
+    ApplicabilityStatus,
+    Finding,
+    RuleSeverity,
+    RuleSource,
+    RuleStatus,
+)
 
 runner = CliRunner()
 
@@ -558,3 +568,164 @@ def test_publish_dry_run_flag_registered() -> None:
     publish_cmd = cmd.commands["publish"]
     dry_run_param = next((p for p in publish_cmd.params if p.name == "dry_run"), None)
     assert dry_run_param is not None, "publish must declare a --dry-run option"
+
+
+# ---------- Gate modes — pure function ----------
+
+
+def make_finding(
+    *,
+    rule_id: str = "manifest.domain.exists",
+    severity: RuleSeverity = RuleSeverity.REQUIRED,
+    status: RuleStatus = RuleStatus.FAIL,
+) -> Finding:
+    """Build a minimal Finding for gate-mode unit tests."""
+    app_status = (
+        ApplicabilityStatus.APPLICABLE
+        if status not in (RuleStatus.NOT_APPLICABLE, RuleStatus.MANUAL_REVIEW)
+        else ApplicabilityStatus.NOT_APPLICABLE
+    )
+    return Finding(
+        rule_id=rule_id,
+        rule_version="1.0.0",
+        category="test",
+        status=status,
+        severity=severity,
+        title="Test finding",
+        message="Test message",
+        applicability=Applicability(status=app_status, reason="test"),
+        source=RuleSource(url="https://example.com"),
+    )
+
+
+# Legacy behavior (gate=None)
+
+
+def test_should_exit_nonzero_legacy_fail_returns_true() -> None:
+    findings = [make_finding(status=RuleStatus.FAIL)]
+    assert should_exit_nonzero(findings, gate=None) is True
+
+
+def test_should_exit_nonzero_legacy_warn_returns_false() -> None:
+    findings = [make_finding(status=RuleStatus.WARN)]
+    assert should_exit_nonzero(findings, gate=None) is False
+
+
+def test_should_exit_nonzero_legacy_multiple_findings_any_fail() -> None:
+    findings = [
+        make_finding(status=RuleStatus.WARN),
+        make_finding(rule_id="other.rule", status=RuleStatus.FAIL),
+    ]
+    assert should_exit_nonzero(findings, gate=None) is True
+
+
+# Advisory mode
+
+
+@pytest.mark.parametrize("status", [RuleStatus.FAIL, RuleStatus.WARN])
+def test_should_exit_nonzero_advisory_always_false(status: RuleStatus) -> None:
+    gate = GateConfig(mode=GateMode.ADVISORY)
+    findings = [make_finding(status=status)]
+    assert should_exit_nonzero(findings, gate=gate) is False
+
+
+# Strict-required mode
+
+
+@pytest.mark.parametrize(
+    "severity,status,expected",
+    [
+        (RuleSeverity.REQUIRED, RuleStatus.FAIL, True),
+        (RuleSeverity.REQUIRED, RuleStatus.WARN, True),
+        (RuleSeverity.REQUIRED, RuleStatus.PASS, False),
+        (RuleSeverity.RECOMMENDED, RuleStatus.FAIL, False),
+        (RuleSeverity.INFORMATIONAL, RuleStatus.FAIL, False),
+    ],
+)
+def test_should_exit_nonzero_strict_required(
+    severity: RuleSeverity, status: RuleStatus, expected: bool
+) -> None:
+    gate = GateConfig(mode=GateMode.STRICT_REQUIRED)
+    findings = [make_finding(severity=severity, status=status)]
+    assert should_exit_nonzero(findings, gate=gate) is expected
+
+
+# HACS-publish mode
+
+
+@pytest.mark.parametrize(
+    "severity,status,expected",
+    [
+        (RuleSeverity.REQUIRED, RuleStatus.FAIL, True),
+        (RuleSeverity.REQUIRED, RuleStatus.WARN, True),
+        (RuleSeverity.RECOMMENDED, RuleStatus.FAIL, True),
+        (RuleSeverity.RECOMMENDED, RuleStatus.WARN, True),
+        (RuleSeverity.INFORMATIONAL, RuleStatus.FAIL, False),
+    ],
+)
+def test_should_exit_nonzero_hacs_publish(
+    severity: RuleSeverity, status: RuleStatus, expected: bool
+) -> None:
+    gate = GateConfig(mode=GateMode.HACS_PUBLISH)
+    findings = [make_finding(severity=severity, status=status)]
+    assert should_exit_nonzero(findings, gate=gate) is expected
+
+
+# Upgrade-radar mode
+
+
+@pytest.mark.parametrize(
+    "rule_id,status,expected",
+    [
+        ("version.foo", RuleStatus.WARN, True),
+        ("version.bar", RuleStatus.FAIL, True),
+        ("manifest.domain", RuleStatus.FAIL, False),
+    ],
+)
+def test_should_exit_nonzero_upgrade_radar(
+    rule_id: str, status: RuleStatus, expected: bool
+) -> None:
+    gate = GateConfig(mode=GateMode.UPGRADE_RADAR)
+    findings = [make_finding(rule_id=rule_id, status=status)]
+    assert should_exit_nonzero(findings, gate=gate) is expected
+
+
+# Boundary cases
+
+
+@pytest.mark.parametrize(
+    "gate",
+    [
+        None,
+        GateConfig(mode=GateMode.ADVISORY),
+        GateConfig(mode=GateMode.STRICT_REQUIRED),
+        GateConfig(mode=GateMode.HACS_PUBLISH),
+        GateConfig(mode=GateMode.UPGRADE_RADAR),
+    ],
+)
+def test_should_exit_nonzero_empty_findings_all_modes(
+    gate: GateConfig | None,
+) -> None:
+    assert should_exit_nonzero([], gate=gate) is False
+
+
+@pytest.mark.parametrize(
+    "gate",
+    [
+        None,
+        GateConfig(mode=GateMode.ADVISORY),
+        GateConfig(mode=GateMode.STRICT_REQUIRED),
+        GateConfig(mode=GateMode.HACS_PUBLISH),
+        GateConfig(mode=GateMode.UPGRADE_RADAR),
+    ],
+)
+def test_should_exit_nonzero_all_pass_findings(gate: GateConfig | None) -> None:
+    findings = [
+        make_finding(severity=RuleSeverity.REQUIRED, status=RuleStatus.PASS),
+        make_finding(
+            rule_id="other.rule",
+            severity=RuleSeverity.RECOMMENDED,
+            status=RuleStatus.PASS,
+        ),
+    ]
+    assert should_exit_nonzero(findings, gate=gate) is False
