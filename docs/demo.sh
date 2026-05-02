@@ -69,7 +69,10 @@ typed uv run hasscheck explain manifest.domain.matches_directory
 typed uv run hasscheck scaffold diagnostics --path "${DEMO_DIR}" --dry-run
 
 # 4. Apply the scaffold and re-check to show movement.
-typed uv run hasscheck scaffold diagnostics --path "${DEMO_DIR}"
+# --force: bad_integration fixture ships an intentionally-unsafe diagnostics.py
+# to demonstrate the diagnostics.redaction.used WARN. The scaffold rewrites it
+# with a redacted variant.
+typed uv run hasscheck scaffold diagnostics --path "${DEMO_DIR}" --force
 typed uv run hasscheck check --path "${DEMO_DIR}"
 
 printf '%s\n' ''
