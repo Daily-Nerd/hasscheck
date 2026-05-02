@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from enum import StrEnum
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -119,6 +120,18 @@ def check(
         "--no-config",
         help="Ignore hasscheck.yaml even if present (useful for CI debugging).",
     ),
+    profile: Annotated[
+        str | None,
+        typer.Option(
+            "--profile",
+            "-P",
+            help=(
+                "Apply a built-in quality profile: cloud-service, local-device, "
+                "hub, helper, read-only-sensor, core-submission-candidate. "
+                "Wins over `profile:` in hasscheck.yaml."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """Check a custom integration repository and print actionable findings.
 
@@ -130,6 +143,7 @@ def check(
       hasscheck check --path . --format json
       hasscheck check --path . --format md
       hasscheck check --path . --no-config
+      hasscheck check --path . --profile cloud-service
     """
     if not path.exists():
         console.print(f"[red]Error:[/] Path '{path}' does not exist.")
@@ -138,9 +152,24 @@ def check(
         )
         raise typer.Exit(code=1)
 
+    # Hoist discover_config to resolve effective_profile before run_check.
+    # D5: CLI --profile wins over config profile:.
     try:
-        report = run_check(path, no_config=no_config)
+        cfg = discover_config(path.resolve()) if not no_config else None
     except ConfigError as exc:
+        typer.echo(f"hasscheck: error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    effective_profile = profile or (cfg.profile if cfg else None)
+
+    try:
+        report = run_check(
+            path,
+            config=cfg,
+            no_config=no_config,
+            profile_name=effective_profile,
+        )
+    except (ConfigError, ValueError) as exc:
         typer.echo(f"hasscheck: error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
@@ -151,12 +180,6 @@ def check(
     else:
         print_terminal_report(report, console)
 
-    # intentional: gate evaluated separately from run_check for clean separation
-    # between the report-production logic and the exit-code policy.
-    try:
-        cfg = discover_config(path.resolve()) if not no_config else None
-    except ConfigError:
-        cfg = None
     _gate = cfg.gate if cfg else None
     if should_exit_nonzero(report.findings, _gate):
         raise typer.Exit(code=1)

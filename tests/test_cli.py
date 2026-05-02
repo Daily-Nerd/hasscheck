@@ -788,3 +788,71 @@ def test_check_legacy_no_gate_stanza_no_fail_exits_zero(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert all(f["status"] != "fail" for f in payload["findings"])
     assert result.exit_code == 0
+
+
+# ---------- Phase 6: --profile flag (#146) ----------
+
+
+def test_check_profile_flag_accepted(tmp_path: Path) -> None:
+    """--profile cloud-service is accepted and runs without error (exit depends on findings)."""
+    result = runner.invoke(
+        app,
+        [
+            "check",
+            "--path",
+            str(tmp_path),
+            "--profile",
+            "cloud-service",
+            "--format",
+            "json",
+        ],
+    )
+    # exit code can be 0 or 1 (findings); what matters is not 2 (usage error)
+    assert result.exit_code in (0, 1), (
+        f"Unexpected exit code: {result.exit_code}\n{result.output}"
+    )
+    # output is valid JSON
+    payload = json.loads(result.stdout)
+    findings_by_id = {f["rule_id"]: f for f in payload["findings"]}
+    # cloud-service boosts config_flow.reauth_step.exists to required
+    assert findings_by_id["config_flow.reauth_step.exists"]["severity"] == "required", (
+        "cloud-service profile should boost config_flow.reauth_step.exists to required"
+    )
+
+
+def test_check_profile_flag_wins_over_config(tmp_path: Path) -> None:
+    """CLI --profile overrides profile: in hasscheck.yaml."""
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.7.0'\nprofile: helper\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(
+        app,
+        [
+            "check",
+            "--path",
+            str(tmp_path),
+            "--profile",
+            "cloud-service",
+            "--format",
+            "json",
+        ],
+    )
+    assert result.exit_code in (0, 1)
+    payload = json.loads(result.stdout)
+    findings_by_id = {f["rule_id"]: f for f in payload["findings"]}
+    # cloud-service boosts diagnostics.redaction.used (helper does not)
+    assert findings_by_id["diagnostics.redaction.used"]["severity"] == "required", (
+        "CLI --profile cloud-service should win over config profile: helper"
+    )
+
+
+def test_check_unknown_profile_exits_nonzero_with_error_message(tmp_path: Path) -> None:
+    """--profile unknown-profile exits 1 and prints 'Unknown profile' to stderr."""
+    result = runner.invoke(
+        app,
+        ["check", "--path", str(tmp_path), "--profile", "unknown-bogus-profile"],
+    )
+    assert result.exit_code == 1
+    combined_output = (result.output or "") + (result.stderr or "")
+    assert "Unknown profile" in combined_output or "unknown" in combined_output.lower()
