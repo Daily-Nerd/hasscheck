@@ -6,6 +6,18 @@ import ast
 from pathlib import Path
 
 
+def has_async_function(tree: ast.Module, name: str) -> bool:
+    """Return True if tree contains any AsyncFunctionDef with the given name.
+
+    Uses ast.walk so it finds the function at any nesting depth
+    (module-level or as a class method).
+    """
+    return any(
+        isinstance(node, ast.AsyncFunctionDef) and node.name == name
+        for node in ast.walk(tree)
+    )
+
+
 def parse_module(path: Path) -> tuple[ast.Module | None, str | None]:
     """Parse a Python file with the standard library AST module.
 
