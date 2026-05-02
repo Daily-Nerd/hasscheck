@@ -195,7 +195,7 @@ def matches_release_tag_check(context: ProjectContext) -> Finding:
         rule_id=_TAG_RULE_ID,
         rule_version="1.0.0",
         category=CATEGORY,
-        status=RuleStatus.PASS if matches else RuleStatus.WARN,
+        status=RuleStatus.PASS if matches else RuleStatus.FAIL,
         severity=RuleSeverity.RECOMMENDED,
         title=_TAG_TITLE,
         message=(

@@ -254,10 +254,10 @@ def test_matches_release_tag_passes_when_release_tag_set(
     assert finding.status == RuleStatus.PASS
 
 
-def test_matches_release_tag_warns_when_versions_differ(
+def test_matches_release_tag_fails_when_versions_differ(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """tag='1.2.3', version='1.2.4' → WARN with FixSuggestion."""
+    """tag='1.2.3', version='1.2.4' → FAIL with FixSuggestion."""
     from hasscheck.models import RuleStatus
     from hasscheck.rules.version_identity import matches_release_tag_check
 
@@ -268,7 +268,7 @@ def test_matches_release_tag_warns_when_versions_differ(
         integration_version_source="git_tag",
     )
     finding = matches_release_tag_check(ctx)  # type: ignore[arg-type]
-    assert finding.status == RuleStatus.WARN
+    assert finding.status == RuleStatus.FAIL
     assert finding.fix is not None
 
 
