@@ -25,6 +25,22 @@ HassCheck turns scattered Home Assistant and HACS expectations into local checks
 
 HassCheck starts as a local CLI. Public badges, hosted reports, and any future hub should be opt-in only.
 
+## Quick Start
+
+```bash
+pip install hasscheck
+hasscheck --version
+hasscheck check --path /path/to/your/integration
+```
+
+HassCheck runs **locally** — it does not publish anything unless you explicitly opt in with `hasscheck publish` or `emit-publish: 'true'` in CI.
+
+To understand a specific finding:
+
+```bash
+hasscheck explain manifest.domain.exists
+```
+
 ## See it in action
 
 HassCheck is designed to produce concrete next steps, not a vague score.
@@ -52,18 +68,17 @@ HassCheck is intentionally not a replacement for hassfest and does not assign Ho
 
 ## Current status
 
-**Current package version**: v0.12.0 — alpha.
+**Current package version**: v0.13.0 — beta.
 
-The CLI, GitHub Action, JSON report contract, rule docs, local badge generation, opt-in publishing flow, and per-rule settings are all shipped. 52 rules across HACS structure, manifest metadata, modern HA patterns, diagnostics, docs, tests/CI, and maintenance. Auto-generated per-rule docs page for every registered rule.
+The CLI, GitHub Action, JSON report contract, rule docs, local badge generation, opt-in publishing flow, per-rule settings, report provenance block, and publish `--dry-run` are all shipped. 52 rules across HACS structure, manifest metadata, modern HA patterns, diagnostics, docs, tests/CI, and maintenance. Auto-generated per-rule docs page for every registered rule. Published to PyPI.
 
 The hub at [hasscheck.io](https://hasscheck.io) is operational and accepts opt-in published reports via GitHub OIDC.
 
 **Current development focus**:
 
-- Verified report provenance display on the hub
-- Hub-verified badges (#67) — replaces self-reported committed badge JSON
-- Upgrade Radar status taxonomy for v1.0 (#132)
-- PyPI trusted publishing (#15) once release discipline is ready
+- hasscheck-web: accept `schema_version` `0.4.0`, set `provenance.verified_by` at OIDC ingest
+- Upgrade Radar card on hub (v1.0 — uses ADR 0011 taxonomy)
+- Hub-verified badge endpoint (replaces self-reported committed badge JSON)
 
 ## GitHub Action
 
@@ -82,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Daily-Nerd/hasscheck@v0.12.0
+      - uses: Daily-Nerd/hasscheck@v0.13.0
         with:
           comment-pr: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -140,7 +155,7 @@ This writes per-category JSON files and a `manifest.json` to `badges/`. Commit t
 Add `emit-badges: 'true'` to your HassCheck action step:
 
 ```yaml
-- uses: Daily-Nerd/hasscheck@v0.12.0
+- uses: Daily-Nerd/hasscheck@v0.13.0
   with:
     emit-badges: 'true'
     badges-out-dir: 'badges'
@@ -256,7 +271,7 @@ The file supports two separate kinds of user intent:
 
 ```yaml
 # hasscheck.yaml
-schema_version: "0.3.0"
+schema_version: "0.4.0"
 
 applicability:
   supports_diagnostics: false
@@ -482,7 +497,7 @@ git push origin vX.Y.Z
 
 Pushing a tag that matches `v*.*.*` triggers the release workflow. The workflow creates a GitHub Release for that tag with generated notes and a source-only artifact notice.
 
-This workflow does **not** publish to PyPI and does **not** attach built package artifacts. PyPI publishing is a separate release step.
+Pushing the tag also triggers the `pypi-publish` job, which builds the package and publishes it to PyPI via GitHub OIDC trusted publishing (no stored tokens required).
 
 ## Non-goals
 
