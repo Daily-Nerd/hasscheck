@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Literal
 if TYPE_CHECKING:
     from hasscheck.config import ProjectApplicability
 
-from hasscheck.models import Finding, RuleSeverity, RuleSource
+from hasscheck.models import Finding, IntegrationVersionSource, RuleSeverity, RuleSource
 
 
 @dataclass(frozen=True)
@@ -18,6 +18,11 @@ class ProjectContext:
     domain: str | None
     applicability: ProjectApplicability | None = None
     rule_settings: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # NEW — version identity fields (issue #142)
+    integration_version: str | None = None
+    integration_version_source: IntegrationVersionSource = "unknown"
+    integration_release_tag: str | None = None
+    commit_sha: str | None = None
 
 
 def get_rule_setting(

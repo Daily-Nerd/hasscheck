@@ -83,11 +83,15 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
     "docs.supported_devices.exists",
     "docs.limitations.exists",
     "docs.hacs_instructions.exists",
+    # v0.14.1 issue #142 — version identity rules (RECOMMENDED, overridable=True)
+    "version.identity.present",
+    "version.manifest.resolvable",
+    "version.matches.release_tag",
 }
 
 
-def test_total_rule_count_is_fifty_two() -> None:
-    assert len(RULES) == 52, f"expected 52 rules, got {len(RULES)}"
+def test_total_rule_count_is_fifty_five() -> None:
+    assert len(RULES) == 55, f"expected 55 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:

@@ -46,10 +46,14 @@ def detect_target(
         integration_version: str | None = None
         integration_version_source = "unknown"
         integration_release_tag: str | None = None
+        manifest_hash: str | None = None
+        requirements_hash: str | None = None
 
         # --- Step 1: manifest.json ---
         if integration_path is not None:
-            version, _m_hash, _r_hash = _read_manifest_version(integration_path)
+            version, manifest_hash, requirements_hash = read_manifest_version(
+                integration_path
+            )
             if version is not None:
                 integration_version = version
                 integration_version_source = "manifest"
@@ -86,6 +90,8 @@ def detect_target(
             ha_version=None,  # D12: always None in this PR
             python_version=python_version,
             check_mode="static",
+            manifest_hash=manifest_hash,
+            requirements_hash=requirements_hash,
         )
     except Exception:  # noqa: BLE001
         # detect_target MUST NEVER raise
@@ -111,7 +117,7 @@ def build_validity(checked_at: datetime) -> ReportValidity:
 # ---------------------------------------------------------------------------
 
 
-def _read_manifest_version(
+def read_manifest_version(
     integration_path: Path,
 ) -> tuple[str | None, str | None, str | None]:
     """Read version, manifest_hash, and requirements_hash from manifest.json.
@@ -178,6 +184,33 @@ def _github_release_tag() -> str | None:
     if ref.startswith("refs/tags/"):
         return ref[len("refs/tags/") :]
     return None
+
+
+def _latest_version_tag(root: Path) -> str | None:
+    """Return the most-recent git tag name reachable from HEAD, or None.
+
+    Uses ``git describe --tags --abbrev=0`` (ADR-0003). Returns None on:
+      - no .git directory
+      - git binary missing
+      - no tags
+      - subprocess timeout / OSError / SubprocessError
+    """
+    if not (root / ".git").exists():
+        return None
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "describe", "--tags", "--abbrev=0"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5.0,
+        )
+        if result.returncode != 0:
+            return None
+        tag = result.stdout.strip()
+        return tag if tag else None
+    except (subprocess.SubprocessError, FileNotFoundError, OSError):
+        return None
 
 
 def _hacs_metadata_version() -> None:
