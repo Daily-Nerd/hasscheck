@@ -94,9 +94,9 @@ def test_run_check_no_yaml_overrides_applied_is_empty(tmp_path) -> None:
     assert report.summary.overrides_applied.rule_ids == []
 
 
-def test_run_check_schema_version_is_0_3_0(tmp_path) -> None:
+def test_run_check_schema_version_is_0_4_0(tmp_path) -> None:
     report = run_check(tmp_path)
-    assert report.schema_version == "0.3.0"
+    assert report.schema_version == "0.4.0"
 
 
 # ---------- v0.8: Ruleset ID bump ----------
@@ -106,3 +106,24 @@ def test_default_ruleset_id_is_hasscheck_ha_2026_5() -> None:
     from hasscheck.models import DEFAULT_RULESET_ID
 
     assert DEFAULT_RULESET_ID == "hasscheck-ha-2026.5"
+
+
+# ---------- v0.13: Provenance block (#130) ----------
+
+
+def test_run_check_report_provenance_key_present(tmp_path) -> None:
+    """Round-trip: run_check → to_json_dict → parse → 'provenance' key present."""
+    import json
+
+    report = run_check(tmp_path)
+    raw = report.to_json_dict()
+    reparsed = json.loads(json.dumps(raw))
+
+    assert "provenance" in reparsed
+    assert reparsed["schema_version"] == "0.4.0"
+
+
+def test_run_check_report_provenance_is_not_none(tmp_path) -> None:
+    """run_check() populates provenance on the returned report."""
+    report = run_check(tmp_path)
+    assert report.provenance is not None

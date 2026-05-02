@@ -49,7 +49,7 @@ class PublishConfig(BaseModel):
 class HassCheckConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["0.2.0", "0.3.0"] = "0.3.0"
+    schema_version: Literal["0.2.0", "0.3.0", "0.4.0"] = "0.4.0"
     project: ProjectConfig | None = None
     applicability: ProjectApplicability | None = None
     rules: dict[str, RuleOverride] = Field(default_factory=dict)
