@@ -196,3 +196,33 @@ def test_init_runtime_data_warns_on_bad_integration_fixture() -> None:
     findings = _findings_by_id()
     f = findings["init.runtime_data.used"]
     assert f.status is RuleStatus.WARN
+
+
+# ---------------------------------------------------------------------------
+# issue #102: four more README content rules — bad_integration README is
+# sparse and lacks all four sections → all four must WARN.
+# ---------------------------------------------------------------------------
+
+
+def test_examples_section_warns_on_bad_integration_fixture() -> None:
+    """bad_integration README has no Examples/Usage section — docs.examples.exists must WARN."""
+    findings = _findings_by_id()
+    assert findings["docs.examples.exists"].status is RuleStatus.WARN
+
+
+def test_supported_devices_section_warns_on_bad_integration_fixture() -> None:
+    """bad_integration README has no Supported Devices section — must WARN."""
+    findings = _findings_by_id()
+    assert findings["docs.supported_devices.exists"].status is RuleStatus.WARN
+
+
+def test_limitations_section_warns_on_bad_integration_fixture() -> None:
+    """bad_integration README has no Limitations section — must WARN."""
+    findings = _findings_by_id()
+    assert findings["docs.limitations.exists"].status is RuleStatus.WARN
+
+
+def test_hacs_instructions_section_warns_on_bad_integration_fixture() -> None:
+    """bad_integration README has no HACS section — docs.hacs_instructions.exists must WARN."""
+    findings = _findings_by_id()
+    assert findings["docs.hacs_instructions.exists"].status is RuleStatus.WARN

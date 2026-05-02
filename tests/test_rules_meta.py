@@ -13,11 +13,12 @@ from __future__ import annotations
 from hasscheck.rules.registry import RULES
 
 # Canonical audit (from sdd/config-file-support/mixed-status-rule-audit):
-# 48 rules total (v0.11 issue #109 adds 3 maintenance signal rules):
-#   - maintenance.recent_commit.detected (overridable=True, RECOMMENDED)
-#   - maintenance.recent_release.detected (overridable=True, RECOMMENDED)
-#   - maintenance.changelog.exists (overridable=True, RECOMMENDED)
-# 12 locked overridable=False, 36 overridable=True.
+# 52 rules total (v0.12 issue #102 adds 4 more README content rules):
+#   - docs.examples.exists (overridable=True, RECOMMENDED)
+#   - docs.supported_devices.exists (overridable=True, RECOMMENDED)
+#   - docs.limitations.exists (overridable=True, RECOMMENDED)
+#   - docs.hacs_instructions.exists (overridable=True, RECOMMENDED)
+# 12 locked overridable=False, 40 overridable=True.
 EXPECTED_LOCKED_RULE_IDS = {
     "hacs.custom_components.exists",
     "hacs.file.parseable",  # mixed-status: WARN missing, FAIL invalid JSON
@@ -77,11 +78,16 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
     "maintenance.recent_commit.detected",
     "maintenance.recent_release.detected",
     "maintenance.changelog.exists",
+    # v0.12 issue #102 — four more README content checks (RECOMMENDED, overridable=True)
+    "docs.examples.exists",
+    "docs.supported_devices.exists",
+    "docs.limitations.exists",
+    "docs.hacs_instructions.exists",
 }
 
 
-def test_total_rule_count_is_forty_eight() -> None:
-    assert len(RULES) == 48, f"expected 48 rules, got {len(RULES)}"
+def test_total_rule_count_is_fifty_two() -> None:
+    assert len(RULES) == 52, f"expected 52 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:

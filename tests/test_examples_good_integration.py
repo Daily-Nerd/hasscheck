@@ -46,3 +46,28 @@ def test_removal_passes_on_good_integration_fixture() -> None:
 def test_privacy_passes_on_good_integration_fixture() -> None:
     findings = _findings_by_id()
     assert findings["docs.privacy.exists"].status is RuleStatus.PASS
+
+
+# ---------------------------------------------------------------------------
+# issue #102 — four more README content rules pass on good_integration fixture
+# ---------------------------------------------------------------------------
+
+
+def test_examples_passes_on_good_integration_fixture() -> None:
+    findings = _findings_by_id()
+    assert findings["docs.examples.exists"].status is RuleStatus.PASS
+
+
+def test_supported_devices_passes_on_good_integration_fixture() -> None:
+    findings = _findings_by_id()
+    assert findings["docs.supported_devices.exists"].status is RuleStatus.PASS
+
+
+def test_limitations_passes_on_good_integration_fixture() -> None:
+    findings = _findings_by_id()
+    assert findings["docs.limitations.exists"].status is RuleStatus.PASS
+
+
+def test_hacs_instructions_passes_on_good_integration_fixture() -> None:
+    findings = _findings_by_id()
+    assert findings["docs.hacs_instructions.exists"].status is RuleStatus.PASS

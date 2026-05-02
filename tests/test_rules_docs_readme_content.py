@@ -243,7 +243,7 @@ from hasscheck.models import RuleSeverity  # noqa: E402
 from hasscheck.rules.docs_readme import RULES as DOCS_README_RULES  # noqa: E402
 
 
-def test_all_five_rules_registered():
+def test_all_nine_rules_registered():
     rule_ids = {r.id for r in DOCS_README_RULES}
     expected = {
         "docs.installation.exists",
@@ -251,11 +251,15 @@ def test_all_five_rules_registered():
         "docs.troubleshooting.exists",
         "docs.removal.exists",
         "docs.privacy.exists",
+        "docs.examples.exists",
+        "docs.supported_devices.exists",
+        "docs.limitations.exists",
+        "docs.hacs_instructions.exists",
     }
     assert rule_ids == expected
 
 
-def test_all_five_rules_are_recommended_and_overridable():
+def test_all_nine_rules_are_recommended_and_overridable():
     for rule in DOCS_README_RULES:
         assert rule.severity is RuleSeverity.RECOMMENDED, (
             f"{rule.id} should be RECOMMENDED"

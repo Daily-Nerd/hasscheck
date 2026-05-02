@@ -212,6 +212,16 @@ def _required_readme_section_rule(
 _INSTALLATION_KEYWORDS: frozenset[str] = frozenset(
     {"installation", "install", "hacs", "manual installation", "manual install"}
 )
+_EXAMPLES_KEYWORDS: frozenset[str] = frozenset({"examples", "example", "usage", "demo"})
+_SUPPORTED_DEVICES_KEYWORDS: frozenset[str] = frozenset(
+    {"supported", "devices", "services", "hardware", "compatibility", "models"}
+)
+_LIMITATIONS_KEYWORDS: frozenset[str] = frozenset(
+    {"limitations", "caveats", "known limitations", "restrictions"}
+)
+_HACS_INSTRUCTIONS_KEYWORDS: frozenset[str] = frozenset(
+    {"hacs", "custom repository", "hacs install"}
+)
 _CONFIGURATION_KEYWORDS: frozenset[str] = frozenset(
     {"configuration", "configure", "setup", "options"}
 )
@@ -300,6 +310,67 @@ docs_privacy_exists = _required_readme_section_rule(
     ),
 )
 
+docs_examples_exists = _required_readme_section_rule(
+    rule_id="docs.examples.exists",
+    title="README examples or usage section",
+    why=(
+        "An Examples or Usage section helps integration users understand how the "
+        "integration is intended to be used. HassCheck looks for a recognizable "
+        "section heading; prose-only matches are deliberately not supported in v1. "
+        f"Source: {_DOCS_SOURCE_URL} (verified {_SOURCE_CHECKED_AT})."
+    ),
+    keywords=_EXAMPLES_KEYWORDS,
+    fix_summary=(
+        "Add an Examples or Usage section to README.md showing typical usage patterns."
+    ),
+)
+
+docs_supported_devices_exists = _required_readme_section_rule(
+    rule_id="docs.supported_devices.exists",
+    title="README supported devices or services section",
+    why=(
+        "A Supported Devices or Services section tells users upfront which hardware "
+        "or cloud services the integration works with, reducing setup confusion. "
+        f"Source: {_DOCS_SOURCE_URL} (verified {_SOURCE_CHECKED_AT})."
+    ),
+    keywords=_SUPPORTED_DEVICES_KEYWORDS,
+    fix_summary=(
+        "Add a Supported Devices, Services, Hardware, or Compatibility section to README.md "
+        "listing what the integration is designed to work with."
+    ),
+)
+
+docs_limitations_exists = _required_readme_section_rule(
+    rule_id="docs.limitations.exists",
+    title="README limitations or caveats section",
+    why=(
+        "A Limitations or Caveats section sets accurate expectations and reduces "
+        "support requests from users who encounter known constraints. "
+        f"Source: {_DOCS_SOURCE_URL} (verified {_SOURCE_CHECKED_AT})."
+    ),
+    keywords=_LIMITATIONS_KEYWORDS,
+    fix_summary=(
+        "Add a Limitations, Caveats, or Restrictions section to README.md "
+        "describing known constraints or unsupported scenarios."
+    ),
+)
+
+docs_hacs_instructions_exists = _required_readme_section_rule(
+    rule_id="docs.hacs_instructions.exists",
+    title="README HACS installation instructions",
+    why=(
+        "HACS installation instructions help users add the integration as a "
+        "custom repository in HACS. A dedicated heading for HACS or 'custom repository' "
+        "makes the install path immediately visible. "
+        f"Source: {_DOCS_SOURCE_URL} (verified {_SOURCE_CHECKED_AT})."
+    ),
+    keywords=_HACS_INSTRUCTIONS_KEYWORDS,
+    fix_summary=(
+        "Add a HACS or Custom Repository section to README.md describing how to "
+        "install the integration via HACS."
+    ),
+)
+
 
 RULES = [
     RuleDefinition(
@@ -370,6 +441,66 @@ RULES = [
         ),
         source_url=_DOCS_SOURCE_URL,
         check=docs_privacy_exists,
+        overridable=True,
+    ),
+    RuleDefinition(
+        id="docs.examples.exists",
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title="README examples or usage section",
+        why=(
+            "An Examples or Usage section helps integration users understand how the "
+            "integration is intended to be used. "
+            f"Source: {_DOCS_SOURCE_URL} (verified {_SOURCE_CHECKED_AT})."
+        ),
+        source_url=_DOCS_SOURCE_URL,
+        check=docs_examples_exists,
+        overridable=True,
+    ),
+    RuleDefinition(
+        id="docs.supported_devices.exists",
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title="README supported devices or services section",
+        why=(
+            "A Supported Devices or Services section tells users which hardware "
+            "or cloud services the integration works with. "
+            f"Source: {_DOCS_SOURCE_URL} (verified {_SOURCE_CHECKED_AT})."
+        ),
+        source_url=_DOCS_SOURCE_URL,
+        check=docs_supported_devices_exists,
+        overridable=True,
+    ),
+    RuleDefinition(
+        id="docs.limitations.exists",
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title="README limitations or caveats section",
+        why=(
+            "A Limitations or Caveats section sets accurate expectations and reduces "
+            "support requests from users who encounter known constraints. "
+            f"Source: {_DOCS_SOURCE_URL} (verified {_SOURCE_CHECKED_AT})."
+        ),
+        source_url=_DOCS_SOURCE_URL,
+        check=docs_limitations_exists,
+        overridable=True,
+    ),
+    RuleDefinition(
+        id="docs.hacs_instructions.exists",
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title="README HACS installation instructions",
+        why=(
+            "HACS installation instructions help users add the integration as a "
+            "custom repository in HACS. "
+            f"Source: {_DOCS_SOURCE_URL} (verified {_SOURCE_CHECKED_AT})."
+        ),
+        source_url=_DOCS_SOURCE_URL,
+        check=docs_hacs_instructions_exists,
         overridable=True,
     ),
 ]
