@@ -165,6 +165,20 @@ Badges show the current state of your integration: `Passing`, `Partial`, or `Iss
 > HassCheck is unofficial and not affiliated with Home Assistant, HACS, or Nabu Casa.
 > Security Review: Not performed. HACS Acceptance: Not guaranteed.
 
+## Install
+
+```bash
+pip install hasscheck
+```
+
+Or with [`uv`](https://docs.astral.sh/uv/):
+
+```bash
+uv tool install hasscheck
+```
+
+Requires Python ≥ 3.12.
+
 ## Install for local development
 
 This repository uses [`uv`](https://docs.astral.sh/uv/) for dependency management.
