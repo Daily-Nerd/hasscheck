@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, TextIO
 
@@ -16,6 +17,40 @@ if TYPE_CHECKING:
 
 class ConfigError(Exception):
     """Raised when hasscheck.yaml is malformed or contains an invalid override."""
+
+
+class GateMode(StrEnum):
+    """Quality gate exit-code policy.
+
+    Controls which finding states cause `hasscheck check` to exit non-zero.
+    Each mode targets a different use-case audience:
+
+    - ADVISORY: Never exits non-zero; all findings are informational only.
+    - STRICT_REQUIRED: Exits non-zero when any REQUIRED-severity finding is
+      FAIL or WARN.
+    - HACS_PUBLISH: Exits non-zero when any REQUIRED or RECOMMENDED finding is
+      FAIL or WARN (suitable for HACS submission gates).
+    - UPGRADE_RADAR: Exits non-zero when any version.* rule finding is FAIL or
+      WARN (suitable for per-HA-version upgrade pipeline gates).
+    """
+
+    ADVISORY = "advisory"
+    STRICT_REQUIRED = "strict-required"
+    HACS_PUBLISH = "hacs-publish"
+    UPGRADE_RADAR = "upgrade-radar"
+
+
+class GateConfig(BaseModel):
+    """Configuration for the quality gate exit-code policy.
+
+    Specifies which :class:`GateMode` governs whether `hasscheck check` exits
+    non-zero. Absent from a config means the legacy FAIL-only behavior applies.
+    Extra fields are forbidden to catch typos early.
+    """
+
+    model_config = ConfigDict(extra="forbid", use_enum_values=False)
+
+    mode: GateMode
 
 
 class RuleOverride(BaseModel):
@@ -46,20 +81,30 @@ class PublishConfig(BaseModel):
     endpoint: str | None = None
 
 
+_GATE_SUPPORTED_FROM = "0.6.0"
+_PRE_GATE_VERSIONS = {"0.2.0", "0.3.0", "0.4.0", "0.5.0"}
+
+
 class HassCheckConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: Literal["0.2.0", "0.3.0", "0.4.0", "0.5.0"] = "0.5.0"
+    schema_version: Literal["0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0"] = "0.6.0"
     project: ProjectConfig | None = None
     applicability: ProjectApplicability | None = None
     rules: dict[str, RuleOverride] = Field(default_factory=dict)
     publish: PublishConfig | None = None
+    gate: GateConfig | None = None
 
     @model_validator(mode="after")
     def _schema_version_matches_fields(self) -> HassCheckConfig:
         if self.schema_version == "0.2.0" and self.applicability is not None:
             raise ValueError(
                 "schema_version 0.2.0 does not support applicability; use 0.3.0"
+            )
+        if self.gate is not None and self.schema_version in _PRE_GATE_VERSIONS:
+            raise ValueError(
+                f"schema_version {self.schema_version!r} does not support the "
+                f"'gate' field; upgrade to {_GATE_SUPPORTED_FROM!r}"
             )
         return self
 
