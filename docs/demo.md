@@ -1,5 +1,8 @@
 # HassCheck demo
 
+> **Visual demo**: see [`docs/demo.gif`](demo.gif) when rendered. The GIF is generated from
+> [`docs/demo.sh`](demo.sh) — see [`docs/recording.md`](recording.md) to regenerate.
+
 Run HassCheck against the tracked `bad_integration` fixture, see findings, run a scaffold, see improvement.
 
 ## 1. Check the bad fixture
