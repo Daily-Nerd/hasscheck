@@ -88,10 +88,14 @@ runs:
       if: inputs.emit-badges == 'true'
       shell: bash
       run: |
-        .venv/bin/python -m hasscheck badge \
+        ARGS=""
+        if [ "${{ inputs.no-config }}" = "true" ]; then
+          ARGS="--no-config"
+        fi
+        hasscheck badge \
           --path "${{ inputs.path }}" \
           --out-dir "${{ inputs.badges-out-dir }}" \
-          ${{ inputs.no-config == 'true' && '--no-config' || '' }}
+          $ARGS
 
     - name: Upload badges artifact
       if: inputs.emit-badges == 'true'

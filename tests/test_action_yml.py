@@ -81,3 +81,17 @@ def test_publish_step_calls_hasscheck_publish_with_endpoint():
     assert "hasscheck publish" in run_block
     assert "--to" in run_block
     assert "publish-endpoint" in run_block
+
+
+def test_badge_step_uses_installed_hasscheck_executable_not_venv():
+    """Regression for #128: badge step previously used .venv/bin/python which
+    breaks in any consuming repo without a .venv at the workspace root."""
+    cfg = yaml.safe_load(Path("action.yml").read_text())
+    steps = cfg["runs"]["steps"]
+    badge_step = next((s for s in steps if s.get("name") == "Generate badges"), None)
+    assert badge_step is not None
+    run_block = badge_step["run"]
+    assert ".venv" not in run_block, (
+        ".venv path leaks into the badge step — breaks in consuming repos. See #128."
+    )
+    assert "hasscheck badge" in run_block
