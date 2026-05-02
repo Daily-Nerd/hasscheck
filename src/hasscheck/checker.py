@@ -55,8 +55,18 @@ def run_check(
     if config is None and not no_config:
         config = discover_config(root)
 
+    rule_settings: dict[str, dict] = {}
+    if config is not None:
+        rule_settings = {
+            rule_id: override.settings
+            for rule_id, override in (config.rules or {}).items()
+            if override.settings
+        }
+
     context = detect_project(
-        root, applicability=config.applicability if config else None
+        root,
+        applicability=config.applicability if config else None,
+        rule_settings=rule_settings,
     )
     findings = [rule.check(context) for rule in RULES]
 

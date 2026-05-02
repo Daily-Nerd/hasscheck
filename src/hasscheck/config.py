@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, TextIO
+from typing import TYPE_CHECKING, Any, Literal, TextIO
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
@@ -23,6 +23,7 @@ class RuleOverride(BaseModel):
 
     status: Literal["not_applicable", "manual_review"]
     reason: str = Field(min_length=1)
+    settings: dict[str, Any] | None = None  # per-rule config; contents are open dict
 
 
 class ProjectConfig(BaseModel):
