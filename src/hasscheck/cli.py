@@ -18,8 +18,10 @@ from hasscheck.models import HassCheckReport, RuleStatus
 from hasscheck.output import print_terminal_report, report_to_json, report_to_md
 from hasscheck.publish import (
     PublishError,
+    detect_oidc_token,
     publish_report,
     resolve_endpoint,
+    resolve_endpoint_with_source,
     resolve_oidc_token,
     split_slug,
     withdraw_report,
@@ -257,6 +259,11 @@ def publish(
         "--force",
         help="Skip the withdraw confirmation prompt. Required in CI / non-TTY.",
     ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Validate and preview without making any network request.",
+    ),
 ) -> None:
     """Opt-in upload of a HassCheck report to a hosted service.
 
@@ -269,6 +276,7 @@ def publish(
       hasscheck publish --path . --to https://my-host.example
       hasscheck publish --withdraw --report-id abc123
       hasscheck publish --withdraw-all
+      hasscheck publish --path . --dry-run
     """
     if withdraw and withdraw_all:
         typer.echo(
@@ -290,6 +298,53 @@ def publish(
     except ConfigError as exc:
         typer.echo(f"hasscheck: error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
+
+    if dry_run:
+        endpoint, endpoint_source = resolve_endpoint_with_source(to, config=cfg)
+        _, token_status = detect_oidc_token(oidc_token)
+
+        if withdraw or withdraw_all:
+            resolved_slug = slug or detect_repo_slug(path.resolve())
+            if resolved_slug is None:
+                typer.echo(
+                    "hasscheck: error: could not detect repo slug; pass --slug owner/repo.",
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+            target_desc = (
+                f"report {report_id}"
+                if report_id
+                else f"all reports for {resolved_slug}"
+            )
+            typer.echo(f"would withdraw {target_desc} from: {endpoint}")
+            typer.echo(f"  - endpoint resolved from: {endpoint_source}")
+            typer.echo(f"  - oidc token: {token_status}")
+            typer.echo("  - dry-run: no network request made")
+            return
+
+        try:
+            report = run_check(path, config=cfg, no_config=no_config)
+        except ConfigError as exc:
+            typer.echo(f"hasscheck: error: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+
+        detected_slug = (
+            slug or detect_repo_slug(path.resolve()) or "unknown (pass --slug)"
+        )
+        actionable = sum(
+            1
+            for f in report.findings
+            if f.status not in (RuleStatus.PASS, RuleStatus.NOT_APPLICABLE)
+        )
+        typer.echo(f"would publish report to: {endpoint}")
+        typer.echo(f"  - repo slug: {detected_slug}")
+        typer.echo(f"  - schema_version: {report.schema_version}")
+        typer.echo(f"  - ruleset: {report.ruleset.id}")
+        typer.echo(f"  - {len(report.findings)} rules evaluated, {actionable} findings")
+        typer.echo(f"  - oidc token: {token_status}")
+        typer.echo(f"  - endpoint resolved from: {endpoint_source}")
+        typer.echo("  - dry-run: no network request made")
+        return
 
     try:
         endpoint = resolve_endpoint(to, config=cfg)

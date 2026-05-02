@@ -431,3 +431,130 @@ def test_init_default_cli_does_not_write_publish_workflow(tmp_path) -> None:
     workflow = tmp_path / ".github" / "workflows" / "hasscheck.yml"
     content = workflow.read_text()
     assert "emit-publish" not in content
+
+
+# ---------- publish --dry-run (v0.13) ----------
+
+
+def test_publish_dry_run_no_network_request(tmp_path, monkeypatch) -> None:
+    """--dry-run exits 0 and makes no HTTP requests."""
+    write_minimal_integration(tmp_path)
+    monkeypatch.delenv("HASSCHECK_OIDC_TOKEN", raising=False)
+
+    http_called = []
+
+    def mock_post(*args, **kwargs):
+        http_called.append(True)
+
+    monkeypatch.setattr("httpx.Client.post", mock_post)
+
+    result = runner.invoke(
+        app,
+        ["publish", "--path", str(tmp_path), "--dry-run"],
+    )
+    assert result.exit_code == 0, result.output
+    assert not http_called
+    assert "dry-run: no network request made" in result.output
+
+
+def test_publish_dry_run_shows_endpoint(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("HASSCHECK_OIDC_TOKEN", raising=False)
+    monkeypatch.delenv("HASSCHECK_PUBLISH_ENDPOINT", raising=False)
+    write_minimal_integration(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["publish", "--path", str(tmp_path), "--dry-run"],
+    )
+    assert result.exit_code == 0
+    assert "https://hasscheck.io" in result.output
+    assert "endpoint resolved from: default" in result.output
+
+
+def test_publish_dry_run_shows_endpoint_from_flag(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("HASSCHECK_OIDC_TOKEN", raising=False)
+    write_minimal_integration(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["publish", "--path", str(tmp_path), "--dry-run", "--to", "https://my.host"],
+    )
+    assert result.exit_code == 0
+    assert "https://my.host" in result.output
+    assert "endpoint resolved from: --to flag" in result.output
+
+
+def test_publish_dry_run_token_not_detected(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("HASSCHECK_OIDC_TOKEN", raising=False)
+    write_minimal_integration(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["publish", "--path", str(tmp_path), "--dry-run"],
+    )
+    assert result.exit_code == 0
+    assert "not detected" in result.output
+
+
+def test_publish_dry_run_token_detected_via_env(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("HASSCHECK_OIDC_TOKEN", "tok123")
+    write_minimal_integration(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["publish", "--path", str(tmp_path), "--dry-run"],
+    )
+    assert result.exit_code == 0
+    assert "$HASSCHECK_OIDC_TOKEN" in result.output
+
+
+def test_publish_dry_run_shows_schema_version(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("HASSCHECK_OIDC_TOKEN", raising=False)
+    write_minimal_integration(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["publish", "--path", str(tmp_path), "--dry-run"],
+    )
+    assert result.exit_code == 0
+    assert "schema_version: 0.4.0" in result.output
+
+
+def test_publish_dry_run_withdraw_no_network(tmp_path, monkeypatch) -> None:
+    """--dry-run --withdraw shows what would be withdrawn, makes no DELETE."""
+    monkeypatch.delenv("HASSCHECK_OIDC_TOKEN", raising=False)
+    write_minimal_integration(tmp_path)
+
+    http_called = []
+
+    def mock_delete(*args, **kwargs):
+        http_called.append(True)
+
+    monkeypatch.setattr("httpx.Client.delete", mock_delete)
+
+    result = runner.invoke(
+        app,
+        [
+            "publish",
+            "--path",
+            str(tmp_path),
+            "--dry-run",
+            "--withdraw",
+            "--report-id",
+            "rep_abc",
+            "--slug",
+            "owner/repo",
+            "--force",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert not http_called
+    assert "dry-run: no network request made" in result.output
+    assert "rep_abc" in result.output
+
+
+def test_publish_dry_run_flag_registered() -> None:
+    cmd = get_command(app)
+    publish_cmd = cmd.commands["publish"]
+    dry_run_param = next((p for p in publish_cmd.params if p.name == "dry_run"), None)
+    assert dry_run_param is not None, "publish must declare a --dry-run option"
