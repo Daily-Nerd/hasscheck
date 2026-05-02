@@ -58,6 +58,25 @@ class PublishResult:
     schema_version: str
 
 
+def resolve_endpoint_with_source(
+    cli_value: str | None,
+    *,
+    config: HassCheckConfig | None = None,
+) -> tuple[str, str]:
+    """Resolve publish endpoint and return (endpoint, source_label).
+
+    Precedence: CLI flag > $HASSCHECK_PUBLISH_ENDPOINT > config.publish.endpoint > DEFAULT_ENDPOINT.
+    """
+    if cli_value:
+        return cli_value.rstrip("/"), "--to flag"
+    env_value = os.environ.get(ENDPOINT_ENV_VAR)
+    if env_value:
+        return env_value.rstrip("/"), f"${ENDPOINT_ENV_VAR}"
+    if config is not None and config.publish is not None and config.publish.endpoint:
+        return config.publish.endpoint.rstrip("/"), "hasscheck.yaml"
+    return DEFAULT_ENDPOINT, "default"
+
+
 def resolve_endpoint(
     cli_value: str | None,
     *,
@@ -67,14 +86,8 @@ def resolve_endpoint(
 
     Precedence: CLI flag > $HASSCHECK_PUBLISH_ENDPOINT > config.publish.endpoint > DEFAULT_ENDPOINT.
     """
-    if cli_value:
-        return cli_value.rstrip("/")
-    env_value = os.environ.get(ENDPOINT_ENV_VAR)
-    if env_value:
-        return env_value.rstrip("/")
-    if config is not None and config.publish is not None and config.publish.endpoint:
-        return config.publish.endpoint.rstrip("/")
-    return DEFAULT_ENDPOINT
+    endpoint, _ = resolve_endpoint_with_source(cli_value, config=config)
+    return endpoint
 
 
 def resolve_oidc_token(cli_value: str | None) -> str:
@@ -88,6 +101,19 @@ def resolve_oidc_token(cli_value: str | None) -> str:
         "no OIDC token available — pass --oidc-token or set "
         f"{OIDC_TOKEN_ENV_VAR}. Publishing requires GitHub Actions OIDC."
     )
+
+
+def detect_oidc_token(cli_value: str | None) -> tuple[str | None, str]:
+    """Detect OIDC token presence and source without raising.
+
+    Returns (token_or_None, source_label). Safe to call in dry-run contexts.
+    """
+    if cli_value:
+        return cli_value, "--oidc-token flag"
+    env_value = os.environ.get(OIDC_TOKEN_ENV_VAR)
+    if env_value:
+        return env_value, f"${OIDC_TOKEN_ENV_VAR}"
+    return None, "not detected"
 
 
 def _headers(oidc_token: str) -> dict[str, str]:

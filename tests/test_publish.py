@@ -321,3 +321,78 @@ def test_withdraw_raises_on_403():
                 client=client,
             )
     assert ex.value.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# resolve_endpoint_with_source + detect_oidc_token (--dry-run helpers)
+
+
+def test_resolve_endpoint_with_source_cli_flag(monkeypatch):
+    from hasscheck.publish import resolve_endpoint_with_source
+
+    monkeypatch.delenv(ENDPOINT_ENV_VAR, raising=False)
+    endpoint, source = resolve_endpoint_with_source("https://cli.example")
+    assert endpoint == "https://cli.example"
+    assert source == "--to flag"
+
+
+def test_resolve_endpoint_with_source_env(monkeypatch):
+    from hasscheck.publish import resolve_endpoint_with_source
+
+    monkeypatch.setenv(ENDPOINT_ENV_VAR, "https://env.example/")
+    endpoint, source = resolve_endpoint_with_source(None)
+    assert endpoint == "https://env.example"
+    assert source == f"${ENDPOINT_ENV_VAR}"
+
+
+def test_resolve_endpoint_with_source_config(monkeypatch):
+    from hasscheck.publish import resolve_endpoint_with_source
+
+    monkeypatch.delenv(ENDPOINT_ENV_VAR, raising=False)
+    cfg = _make_config_with_endpoint("https://cfg.example")
+    endpoint, source = resolve_endpoint_with_source(None, config=cfg)
+    assert endpoint == "https://cfg.example"
+    assert source == "hasscheck.yaml"
+
+
+def test_resolve_endpoint_with_source_default(monkeypatch):
+    from hasscheck.publish import resolve_endpoint_with_source
+
+    monkeypatch.delenv(ENDPOINT_ENV_VAR, raising=False)
+    endpoint, source = resolve_endpoint_with_source(None)
+    assert endpoint == DEFAULT_ENDPOINT
+    assert source == "default"
+
+
+def test_detect_oidc_token_cli_flag():
+    from hasscheck.publish import detect_oidc_token
+
+    token, source = detect_oidc_token("mytoken")
+    assert token == "mytoken"
+    assert source == "--oidc-token flag"
+
+
+def test_detect_oidc_token_env(monkeypatch):
+    from hasscheck.publish import detect_oidc_token
+
+    monkeypatch.setenv(OIDC_TOKEN_ENV_VAR, "envtoken")
+    token, source = detect_oidc_token(None)
+    assert token == "envtoken"
+    assert source == f"${OIDC_TOKEN_ENV_VAR}"
+
+
+def test_detect_oidc_token_not_detected(monkeypatch):
+    from hasscheck.publish import detect_oidc_token
+
+    monkeypatch.delenv(OIDC_TOKEN_ENV_VAR, raising=False)
+    token, source = detect_oidc_token(None)
+    assert token is None
+    assert source == "not detected"
+
+
+def test_detect_oidc_token_does_not_raise_when_missing(monkeypatch):
+    from hasscheck.publish import detect_oidc_token
+
+    monkeypatch.delenv(OIDC_TOKEN_ENV_VAR, raising=False)
+    # Must not raise MissingTokenError
+    detect_oidc_token(None)

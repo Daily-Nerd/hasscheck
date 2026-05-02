@@ -103,6 +103,22 @@ jobs:
 
 > The hosted reports endpoint at `hasscheck.io` is operational. Publishing requires `permissions: id-token: write` on the workflow so HassCheck can mint a GitHub OIDC token; the hub validates the token's repository claim before accepting the report. The local CLI (without `emit-publish`) remains fully functional and is the recommended starting point if you don't want to publish.
 
+Before enabling `emit-publish` in your CI workflow, validate the publish path locally with `--dry-run`:
+
+```bash
+hasscheck publish --path . --dry-run
+# would publish report to: https://hasscheck.io
+#   - repo slug: owner/my-integration (from git remote)
+#   - schema_version: 0.4.0
+#   - ruleset: hasscheck-ha-2026.5
+#   - 52 rules evaluated, 3 findings
+#   - oidc token: not detected
+#   - endpoint resolved from: default
+#   - dry-run: no network request made
+```
+
+`--dry-run` runs the full check, resolves the endpoint and detects OIDC token availability — without making any network request. Use it to confirm your configuration before the first live publish.
+
 **Outputs:** `exit-code` — `0` when no FAIL findings, `1` when one or more FAIL findings.
 
 The action uploads `hasscheck-report.json` as a build artifact on every run.
