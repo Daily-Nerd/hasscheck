@@ -1,6 +1,6 @@
 # HassCheck Rule Index
 
-All 42 rules, grouped by category. Rules with a dedicated docs page are linked; others show "(no docs page yet)".
+All 45 rules, grouped by category. Rules with a dedicated docs page are linked; others show "(no docs page yet)".
 
 ## HACS structure
 
@@ -72,4 +72,7 @@ All 42 rules, grouped by category. Rules with a dedicated docs page are linked; 
 | Rule ID | Signal | Docs |
 |---|---|---|
 | `tests.folder.exists` | Repository has `tests/`. | (no docs page yet) |
+| `tests.config_flow.detected` | `tests/` contains config flow test coverage (filename, import, or function name). | (no docs page yet) |
+| `tests.setup_entry.detected` | `tests/` references `async_setup_entry` or `async_unload_entry`. | (no docs page yet) |
+| `tests.unload.detected` | `tests/` references `async_unload_entry` or unload test functions. | (no docs page yet) |
 | `ci.github_actions.exists` | Repository has `.github/workflows/*.yml` or `.yaml`. | (no docs page yet) |

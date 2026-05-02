@@ -13,13 +13,11 @@ from __future__ import annotations
 from hasscheck.rules.registry import RULES
 
 # Canonical audit (from sdd/config-file-support/mixed-status-rule-audit):
-# 42 rules total (v0.10 issue #107 adds 5 modern HA pattern rules):
-#   - init.async_setup_entry.defined (overridable=True, RECOMMENDED)
-#   - init.runtime_data.used (overridable=True, RECOMMENDED)
-#   - entity.unique_id.set (overridable=True, RECOMMENDED)
-#   - entity.has_entity_name.set (overridable=True, RECOMMENDED)
-#   - entity.device_info.set (overridable=True, RECOMMENDED)
-# 12 locked overridable=False, 30 overridable=True.
+# 45 rules total (v0.11 issue #108 adds 3 integration test detection rules):
+#   - tests.config_flow.detected (overridable=True, RECOMMENDED)
+#   - tests.setup_entry.detected (overridable=True, RECOMMENDED)
+#   - tests.unload.detected (overridable=True, RECOMMENDED)
+# 12 locked overridable=False, 33 overridable=True.
 EXPECTED_LOCKED_RULE_IDS = {
     "hacs.custom_components.exists",
     "hacs.file.parseable",  # mixed-status: WARN missing, FAIL invalid JSON
@@ -71,11 +69,15 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
     "entity.unique_id.set",
     "entity.has_entity_name.set",
     "entity.device_info.set",
+    # v0.11 issue #108 — integration test detection (RECOMMENDED, overridable=True)
+    "tests.config_flow.detected",
+    "tests.setup_entry.detected",
+    "tests.unload.detected",
 }
 
 
-def test_total_rule_count_is_forty_two() -> None:
-    assert len(RULES) == 42, f"expected 42 rules, got {len(RULES)}"
+def test_total_rule_count_is_forty_five() -> None:
+    assert len(RULES) == 45, f"expected 45 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:
