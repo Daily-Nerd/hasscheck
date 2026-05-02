@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from hasscheck.target import _compute_requirements_hash
+
 # ---------------------------------------------------------------------------
 # Scenario 9 — test_detect_target_reads_manifest_version
 # ---------------------------------------------------------------------------
@@ -395,3 +397,62 @@ def test_cli_never_sets_superseded_by_integration_version(
     detect_target(tmp_path, tmp_path, "test")
     validity = build_validity(checked_at=datetime(2026, 1, 1, tzinfo=UTC))
     assert validity.superseded_by_integration_version is None
+
+
+# Phase 4.2 RED — #159 requirements_hash normalization
+
+
+def test_requirements_hash_normalizes_whitespace() -> None:
+    """Extra whitespace around specifiers must not change the hash."""
+    h1 = _compute_requirements_hash(["aiohttp >= 3.0"])
+    h2 = _compute_requirements_hash(["aiohttp>=3.0"])
+    assert h1 == h2
+
+
+def test_requirements_hash_normalizes_name_case() -> None:
+    """Package name case must not change the hash."""
+    h1 = _compute_requirements_hash(["Aiohttp>=3.0"])
+    h2 = _compute_requirements_hash(["aiohttp>=3.0"])
+    assert h1 == h2
+
+
+def test_requirements_hash_normalizes_name_separator() -> None:
+    """Hyphen/underscore in package name must not change the hash."""
+    h1 = _compute_requirements_hash(["aiohttp_client>=1.0"])
+    h2 = _compute_requirements_hash(["aiohttp-client>=1.0"])
+    assert h1 == h2
+
+
+def test_requirements_hash_is_order_independent() -> None:
+    """Input order must not change the hash."""
+    h1 = _compute_requirements_hash(["a>=1", "b>=2"])
+    h2 = _compute_requirements_hash(["b>=2", "a>=1"])
+    assert h1 == h2
+
+
+def test_requirements_hash_handles_invalid_pep508() -> None:
+    """A non-PEP-508 string must not raise; result must be a valid hex string."""
+    result = _compute_requirements_hash(["not-valid-requirement@!#$"])
+    assert result is not None
+    assert isinstance(result, str)
+    assert len(result) == 64  # SHA-256 hex
+
+
+def test_requirements_hash_returns_none_for_empty_list() -> None:
+    """Empty list must return None."""
+    assert _compute_requirements_hash([]) is None
+
+
+def test_requirements_hash_returns_none_for_none_input() -> None:
+    """None input must return None."""
+    assert _compute_requirements_hash(None) is None
+
+
+def test_requirements_hash_handles_mixed_valid_and_invalid() -> None:
+    """A list with both valid and invalid entries must return a hash without raising."""
+    result = _compute_requirements_hash(
+        ["requests>=2.0", "git+https://example.com/pkg.git"]
+    )
+    assert result is not None
+    assert isinstance(result, str)
+    assert len(result) == 64
