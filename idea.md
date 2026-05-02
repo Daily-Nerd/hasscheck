@@ -8,13 +8,19 @@ Working name: **HassCheck**
 > explainable, actionable checks for custom integration maintainers.
 
 > ⚠️ **This document is the original product brief.** It captures the founding
-> vision and is preserved as-is. For current implementation status,
-> architecture decisions, and per-feature design, see [`docs/`](./docs/README.md).
+> vision and is preserved as-is below. The Section 3 ladder and Section 15
+> roadmap have been refreshed to reflect shipped reality through v0.9.0.
+> For per-release detail see [`CHANGELOG.md`](./CHANGELOG.md). For
+> architecture decisions and per-feature design see
+> [`docs/`](./docs/README.md) and [`docs/decisions/`](./docs/decisions/).
 >
-> **Implementation status:**
-> - v0.1.0 — shipped, tagged `v0.1.0` (`56b9cc5`).
-> - v0.2.0 — in progress on branch `feature/config-file-support`. See
->   [`docs/architecture/config-file.md`](./docs/architecture/config-file.md).
+> **Implementation status (2026-05-01):**
+> - **Latest released**: `v0.9.0` — rule depth (30 rules), AST-based config
+>   flow + diagnostics inspection, README content rules, adoption docs.
+> - **In progress**: `v0.10.x` — rule expansion. See open GitHub issues
+>   (#100, #101, #102, #107, #108, #109) for the working backlog.
+> - **Hosted endpoint** (`hasscheck.io`): launching alongside the OSS public
+>   flip; built in the private `hasscheck-web` repo per ADR 0008.
 
 ## Executive correction
 
@@ -150,18 +156,27 @@ That distinction matters.
 # 3. Product ladder
 
 ```text
-v0.1  Local CLI
-v0.2  Stable JSON report schema
-v0.3  Rule explanations + source links
-v0.4  Scaffolding/fix helpers
-v0.5  GitHub Action
-v0.6  Opt-in badges
-v0.7  Opt-in hosted reports
-v1.0  Opt-in project hub
+v0.1   Local CLI                                                  [shipped]
+v0.2   Stable JSON report schema + applicability + overrides      [shipped]
+v0.3   Rule explanations + source links                           [shipped]
+v0.4   Scaffolding / fix helpers                                  [shipped]
+v0.5   GitHub Action + unified --format flag                      [shipped]
+v0.6   Opt-in badges                                              [shipped]
+v0.7   Opt-in hosted reports (OIDC publish)                       [shipped]
+v0.8   Rule depth + publish polish + LICENSE/metadata             [shipped]
+v0.9   AST helper extraction + README content rules + adoption    [shipped]
+       docs (comparison + per-rule pages + demo walkthrough)
+v0.10  Rule expansion: manifest.requirements, config_flow         [in progress]
+       advanced (reauth/reconfigure/duplicate/connection),
+       modern HA pattern checks (async_setup_entry, runtime_data,
+       unique_id, has_entity_name, device_info)
+v1.0   Opt-in project hub — discovery from voluntarily published  [planned]
+       reports, hub-verified badges, server-side rule re-execution
 ```
 
-The hub only becomes useful after HassCheck produces structured, trusted,
-explainable reports. Otherwise, it is just another directory.
+Each rung adds value the previous rung cannot deliver alone. The hub only
+becomes useful after HassCheck produces structured, trusted, explainable
+reports at meaningful volume. Otherwise it is just another directory.
 
 ---
 
@@ -919,37 +934,116 @@ Badge endpoint or static SVG output
 Badge docs with forbidden language guidance
 ```
 
-## Month 5 — Opt-in hosted reports
+## Month 5 — Opt-in hosted reports (v0.7) [shipped]
 
 Goal:
 
 > Let projects publish reports voluntarily.
 
-Deliverables:
+Shipped:
 
 ```text
-report upload API
-public report page
-project slug owner/repo
-report history
-badge endpoint
+hasscheck publish CLI (OIDC auth)
+hasscheck init CLI (workflow scaffold)
+emit-publish action input + composite handshake
+repo slug detection (git remote → manifest fallback)
+ADR 0008 — publish contract (two-repo split, schema lockstep, last-50 retention)
 ```
 
-## Month 6+ — Opt-in hub
+Server-side endpoint (`hasscheck.io`) lives in the private `hasscheck-web`
+repo per ADR 0008. The OSS package remains fully usable without the server.
+
+## Month 5.5 — Rule depth + release hygiene (v0.8 + v0.8.1) [shipped]
 
 Goal:
 
-> Discovery only from voluntarily published reports.
+> Make hosted reports substantive — local rules must produce real signal.
+
+Shipped:
+
+```text
+7 new rules across manifest / config_flow / diagnostics
+  manifest.domain.matches_directory (REQUIRED, non-overridable)
+  manifest.iot_class.{exists,valid}
+  manifest.integration_type.{exists,valid}
+  config_flow.user_step.exists (first AST-based rule)
+  diagnostics.redaction.used (AST + suspicious-return-pattern)
+examples/bad_integration tracked negative fixture
+publish polish: --force, --enable-publish, publish.endpoint config tier
+LICENSE (MIT, Daily Nerd 2026) + pyproject PEP 639 metadata
+ADR 0009 — schema versioning policy (additive-only, lockstep)
+v0.8.1 patch: test_check_version collection + pylance manifest narrowing
+```
+
+## Month 6 — AST refactor + adoption docs (v0.9) [shipped]
+
+Goal:
+
+> Prepare for public flip. Make HassCheck legible and trustworthy on first
+> contact.
+
+Shipped:
+
+```text
+src/hasscheck/ast_utils.py — public parse_module shared by AST rules
+5 README content rules: docs.{installation,configuration,
+  troubleshooting,removal,privacy}.exists (rule count 25 → 30)
+hassfest / HACS / HassCheck comparison section in README
+docs/rules/ index covering all 30 rules + 7 hand-written per-rule pages
+docs/demo.md walkthrough using examples/bad_integration
+CONTRIBUTING.md + CODE_OF_CONDUCT.md (Contributor Covenant 2.1)
+README "Current status" + emit-publish framing aligned with reality
+```
+
+## Month 7 — Public flip + PyPI (v0.10.x) [in progress]
+
+Goal:
+
+> Reach maintainers. Distribution unblocks community feedback.
+
+Sequenced deliverables:
+
+```text
+hasscheck.io launches alongside repo public flip
+PyPI trusted publishing (#15)
+manifest.requirements sanity rule (#100)
+config_flow advanced — reauth / reconfigure / duplicate prevention /
+  connection testing (#101)
+modern HA pattern checks — async_setup_entry, runtime_data,
+  unique_id, has_entity_name, device_info (#107)
+```
+
+Stretch (v0.10.x — pick by signal once public):
+
+```text
+more README content rules (#102, #103)
+auto-generate per-rule docs from RuleDefinition metadata (#104)
+demo terminal recording (#105)
+imports_async_redact PASS resolution decision (#106)
+integration test detection rules (#108)
+maintenance signal rules (#109)
+```
+
+## Month 8+ — Opt-in hub (v1.0) [planned]
+
+Goal:
+
+> Discovery only from voluntarily published reports. No public scoring.
 
 Deliverables:
 
 ```text
-search
-filters
-project profiles
-report directory
+hub-verified badges — server-side rule re-execution (#67) replaces
+  self-reported committed badge JSON
+project profiles + report directory (read-only)
+search and filters
 no default ranking by score
+schema bump policy enforced via ADR 0009 (lockstep with hasscheck-web)
 ```
+
+The hub becomes useful only after enough voluntary publish events from
+real maintainers. Distribution (Month 7) gates this — v1.0 cannot start
+without v0.10 community signal.
 
 ---
 
