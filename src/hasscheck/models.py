@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from hasscheck import __version__
 
-SCHEMA_VERSION = "0.3.0"
+SCHEMA_VERSION = "0.4.0"
 # See docs/decisions/0006-ruleset-versioning.md for bump policy.
 DEFAULT_RULESET_ID = "hasscheck-ha-2026.5"
 DEFAULT_SOURCE_CHECKED_AT = "2026-05-01"
@@ -147,6 +147,19 @@ class RulesetInfo(BaseModel):
     source_checked_at: str = DEFAULT_SOURCE_CHECKED_AT
 
 
+class Provenance(BaseModel):
+    source: Literal["github_actions", "local"] | None = None
+    repository: str | None = None
+    commit_sha: str | None = None
+    ref: str | None = None
+    workflow: str | None = None
+    run_id: str | None = None
+    run_attempt: int | None = None
+    actor: str | None = None
+    published_at: str | None = None  # ISO-8601 UTC
+    verified_by: str | None = None  # ALWAYS None from CLI; hub sets this after OIDC
+
+
 class HassCheckReport(BaseModel):
     schema_version: str = SCHEMA_VERSION
     tool: ToolInfo = Field(default_factory=ToolInfo)
@@ -154,6 +167,7 @@ class HassCheckReport(BaseModel):
     ruleset: RulesetInfo = Field(default_factory=RulesetInfo)
     summary: ReportSummary
     findings: list[Finding]
+    provenance: Provenance | None = None
 
     def to_json_dict(self) -> dict[str, Any]:
         return self.model_dump(mode="json")

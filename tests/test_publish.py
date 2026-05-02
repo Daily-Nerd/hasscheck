@@ -185,7 +185,7 @@ def test_publish_report_success(tmp_path, monkeypatch):
     assert captured["url"] == "https://hasscheck.io/api/reports"
     assert captured["auth"] == "Bearer tok-abc"
     assert captured["ua"].startswith("hasscheck/")
-    assert captured["body"]["schema_version"] == "0.3.0"
+    assert captured["body"]["schema_version"] == "0.4.0"
     assert captured["body"]["tool"]["name"] == "hasscheck"
 
 

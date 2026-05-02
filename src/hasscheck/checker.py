@@ -13,6 +13,7 @@ from hasscheck.models import (
     ReportSummary,
     RuleStatus,
 )
+from hasscheck.provenance import detect_provenance
 from hasscheck.rules.registry import RULES
 from hasscheck.slug import detect_repo_slug
 
@@ -128,4 +129,5 @@ def run_check(
             applicability_applied=applicability_applied,
         ),
         findings=findings,
+        provenance=detect_provenance(),
     )

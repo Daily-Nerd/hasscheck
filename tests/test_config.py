@@ -94,7 +94,7 @@ def test_project_config_rejects_extra_fields() -> None:
 
 def test_hasscheck_config_empty_defaults() -> None:
     cfg = HassCheckConfig()
-    assert cfg.schema_version == "0.3.0"
+    assert cfg.schema_version == "0.4.0"
     assert cfg.project is None
     assert cfg.applicability is None
     assert cfg.rules == {}
@@ -515,7 +515,7 @@ def test_hasscheck_config_accepts_applicability_block() -> None:
         applicability=ProjectApplicability(supports_diagnostics=False)
     )
 
-    assert cfg.schema_version == "0.3.0"
+    assert cfg.schema_version == "0.4.0"
     assert cfg.applicability is not None
     assert cfg.applicability.supports_diagnostics is False
 
@@ -636,3 +636,37 @@ def test_load_config_file_v03_backward_compat_no_publish(tmp_path: Path) -> None
     cfg = load_config_file(tmp_path / "hasscheck.yaml")
     assert cfg.schema_version == "0.3.0"
     assert cfg.publish is None
+
+
+# ---------- v0.13: Schema version 0.4.0 (#130) ----------
+
+
+def test_hasscheck_config_default_schema_version_is_0_4_0() -> None:
+    """Default instantiation yields schema_version 0.4.0."""
+    cfg = HassCheckConfig()
+    assert cfg.schema_version == "0.4.0"
+
+
+def test_hasscheck_config_accepts_explicit_0_4_0() -> None:
+    """Explicit schema_version='0.4.0' parses without error."""
+    cfg = HassCheckConfig(schema_version="0.4.0")
+    assert cfg.schema_version == "0.4.0"
+
+
+def test_hasscheck_config_0_3_0_still_accepted() -> None:
+    """Legacy schema_version='0.3.0' is still accepted (Literal widened, not narrowed)."""
+    cfg = HassCheckConfig(schema_version="0.3.0")
+    assert cfg.schema_version == "0.3.0"
+
+
+def test_hasscheck_config_0_2_0_still_accepted() -> None:
+    """Legacy schema_version='0.2.0' is still accepted."""
+    cfg = HassCheckConfig(schema_version="0.2.0")
+    assert cfg.schema_version == "0.2.0"
+
+
+def test_load_config_file_v04_schema_version(tmp_path: Path) -> None:
+    """Load a file with schema_version 0.4.0 succeeds."""
+    (tmp_path / "hasscheck.yaml").write_text("schema_version: '0.4.0'\n")
+    cfg = load_config_file(tmp_path / "hasscheck.yaml")
+    assert cfg.schema_version == "0.4.0"
