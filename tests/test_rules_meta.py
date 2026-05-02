@@ -13,11 +13,12 @@ from __future__ import annotations
 from hasscheck.rules.registry import RULES
 
 # Canonical audit (from sdd/config-file-support/mixed-status-rule-audit):
-# 33 rules total (v0.10 issue #100 adds 3 manifest.requirements rules):
-#   - manifest.requirements.is_list (overridable=False, REQUIRED)
-#   - manifest.requirements.entries_well_formed (overridable=True, RECOMMENDED)
-#   - manifest.requirements.no_git_or_url_specs (overridable=True, RECOMMENDED)
-# 12 locked overridable=False, 21 overridable=True.
+# 37 rules total (v0.10 issue #101 adds 4 config_flow advanced rules):
+#   - config_flow.reauth_step.exists (overridable=True, RECOMMENDED)
+#   - config_flow.reconfigure_step.exists (overridable=True, RECOMMENDED)
+#   - config_flow.unique_id.set (overridable=True, RECOMMENDED)
+#   - config_flow.connection_test (overridable=True, RECOMMENDED)
+# 12 locked overridable=False, 25 overridable=True.
 EXPECTED_LOCKED_RULE_IDS = {
     "hacs.custom_components.exists",
     "hacs.file.parseable",  # mixed-status: WARN missing, FAIL invalid JSON
@@ -58,11 +59,16 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
     # v0.10 issue #100 — manifest.requirements validation (RECOMMENDED, overridable=True)
     "manifest.requirements.entries_well_formed",
     "manifest.requirements.no_git_or_url_specs",
+    # v0.10 issue #101 — advanced config_flow rules (RECOMMENDED, overridable=True)
+    "config_flow.reauth_step.exists",
+    "config_flow.reconfigure_step.exists",
+    "config_flow.unique_id.set",
+    "config_flow.connection_test",
 }
 
 
-def test_total_rule_count_is_thirty_three() -> None:
-    assert len(RULES) == 33, f"expected 33 rules, got {len(RULES)}"
+def test_total_rule_count_is_thirty_seven() -> None:
+    assert len(RULES) == 37, f"expected 37 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:

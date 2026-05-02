@@ -318,6 +318,10 @@ Per-rule documentation pages with status behavior tables, fix instructions, and 
 | `config_flow.file.exists` | Integration has `config_flow.py`. |
 | `config_flow.manifest_flag_consistent` | `config_flow.py` and manifest `config_flow: true` agree. |
 | `config_flow.user_step.exists` | `config_flow.py` defines `async_step_user` (AST inspection). |
+| `config_flow.reauth_step.exists` | `config_flow.py` defines `async_step_reauth` or `async_step_reauth_confirm` (AST inspection). |
+| `config_flow.reconfigure_step.exists` | `config_flow.py` defines `async_step_reconfigure` (AST inspection). |
+| `config_flow.unique_id.set` | `config_flow.py` calls `async_set_unique_id` (AST inspection). |
+| `config_flow.connection_test` | A discovery-flow step awaits a non-plumbing call (AST heuristic). |
 
 ### Diagnostics and repairs
 
