@@ -6,5 +6,6 @@
   "codeowners": ["@demo"],
   "version": "0.1.0",
   "config_flow": true,
-  "iot_class": "not_a_valid_class"
+  "iot_class": "not_a_valid_class",
+  "requirements": ["pyhomematic", "git+https://github.com/example/lib.git"]
 }

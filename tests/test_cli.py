@@ -214,7 +214,9 @@ def test_terminal_applicability_finding_has_config_marker(tmp_path) -> None:
     result = runner.invoke(app, ["check", "--path", str(tmp_path)])
 
     assert result.exit_code == 1
-    assert "diagnostics.file.exists (config)" in result.output
+    # Rich may wrap long rule IDs across lines; check both parts appear in output
+    assert "diagnostics.file.exists" in result.output
+    assert "(config)" in result.output
 
 
 # ---------- --format option ----------

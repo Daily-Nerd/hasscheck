@@ -1,6 +1,6 @@
 # HassCheck Rule Index
 
-All 30 rules, grouped by category. Rules with a dedicated docs page are linked; others show "(no docs page yet)".
+All 33 rules, grouped by category. Rules with a dedicated docs page are linked; others show "(no docs page yet)".
 
 ## HACS structure
 
@@ -26,6 +26,9 @@ All 30 rules, grouped by category. Rules with a dedicated docs page are linked; 
 | `manifest.iot_class.valid` | Manifest `iot_class` is a recognized value. | [manifest.iot_class.valid.md](manifest.iot_class.valid.md) |
 | `manifest.integration_type.exists` | Manifest declares `integration_type`. | (no docs page yet) |
 | `manifest.integration_type.valid` | Manifest `integration_type` is a recognized value. | [manifest.integration_type.valid.md](manifest.integration_type.valid.md) |
+| `manifest.requirements.is_list` | Manifest `requirements` is a JSON array. | (no docs page yet) |
+| `manifest.requirements.entries_well_formed` | Manifest `requirements` entries are valid PEP 508 specifiers. | (no docs page yet) |
+| `manifest.requirements.no_git_or_url_specs` | Manifest `requirements` contains no git/URL install specs. | (no docs page yet) |
 
 ## Modern Home Assistant patterns
 
