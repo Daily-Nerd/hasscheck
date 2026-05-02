@@ -52,9 +52,18 @@ HassCheck is intentionally not a replacement for hassfest and does not assign Ho
 
 ## Current status
 
-**Latest release**: v0.9.0 — rule depth, AST-based config flow + diagnostics inspection, README content rules, and adoption-focused docs.
+**Current package version**: v0.12.0 — alpha.
 
-**In progress**: v0.10 — rule expansion (modern HA pattern checks, manifest.requirements sanity, advanced config flow signals). See open issues for the working backlog.
+The CLI, GitHub Action, JSON report contract, rule docs, local badge generation, opt-in publishing flow, and per-rule settings are all shipped. 52 rules across HACS structure, manifest metadata, modern HA patterns, diagnostics, docs, tests/CI, and maintenance. Auto-generated per-rule docs page for every registered rule.
+
+The hub at [hasscheck.io](https://hasscheck.io) is operational and accepts opt-in published reports via GitHub OIDC.
+
+**Current development focus**:
+
+- Verified report provenance display on the hub
+- Hub-verified badges (#67) — replaces self-reported committed badge JSON
+- Upgrade Radar status taxonomy for v1.0 (#132)
+- PyPI trusted publishing (#15) once release discipline is ready
 
 ## GitHub Action
 
@@ -73,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Daily-Nerd/hasscheck@v0.9.0
+      - uses: Daily-Nerd/hasscheck@v0.12.0
         with:
           comment-pr: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -92,7 +101,7 @@ jobs:
 | `emit-publish` | `false` | Publish the report to a hosted HassCheck service. Requires workflow `permissions: id-token: write` |
 | `publish-endpoint` | `https://hasscheck.io` | Publish endpoint URL when `emit-publish: 'true'` |
 
-> The hosted reports endpoint (`hasscheck.io`) launches alongside the public release. Until then, `emit-publish: 'true'` works against a self-hosted endpoint via the `publish-endpoint` input or `HASSCHECK_PUBLISH_ENDPOINT` env var. The local CLI (without `--emit-publish`) is fully functional and is the recommended starting point.
+> The hosted reports endpoint at `hasscheck.io` is operational. Publishing requires `permissions: id-token: write` on the workflow so HassCheck can mint a GitHub OIDC token; the hub validates the token's repository claim before accepting the report. The local CLI (without `emit-publish`) remains fully functional and is the recommended starting point if you don't want to publish.
 
 **Outputs:** `exit-code` — `0` when no FAIL findings, `1` when one or more FAIL findings.
 
@@ -115,7 +124,7 @@ This writes per-category JSON files and a `manifest.json` to `badges/`. Commit t
 Add `emit-badges: 'true'` to your HassCheck action step:
 
 ```yaml
-- uses: Daily-Nerd/hasscheck@v0.9.0
+- uses: Daily-Nerd/hasscheck@v0.12.0
   with:
     emit-badges: 'true'
     badges-out-dir: 'badges'
