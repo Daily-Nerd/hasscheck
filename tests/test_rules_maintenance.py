@@ -18,6 +18,7 @@ import os
 import subprocess
 import time
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from hasscheck.models import RuleStatus
@@ -91,6 +92,20 @@ def _check_rule(root: Path, rule_id: str):
     from hasscheck.rules.base import ProjectContext
 
     ctx = ProjectContext(root=root, integration_path=None, domain=None)
+    return rule.check(ctx)
+
+
+def _check_rule_with_settings(root: Path, rule_id: str, settings: dict[str, Any]):
+    """Run a rule's check function with per-rule settings injected."""
+    rule = RULES_BY_ID[rule_id]
+    from hasscheck.rules.base import ProjectContext
+
+    ctx = ProjectContext(
+        root=root,
+        integration_path=None,
+        domain=None,
+        rule_settings={rule_id: settings},
+    )
     return rule.check(ctx)
 
 
@@ -291,3 +306,142 @@ class TestChangelogExists:
         """WARN message should not be empty."""
         finding = _check_rule(tmp_path, CL_RULE)
         assert finding.message
+
+
+# ===========================================================================
+# Per-rule settings — maintenance.recent_commit.detected (issue #117)
+# ===========================================================================
+
+
+class TestRecentCommitWithSettings:
+    def test_custom_short_threshold_warns_on_6_week_old_commit(
+        self, tmp_path: Path
+    ) -> None:
+        """max_age_months=1 → 6-week-old commit (>1 month) → WARN."""
+        offset = int(-6 * 7 * 86400)  # 6 weeks in seconds
+        _init_git_repo(tmp_path, commit_offset_seconds=offset)
+        finding = _check_rule_with_settings(tmp_path, RC_RULE, {"max_age_months": 1})
+        assert finding.status is RuleStatus.WARN
+
+    def test_custom_long_threshold_passes_on_18_month_old_commit(
+        self, tmp_path: Path
+    ) -> None:
+        """max_age_months=24 → 18-month-old commit (<24 months) → PASS."""
+        offset = int(-18 * _SECONDS_PER_MONTH)
+        _init_git_repo(tmp_path, commit_offset_seconds=offset)
+        finding = _check_rule_with_settings(tmp_path, RC_RULE, {"max_age_months": 24})
+        assert finding.status is RuleStatus.PASS
+
+    def test_no_settings_uses_12_month_default(self, tmp_path: Path) -> None:
+        """No settings → 12-month default: recent commit → PASS."""
+        _init_git_repo(tmp_path)
+        finding = _check_rule(tmp_path, RC_RULE)
+        assert finding.status is RuleStatus.PASS
+
+    def test_invalid_type_setting_falls_back_to_default(self, tmp_path: Path) -> None:
+        """max_age_months='bad' (string) → fall back to 12-month default."""
+        _init_git_repo(tmp_path)  # recent commit → PASS with 12-month default
+        finding = _check_rule_with_settings(
+            tmp_path, RC_RULE, {"max_age_months": "not_a_number"}
+        )
+        # Should still work (fallback to default), not raise
+        assert finding.status in (
+            RuleStatus.PASS,
+            RuleStatus.WARN,
+            RuleStatus.NOT_APPLICABLE,
+        )
+
+    def test_zero_setting_falls_back_to_default(self, tmp_path: Path) -> None:
+        """max_age_months=0 → invalid (<=0) → fallback to 12-month default."""
+        _init_git_repo(tmp_path)
+        finding = _check_rule_with_settings(tmp_path, RC_RULE, {"max_age_months": 0})
+        assert finding.status in (
+            RuleStatus.PASS,
+            RuleStatus.WARN,
+            RuleStatus.NOT_APPLICABLE,
+        )
+
+    def test_negative_setting_falls_back_to_default(self, tmp_path: Path) -> None:
+        """max_age_months=-5 → invalid (<0) → fallback to 12-month default."""
+        _init_git_repo(tmp_path)
+        finding = _check_rule_with_settings(tmp_path, RC_RULE, {"max_age_months": -5})
+        assert finding.status in (
+            RuleStatus.PASS,
+            RuleStatus.WARN,
+            RuleStatus.NOT_APPLICABLE,
+        )
+
+    def test_custom_threshold_reflected_in_message(self, tmp_path: Path) -> None:
+        """Custom threshold value appears in the finding message."""
+        offset = int(-18 * _SECONDS_PER_MONTH)
+        _init_git_repo(tmp_path, commit_offset_seconds=offset)
+        finding = _check_rule_with_settings(tmp_path, RC_RULE, {"max_age_months": 24})
+        # 18 months old with 24-month threshold → PASS, message should reference 24
+        assert "24" in finding.message
+
+
+# ===========================================================================
+# Per-rule settings — maintenance.recent_release.detected (issue #117)
+# ===========================================================================
+
+
+class TestRecentReleaseWithSettings:
+    def test_custom_short_threshold_warns_on_6_week_old_tag(
+        self, tmp_path: Path
+    ) -> None:
+        """max_age_months=1 → 6-week-old tag (>1 month) → WARN."""
+        _init_git_repo(tmp_path)
+        offset = int(-6 * 7 * 86400)  # 6 weeks in seconds
+        _add_tag(tmp_path, "v1.0.0", tag_offset_seconds=offset)
+        finding = _check_rule_with_settings(tmp_path, RR_RULE, {"max_age_months": 1})
+        assert finding.status is RuleStatus.WARN
+
+    def test_custom_long_threshold_passes_on_18_month_old_tag(
+        self, tmp_path: Path
+    ) -> None:
+        """max_age_months=24 → 18-month-old tag (<24 months) → PASS."""
+        _init_git_repo(tmp_path)
+        offset = int(-18 * _SECONDS_PER_MONTH)
+        _add_tag(tmp_path, "v0.1.0", tag_offset_seconds=offset)
+        finding = _check_rule_with_settings(tmp_path, RR_RULE, {"max_age_months": 24})
+        assert finding.status is RuleStatus.PASS
+
+    def test_no_settings_uses_12_month_default(self, tmp_path: Path) -> None:
+        """No settings → 12-month default: recent tag → PASS."""
+        _init_git_repo(tmp_path)
+        _add_tag(tmp_path, "v1.0.0")
+        finding = _check_rule(tmp_path, RR_RULE)
+        assert finding.status is RuleStatus.PASS
+
+    def test_invalid_type_setting_falls_back_to_default(self, tmp_path: Path) -> None:
+        """max_age_months='bad' (string) → fall back to 12-month default."""
+        _init_git_repo(tmp_path)
+        _add_tag(tmp_path, "v1.0.0")  # recent tag → PASS with default
+        finding = _check_rule_with_settings(
+            tmp_path, RR_RULE, {"max_age_months": "bad"}
+        )
+        assert finding.status in (
+            RuleStatus.PASS,
+            RuleStatus.WARN,
+            RuleStatus.NOT_APPLICABLE,
+        )
+
+    def test_zero_setting_falls_back_to_default(self, tmp_path: Path) -> None:
+        """max_age_months=0 → invalid → fallback to 12-month default."""
+        _init_git_repo(tmp_path)
+        _add_tag(tmp_path, "v1.0.0")
+        finding = _check_rule_with_settings(tmp_path, RR_RULE, {"max_age_months": 0})
+        assert finding.status in (
+            RuleStatus.PASS,
+            RuleStatus.WARN,
+            RuleStatus.NOT_APPLICABLE,
+        )
+
+    def test_custom_threshold_reflected_in_message(self, tmp_path: Path) -> None:
+        """Custom threshold value appears in the finding message."""
+        _init_git_repo(tmp_path)
+        offset = int(-18 * _SECONDS_PER_MONTH)
+        _add_tag(tmp_path, "v0.1.0", tag_offset_seconds=offset)
+        finding = _check_rule_with_settings(tmp_path, RR_RULE, {"max_age_months": 24})
+        # 18-month-old tag with 24-month threshold → PASS, message should reference 24
+        assert "24" in finding.message

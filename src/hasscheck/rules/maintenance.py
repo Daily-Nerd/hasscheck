@@ -24,14 +24,13 @@ from hasscheck.models import (
     RuleSource,
     RuleStatus,
 )
-from hasscheck.rules.base import ProjectContext, RuleDefinition
+from hasscheck.rules.base import ProjectContext, RuleDefinition, get_rule_setting
 
 CATEGORY = "maintenance"
 _DOCS_URL = "https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases"
 _SOURCE_CHECKED_AT = "2026-05-01"
-_MAX_AGE_MONTHS = 12
+_DEFAULT_MAX_AGE_MONTHS = 12
 _SECONDS_PER_MONTH = 30.44 * 86400  # average month in seconds
-_MAX_AGE_SECONDS = _MAX_AGE_MONTHS * _SECONDS_PER_MONTH
 
 _CHANGELOG_FILENAMES = (
     "CHANGELOG.md",
@@ -126,6 +125,21 @@ def _format_age(age_seconds: float) -> str:
     return f"{math.floor(days)} day{'s' if math.floor(days) != 1 else ''}"
 
 
+def _resolve_max_age(raw: object) -> int:
+    """Return a validated max_age_months int, falling back to the default.
+
+    Accepts only an int (or float that represents a whole number) > 0.
+    Anything else (wrong type, zero, negative) falls back to _DEFAULT_MAX_AGE_MONTHS.
+    """
+    try:
+        value = int(raw)  # type: ignore[arg-type]
+        if value > 0:
+            return value
+    except (TypeError, ValueError):
+        pass
+    return _DEFAULT_MAX_AGE_MONTHS
+
+
 def _not_applicable_finding(
     rule_id: str,
     rule_version: str,
@@ -189,7 +203,13 @@ def recent_commit_check(context: ProjectContext) -> Finding:
     assert ts is not None
     age = time.time() - ts
     age_str = _format_age(age)
-    is_recent = age < _MAX_AGE_SECONDS
+
+    raw_max = get_rule_setting(
+        context, _COMMIT_RULE_ID, "max_age_months", _DEFAULT_MAX_AGE_MONTHS
+    )
+    max_age_months = _resolve_max_age(raw_max)
+    max_age_seconds = max_age_months * _SECONDS_PER_MONTH
+    is_recent = age < max_age_seconds
 
     return Finding(
         rule_id=_COMMIT_RULE_ID,
@@ -199,9 +219,9 @@ def recent_commit_check(context: ProjectContext) -> Finding:
         severity=RuleSeverity.RECOMMENDED,
         title=_COMMIT_TITLE,
         message=(
-            f"Most recent commit is {age_str} old — within the {_MAX_AGE_MONTHS}-month threshold."
+            f"Most recent commit is {age_str} old — within the {max_age_months}-month threshold."
             if is_recent
-            else f"Most recent commit is {age_str} old — exceeds the {_MAX_AGE_MONTHS}-month threshold."
+            else f"Most recent commit is {age_str} old — exceeds the {max_age_months}-month threshold."
         ),
         applicability=Applicability(
             reason="An active git history signals ongoing maintenance."
@@ -265,7 +285,13 @@ def recent_release_check(context: ProjectContext) -> Finding:
     assert ts is not None
     age = time.time() - ts
     age_str = _format_age(age)
-    is_recent = age < _MAX_AGE_SECONDS
+
+    raw_max = get_rule_setting(
+        context, _RELEASE_RULE_ID, "max_age_months", _DEFAULT_MAX_AGE_MONTHS
+    )
+    max_age_months = _resolve_max_age(raw_max)
+    max_age_seconds = max_age_months * _SECONDS_PER_MONTH
+    is_recent = age < max_age_seconds
 
     return Finding(
         rule_id=_RELEASE_RULE_ID,
@@ -275,9 +301,9 @@ def recent_release_check(context: ProjectContext) -> Finding:
         severity=RuleSeverity.RECOMMENDED,
         title=_RELEASE_TITLE,
         message=(
-            f"Most recent release tag is {age_str} old — within the {_MAX_AGE_MONTHS}-month threshold."
+            f"Most recent release tag is {age_str} old — within the {max_age_months}-month threshold."
             if is_recent
-            else f"Most recent release tag is {age_str} old — exceeds the {_MAX_AGE_MONTHS}-month threshold."
+            else f"Most recent release tag is {age_str} old — exceeds the {max_age_months}-month threshold."
         ),
         applicability=Applicability(
             reason="A recent release tag signals active versioning and distribution."

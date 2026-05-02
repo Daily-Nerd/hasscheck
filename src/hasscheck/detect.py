@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from hasscheck.rules.base import ProjectContext
 
@@ -11,7 +11,9 @@ if TYPE_CHECKING:
 
 
 def detect_project(
-    root: Path, applicability: ProjectApplicability | None = None
+    root: Path,
+    applicability: ProjectApplicability | None = None,
+    rule_settings: dict[str, dict[str, Any]] | None = None,
 ) -> ProjectContext:
     root = root.resolve()
     custom_components = root / "custom_components"
@@ -41,4 +43,5 @@ def detect_project(
         integration_path=integration_path,
         domain=domain,
         applicability=applicability,
+        rule_settings=rule_settings or {},
     )
