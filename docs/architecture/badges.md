@@ -11,6 +11,21 @@ Badges are **opt-in only** — never emitted by `hasscheck check` or the GitHub
 Action unless the caller explicitly requests them. See ADR 0007 for the policy
 rationale.
 
+## Trust level: local preview only
+
+**Local badge JSON files are self-reported.** A maintainer can commit any JSON
+content regardless of actual integration state. They are useful for local
+development feedback and CI artifact inspection, but consumers reading a badge
+from a committed file have no way to verify it reflects a real check run.
+
+At v1.0, the HassCheck hub will generate badge JSON server-side from
+hub-verified reports (OIDC-authenticated, provenance-stamped). When hub badges
+are available, maintainers should link to hub badge URLs instead of committed
+local files. See issue #67 and ADR 0011 for the v1.0 migration path.
+
+Until then, local badges are the appropriate signal for the current trust level
+of the product.
+
 ## Badge schema (shields.io endpoint format)
 
 Each `.json` file follows the
@@ -136,6 +151,11 @@ Replace `OWNER/REPO/main` with your actual repository path:
 ```
 
 Badge JSON files must be publicly accessible for shields.io to read them.
+
+> **Local preview only.** These URLs point to self-reported committed files.
+> At v1.0, replace with hub-verified badge URLs from `hasscheck.io` — those
+> are generated server-side from an OIDC-authenticated report and cannot be
+> spoofed by committing arbitrary JSON.
 
 ## Forbidden language
 
