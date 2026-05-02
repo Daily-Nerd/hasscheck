@@ -1,6 +1,6 @@
 # HassCheck Rule Index
 
-All 45 rules, grouped by category. Rules with a dedicated docs page are linked; others show "(no docs page yet)".
+All 48 rules, grouped by category. Rules with a dedicated docs page are linked; others show "(no docs page yet)".
 
 ## HACS structure
 
@@ -76,3 +76,11 @@ All 45 rules, grouped by category. Rules with a dedicated docs page are linked; 
 | `tests.setup_entry.detected` | `tests/` references `async_setup_entry` or `async_unload_entry`. | (no docs page yet) |
 | `tests.unload.detected` | `tests/` references `async_unload_entry` or unload test functions. | (no docs page yet) |
 | `ci.github_actions.exists` | Repository has `.github/workflows/*.yml` or `.yaml`. | (no docs page yet) |
+
+## Maintenance
+
+| Rule ID | Signal | Docs |
+|---|---|---|
+| `maintenance.recent_commit.detected` | HEAD commit is within the last 12 months (local git history). | (no docs page yet) |
+| `maintenance.recent_release.detected` | Most recent version tag is within the last 12 months (local git tags). | (no docs page yet) |
+| `maintenance.changelog.exists` | Repository has a changelog file (`CHANGELOG.md`, `HISTORY.md`, etc.). | (no docs page yet) |
