@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`report.provenance` block** in JSON report schema (#130). New optional `Provenance` model carries GitHub Actions context (`source`, `repository`, `commit_sha`, `ref`, `workflow`, `run_id`, `run_attempt`, `actor`, `published_at`, `verified_by`). CLI populates from `GITHUB_*` env vars when running in GitHub Actions; sets `source: "local"` otherwise. `verified_by` is always `null` from the CLI — only the hosted hub sets this after OIDC validation.
 - **Schema bump**: `schema_version` `0.3.0` → `0.4.0` (additive per ADR 0009). Reports without a `provenance` key remain valid (field defaults to `null`).
 - **`hasscheck publish --dry-run`** (#131). Validates the publish path — runs the check, resolves the endpoint (showing which source won: `--to` flag / env var / `hasscheck.yaml` / default), detects OIDC token presence — without making any network request. Also works with `--withdraw` and `--withdraw-all` to preview what would be deleted.
+- **Upgrade Radar framing + ADR 0011** (#132). `idea.md` §1 gains a North star section positioning HassCheck as the upgrade-readiness signal for HA custom integrations. §3 v1.0 ladder entry and §15 Month 9+ goal updated accordingly. New `docs/decisions/0011-upgrade-radar-status-taxonomy.md` defines the five-state hub status model: Fresh / Warnings / Failing / Stale / Unverified, with calculation rules, window rationale, display contract, and CLI behaviour notes.
 
 ## [0.12.0] — 2026-05-02
 

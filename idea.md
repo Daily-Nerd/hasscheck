@@ -48,6 +48,21 @@ before the tool has earned trust.
 
 # 1. Product position
 
+## North star
+
+**HassCheck is the upgrade-readiness signal for Home Assistant custom integrations.**
+
+Not a linter.
+Not a directory.
+Not a score.
+Not certification.
+
+A verified, opt-in answer to:
+
+> "Can I trust this integration enough before I install or upgrade?"
+
+Home Assistant's docs state explicitly: custom integrations are community-maintained, not officially reviewed, not security-audited, and not supported by the Home Assistant project. That gap is real. HassCheck's hub fills it — not by certifying anything, but by surfacing **verified, opt-in, current** signals from maintainers who choose to publish.
+
 ## One-line pitch
 
 > HassCheck is an unofficial CLI that checks Home Assistant custom integration
@@ -176,14 +191,15 @@ v0.11   Test detection + maintenance signals + auto-generated     [shipped]
         per-rule docs + demo recording
 v0.12   Per-rule settings in hasscheck.yaml + four more docs.*    [shipped]
         rules + diagnostics field cleanup
-v0.13.x Pre-v1.0 polish: report.provenance schema field,          [in progress]
-        hasscheck publish --dry-run, action.yml + README
-        consistency, Upgrade Radar positioning + ADR 0010
-v1.0    Opt-in project hub with verified Upgrade Radar — discovery [planned]
-        from voluntarily published reports, OIDC-verified
-        provenance display, hub-generated badges replacing
-        self-reported committed JSON, status taxonomy
-        (Fresh / Warnings / Failing / Stale / Unverified)
+v0.13.x Pre-v1.0 polish: report.provenance schema field (#130),   [shipped]
+        hasscheck publish --dry-run (#131), Upgrade Radar
+        positioning + ADR 0011 status taxonomy (#132)
+v1.0    HassCheck Upgrade Radar — hub-verified upgrade-readiness   [planned]
+        signals for HA custom integrations. Discovery from
+        voluntarily published reports, OIDC-verified provenance
+        display, hub-generated badges, status taxonomy:
+        Fresh / Warnings / Failing / Stale / Unverified
+        (defined in ADR 0011)
 ```
 
 Each rung adds value the previous rung cannot deliver alone. The hub only
@@ -1070,22 +1086,23 @@ Goal:
 Sequenced deliverables:
 
 ```text
-fix(action) — badge step .venv/bin/python bug (#128) [shipped]
-docs(readme) — sync Current status to v0.12.0 reality (#129)
-feat(schema) — optional report.provenance block, schema 0.3.0 → 0.4.0 (#130)
-feat(cli) — hasscheck publish --dry-run (#131)
-docs — Upgrade Radar v1.0 positioning + ADR 0010 status taxonomy (#132)
-PyPI trusted publishing (#15) — depends on repo public flip
+fix(action) — badge step .venv/bin/python bug (#128)            [shipped]
+docs(readme) — sync Current status to v0.12.0 reality (#129)    [shipped]
+feat(schema) — optional report.provenance block, 0.3.0→0.4.0    [shipped]
+              (#130)
+feat(cli) — hasscheck publish --dry-run (#131)                   [shipped]
+docs — Upgrade Radar v1.0 positioning + ADR 0011 taxonomy (#132) [shipped]
+PyPI trusted publishing (#15) — depends on repo public flip      [planned]
 ```
 
-## Month 9+ — Opt-in hub with verified Upgrade Radar (v1.0) [planned]
+## Month 9+ — HassCheck Upgrade Radar hub (v1.0) [planned]
 
 Goal:
 
 > Discovery from voluntarily published reports. Verified by GitHub OIDC.
-> No public scoring.
+> No public scoring. No certification.
 
-The v1.0 narrative is **HassCheck Upgrade Radar — verified upgrade-readiness
+The v1.0 headline is **HassCheck Upgrade Radar — verified upgrade-readiness
 signals for Home Assistant custom integrations.** The hub answers the user
 question: *"Can I trust this integration enough before I install or upgrade?"*
 
