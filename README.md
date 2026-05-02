@@ -353,6 +353,9 @@ Per-rule documentation pages with status behavior tables, fix instructions, and 
 | Rule ID | Signal |
 | --- | --- |
 | `tests.folder.exists` | Repository has `tests/`. |
+| `tests.config_flow.detected` | `tests/` contains config flow test coverage (filename, import, or function name). |
+| `tests.setup_entry.detected` | `tests/` references `async_setup_entry` or `async_unload_entry`. |
+| `tests.unload.detected` | `tests/` references `async_unload_entry` or unload test functions. |
 | `ci.github_actions.exists` | Repository has `.github/workflows/*.yml` or `.yaml`. |
 
 ## JSON report contract
