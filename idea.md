@@ -1077,7 +1077,7 @@ diagnostics field cleanup (#106) — drop dead imports_async_redact;
   lock conservative "call required" PASS stance
 ```
 
-## Month 8 — Pre-v1.0 polish (v0.13.x) [in progress]
+## Month 8 — Pre-v1.0 polish (v0.13.x) [shipped]
 
 Goal:
 
@@ -1092,7 +1092,8 @@ feat(schema) — optional report.provenance block, 0.3.0→0.4.0    [shipped]
               (#130)
 feat(cli) — hasscheck publish --dry-run (#131)                   [shipped]
 docs — Upgrade Radar v1.0 positioning + ADR 0011 taxonomy (#132) [shipped]
-PyPI trusted publishing (#15) — depends on repo public flip      [planned]
+PyPI trusted publishing (#15) + repo public + v0.13.0 tag        [shipped]
+docs(readme) — sync to v0.13.0 beta + Quick Start (#140)         [shipped]
 ```
 
 ## Month 9+ — HassCheck Upgrade Radar hub (v1.0) [planned]
