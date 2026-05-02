@@ -1,6 +1,6 @@
 # HassCheck Rule Index
 
-All 48 rules, grouped by category. Every rule now has a generated docs page.
+All 52 rules, grouped by category. Every rule now has a generated docs page.
 
 ## HACS structure
 
@@ -65,6 +65,10 @@ All 48 rules, grouped by category. Every rule now has a generated docs page.
 | `docs.troubleshooting.exists` | README contains a Troubleshooting / FAQ / Support section. | [docs.troubleshooting.exists.md](docs.troubleshooting.exists.md) |
 | `docs.removal.exists` | README contains a Removal / Uninstall section. | [docs.removal.exists.md](docs.removal.exists.md) |
 | `docs.privacy.exists` | README addresses privacy / data / cloud / local handling. | [docs.privacy.exists.md](docs.privacy.exists.md) |
+| `docs.examples.exists` | README contains an Examples or Usage section. | [docs.examples.exists.md](docs.examples.exists.md) |
+| `docs.supported_devices.exists` | README lists supported devices, services, hardware, or compatibility. | [docs.supported_devices.exists.md](docs.supported_devices.exists.md) |
+| `docs.limitations.exists` | README documents limitations, caveats, or restrictions. | [docs.limitations.exists.md](docs.limitations.exists.md) |
+| `docs.hacs_instructions.exists` | README contains HACS or custom repository installation instructions. | [docs.hacs_instructions.exists.md](docs.hacs_instructions.exists.md) |
 | `repo.license.exists` | Repository has a license file. | [repo.license.exists.md](repo.license.exists.md) |
 
 ## Tests and CI

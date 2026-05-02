@@ -350,6 +350,10 @@ Per-rule documentation pages with status behavior tables, fix instructions, and 
 | `docs.troubleshooting.exists` | README contains a Troubleshooting / FAQ / Support section. |
 | `docs.removal.exists` | README contains a Removal / Uninstall section. |
 | `docs.privacy.exists` | README addresses privacy / data / cloud / local handling. |
+| `docs.examples.exists` | README contains an Examples or Usage section. |
+| `docs.supported_devices.exists` | README lists supported devices, services, hardware, or compatibility. |
+| `docs.limitations.exists` | README documents limitations, caveats, or restrictions. |
+| `docs.hacs_instructions.exists` | README contains HACS or custom repository installation instructions. |
 | `repo.license.exists` | Repository has a license file. |
 
 ### Tests and CI
