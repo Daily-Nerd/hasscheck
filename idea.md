@@ -9,18 +9,20 @@ Working name: **HassCheck**
 
 > ⚠️ **This document is the original product brief.** It captures the founding
 > vision and is preserved as-is below. The Section 3 ladder and Section 15
-> roadmap have been refreshed to reflect shipped reality through v0.9.0.
+> roadmap have been refreshed to reflect shipped reality through v0.12.0.
 > For per-release detail see [`CHANGELOG.md`](./CHANGELOG.md). For
 > architecture decisions and per-feature design see
 > [`docs/`](./docs/README.md) and [`docs/decisions/`](./docs/decisions/).
 >
-> **Implementation status (2026-05-01):**
-> - **Latest released**: `v0.9.0` — rule depth (30 rules), AST-based config
->   flow + diagnostics inspection, README content rules, adoption docs.
-> - **In progress**: `v0.10.x` — rule expansion. See open GitHub issues
->   (#100, #101, #102, #107, #108, #109) for the working backlog.
-> - **Hosted endpoint** (`hasscheck.io`): launching alongside the OSS public
->   flip; built in the private `hasscheck-web` repo per ADR 0008.
+> **Implementation status (2026-05-02):**
+> - **Latest released**: `v0.12.0` — 52 rules, per-rule settings in
+>   `hasscheck.yaml`, auto-generated per-rule docs, demo recording assets.
+> - **In progress**: pre-v1.0 polish. See open GitHub issues #128–#132 for
+>   the launch-blocker backlog plus #15 (PyPI publish), #67 (hub-verified
+>   badges), #103 (prose-only doc heuristics).
+> - **Hosted endpoint** (`hasscheck.io`): live and accepting opt-in published
+>   reports via GitHub OIDC. Built in the private `hasscheck-web` repo per
+>   ADR 0008.
 
 ## Executive correction
 
@@ -156,22 +158,32 @@ That distinction matters.
 # 3. Product ladder
 
 ```text
-v0.1   Local CLI                                                  [shipped]
-v0.2   Stable JSON report schema + applicability + overrides      [shipped]
-v0.3   Rule explanations + source links                           [shipped]
-v0.4   Scaffolding / fix helpers                                  [shipped]
-v0.5   GitHub Action + unified --format flag                      [shipped]
-v0.6   Opt-in badges                                              [shipped]
-v0.7   Opt-in hosted reports (OIDC publish)                       [shipped]
-v0.8   Rule depth + publish polish + LICENSE/metadata             [shipped]
-v0.9   AST helper extraction + README content rules + adoption    [shipped]
-       docs (comparison + per-rule pages + demo walkthrough)
-v0.10  Rule expansion: manifest.requirements, config_flow         [in progress]
-       advanced (reauth/reconfigure/duplicate/connection),
-       modern HA pattern checks (async_setup_entry, runtime_data,
-       unique_id, has_entity_name, device_info)
-v1.0   Opt-in project hub — discovery from voluntarily published  [planned]
-       reports, hub-verified badges, server-side rule re-execution
+v0.1    Local CLI                                                 [shipped]
+v0.2    Stable JSON report schema + applicability + overrides     [shipped]
+v0.3    Rule explanations + source links                          [shipped]
+v0.4    Scaffolding / fix helpers                                 [shipped]
+v0.5    GitHub Action + unified --format flag                     [shipped]
+v0.6    Opt-in badges                                             [shipped]
+v0.7    Opt-in hosted reports (OIDC publish)                      [shipped]
+v0.8    Rule depth + publish polish + LICENSE/metadata            [shipped]
+v0.9    AST helper extraction + README content rules + adoption   [shipped]
+        docs (comparison + per-rule pages + demo walkthrough)
+v0.10   Rule expansion: manifest.requirements, config_flow        [shipped]
+        advanced (reauth/reconfigure/duplicate/connection),
+        modern HA pattern checks (async_setup_entry, runtime_data,
+        unique_id, has_entity_name, device_info)
+v0.11   Test detection + maintenance signals + auto-generated     [shipped]
+        per-rule docs + demo recording
+v0.12   Per-rule settings in hasscheck.yaml + four more docs.*    [shipped]
+        rules + diagnostics field cleanup
+v0.13.x Pre-v1.0 polish: report.provenance schema field,          [in progress]
+        hasscheck publish --dry-run, action.yml + README
+        consistency, Upgrade Radar positioning + ADR 0010
+v1.0    Opt-in project hub with verified Upgrade Radar — discovery [planned]
+        from voluntarily published reports, OIDC-verified
+        provenance display, hub-generated badges replacing
+        self-reported committed JSON, status taxonomy
+        (Fresh / Warnings / Failing / Stale / Unverified)
 ```
 
 Each rung adds value the previous rung cannot deliver alone. The hub only
@@ -995,55 +1007,105 @@ CONTRIBUTING.md + CODE_OF_CONDUCT.md (Contributor Covenant 2.1)
 README "Current status" + emit-publish framing aligned with reality
 ```
 
-## Month 7 — Public flip + PyPI (v0.10.x) [in progress]
+## Month 7 — Rule expansion (v0.10) [shipped]
 
 Goal:
 
-> Reach maintainers. Distribution unblocks community feedback.
+> Make the rule surface deep enough that hosted reports carry signal.
+
+Shipped:
+
+```text
+manifest.requirements sanity (#100) — is_list, entries_well_formed
+  (PEP 508), no_git_or_url_specs
+config_flow advanced (#101) — reauth_step, reconfigure_step,
+  unique_id.set, connection_test heuristic
+modern HA pattern checks (#107) — async_setup_entry,
+  runtime_data, entity unique_id, has_entity_name, device_info
+ast_utils.has_async_function helper extraction
+```
+
+## Month 7.5 — Test detection + maintenance + docs tooling (v0.11) [shipped]
+
+Goal:
+
+> Close the rule-docs scaling gap and add maintenance signals.
+
+Shipped:
+
+```text
+test detection rules (#108) — config_flow / setup_entry / unload
+maintenance signals (#109) — recent_commit, recent_release,
+  changelog presence (local git only, no GitHub API)
+auto-generated per-rule docs from RuleDefinition metadata (#104),
+  CI drift check for stale pages
+demo recording assets (#105) — docs/demo.sh + docs/recording.md +
+  docs/demo.gif rendered via asciinema + agg
+```
+
+## Month 7.6 — Per-rule settings + more docs rules (v0.12) [shipped]
+
+Goal:
+
+> Make rules tunable without monkey-patching; close the docs.* tail.
+
+Shipped:
+
+```text
+per-rule settings in hasscheck.yaml (#117) — RuleOverride.settings
+  + ProjectContext.rule_settings + get_rule_setting helper; wires
+  #109 maintenance thresholds
+four more docs.*.exists rules (#102) — examples, supported_devices,
+  limitations, hacs_instructions
+diagnostics field cleanup (#106) — drop dead imports_async_redact;
+  lock conservative "call required" PASS stance
+```
+
+## Month 8 — Pre-v1.0 polish (v0.13.x) [in progress]
+
+Goal:
+
+> Close the v1.0 review punch list. Make the launch surface coherent.
 
 Sequenced deliverables:
 
 ```text
-hasscheck.io launches alongside repo public flip
-PyPI trusted publishing (#15)
-manifest.requirements sanity rule (#100)
-config_flow advanced — reauth / reconfigure / duplicate prevention /
-  connection testing (#101)
-modern HA pattern checks — async_setup_entry, runtime_data,
-  unique_id, has_entity_name, device_info (#107)
+fix(action) — badge step .venv/bin/python bug (#128) [shipped]
+docs(readme) — sync Current status to v0.12.0 reality (#129)
+feat(schema) — optional report.provenance block, schema 0.3.0 → 0.4.0 (#130)
+feat(cli) — hasscheck publish --dry-run (#131)
+docs — Upgrade Radar v1.0 positioning + ADR 0010 status taxonomy (#132)
+PyPI trusted publishing (#15) — depends on repo public flip
 ```
 
-Stretch (v0.10.x — pick by signal once public):
-
-```text
-more README content rules (#102, #103)
-auto-generate per-rule docs from RuleDefinition metadata (#104)
-demo terminal recording (#105)
-imports_async_redact PASS resolution decision (#106)
-integration test detection rules (#108)
-maintenance signal rules (#109)
-```
-
-## Month 8+ — Opt-in hub (v1.0) [planned]
+## Month 9+ — Opt-in hub with verified Upgrade Radar (v1.0) [planned]
 
 Goal:
 
-> Discovery only from voluntarily published reports. No public scoring.
+> Discovery from voluntarily published reports. Verified by GitHub OIDC.
+> No public scoring.
+
+The v1.0 narrative is **HassCheck Upgrade Radar — verified upgrade-readiness
+signals for Home Assistant custom integrations.** The hub answers the user
+question: *"Can I trust this integration enough before I install or upgrade?"*
 
 Deliverables:
 
 ```text
-hub-verified badges — server-side rule re-execution (#67) replaces
-  self-reported committed badge JSON
+Upgrade Radar status taxonomy — Fresh / Warnings / Failing / Stale /
+  Unverified, computed server-side from latest verified report
+OIDC verified provenance display on every report page (commit SHA,
+  ref, run id, ruleset, tool version)
+hub-verified badges — server-generated from latest verified report,
+  replacing self-reported committed badge JSON (#67)
 project profiles + report directory (read-only)
-search and filters
-no default ranking by score
+search, sorted by published_at DESC, no score ranking
 schema bump policy enforced via ADR 0009 (lockstep with hasscheck-web)
 ```
 
 The hub becomes useful only after enough voluntary publish events from
-real maintainers. Distribution (Month 7) gates this — v1.0 cannot start
-without v0.10 community signal.
+real maintainers. Distribution (PyPI #15 + repo public flip) gates this —
+v1.0 cannot start without community signal.
 
 ---
 
