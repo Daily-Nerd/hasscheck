@@ -5,6 +5,7 @@ import json
 from collections.abc import Iterable
 from typing import Any
 
+from hasscheck.ast_utils import has_async_function as _has_async_function_shared
 from hasscheck.ast_utils import parse_module
 from hasscheck.models import (
     Applicability,
@@ -108,15 +109,8 @@ def _read_manifest(context: ProjectContext) -> tuple[dict[str, Any] | None, str 
 
 
 def _has_async_function(tree: ast.Module, name: str) -> bool:
-    """Return True if tree contains any AsyncFunctionDef with the given name.
-
-    Uses ast.walk so it finds the function at any nesting depth
-    (module-level or as a class method).
-    """
-    return any(
-        isinstance(node, ast.AsyncFunctionDef) and node.name == name
-        for node in ast.walk(tree)
-    )
+    """Thin wrapper delegating to hasscheck.ast_utils.has_async_function."""
+    return _has_async_function_shared(tree, name)
 
 
 def _has_async_function_any(tree: ast.Module, names: Iterable[str]) -> bool:

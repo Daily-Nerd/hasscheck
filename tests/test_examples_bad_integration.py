@@ -175,3 +175,24 @@ def test_connection_test_warns_on_bad_integration_fixture() -> None:
     """Fixture config_flow.py has no discovery-flow step — connection_test must WARN."""
     findings = _findings_by_id()
     assert findings["config_flow.connection_test"].status is RuleStatus.WARN
+
+
+# ---------------------------------------------------------------------------
+# issue #107: init.* rules — bad_integration __init__.py lacks async_setup_entry
+# and runtime_data usage → both WARN.
+# entity.* rules are NOT_APPLICABLE (no platform files in bad fixture).
+# ---------------------------------------------------------------------------
+
+
+def test_init_async_setup_entry_warns_on_bad_integration_fixture() -> None:
+    """Fixture __init__.py has no async_setup_entry — must WARN."""
+    findings = _findings_by_id()
+    f = findings["init.async_setup_entry.defined"]
+    assert f.status is RuleStatus.WARN
+
+
+def test_init_runtime_data_warns_on_bad_integration_fixture() -> None:
+    """Fixture __init__.py has no runtime_data usage — must WARN."""
+    findings = _findings_by_id()
+    f = findings["init.runtime_data.used"]
+    assert f.status is RuleStatus.WARN

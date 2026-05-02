@@ -7,7 +7,9 @@ from hasscheck.rules.config_flow import RULES as CONFIG_FLOW_RULES
 from hasscheck.rules.diagnostics import RULES as DIAGNOSTICS_RULES
 from hasscheck.rules.docs import RULES as DOCS_RULES
 from hasscheck.rules.docs_readme import RULES as DOCS_README_RULES
+from hasscheck.rules.entity import RULES as ENTITY_RULES
 from hasscheck.rules.hacs_structure import RULES as HACS_STRUCTURE_RULES
+from hasscheck.rules.init_module import RULES as INIT_MODULE_RULES
 from hasscheck.rules.manifest import RULES as MANIFEST_RULES
 from hasscheck.rules.repairs import RULES as REPAIRS_RULES
 from hasscheck.rules.repository import RULES as REPOSITORY_RULES
@@ -25,6 +27,8 @@ RULES = [
     *REPOSITORY_RULES,
     *TESTS_RULES,
     *CI_RULES,
+    *INIT_MODULE_RULES,
+    *ENTITY_RULES,
 ]
 RULES_BY_ID: dict[str, RuleDefinition] = {}
 for _rule in RULES:
