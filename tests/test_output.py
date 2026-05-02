@@ -337,3 +337,68 @@ def test_report_to_md_no_config_marker_for_default_source() -> None:
     output = report_to_md(report)
 
     assert "*(config)*" not in output
+
+
+# ---------- Phase 141: Compat policy footer scenarios (RED) ----------
+
+from hasscheck.models import ReportTarget  # noqa: E402
+
+_EXPECTED_FOOTER_FRAGMENT = "compatibility-claim-policy.md"
+
+
+def _make_report_with_target(ha_version: str | None) -> HassCheckReport:
+    return HassCheckReport(
+        project=ProjectInfo(path="."),
+        summary=ReportSummary(),
+        findings=[],
+        target=ReportTarget(ha_version=ha_version),
+    )
+
+
+# Scenario 20 — text report emits footer when ha_version populated
+def test_text_report_emits_compat_policy_footer_when_ha_version_populated() -> None:
+    report = _make_report_with_target(ha_version="2026.5.1")
+    output = capture_output(report)
+    assert _EXPECTED_FOOTER_FRAGMENT in output, (
+        f"Expected footer fragment '{_EXPECTED_FOOTER_FRAGMENT}' not found in terminal output"
+    )
+
+
+# Scenario 21 — text report omits footer when target is None
+def test_text_report_omits_footer_when_target_is_none() -> None:
+    report = HassCheckReport(
+        project=ProjectInfo(path="."),
+        summary=ReportSummary(),
+        findings=[],
+        target=None,
+    )
+    output = capture_output(report)
+    assert _EXPECTED_FOOTER_FRAGMENT not in output
+
+
+# Scenario 22 — text report omits footer when ha_version is None
+def test_text_report_omits_footer_when_ha_version_is_none() -> None:
+    report = _make_report_with_target(ha_version=None)
+    output = capture_output(report)
+    assert _EXPECTED_FOOTER_FRAGMENT not in output
+
+
+# Scenario 23 — markdown report emits footer when ha_version populated
+def test_markdown_report_emits_compat_policy_footer_when_ha_version_populated() -> None:
+    report = _make_report_with_target(ha_version="2026.5.1")
+    output = report_to_md(report)
+    assert _EXPECTED_FOOTER_FRAGMENT in output, (
+        f"Expected footer fragment '{_EXPECTED_FOOTER_FRAGMENT}' not found in markdown output"
+    )
+
+
+# Scenario 24 — JSON report unchanged by footer logic
+def test_json_report_unchanged_by_footer_logic() -> None:
+    from hasscheck.output import report_to_json
+
+    for ha_version in (None, "2026.5.1"):
+        report = _make_report_with_target(ha_version=ha_version)
+        json_bytes = report_to_json(report)
+        assert _EXPECTED_FOOTER_FRAGMENT not in json_bytes, (
+            f"Footer fragment should not appear in JSON output (ha_version={ha_version!r})"
+        )
