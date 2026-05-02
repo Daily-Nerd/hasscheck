@@ -1,6 +1,6 @@
 # HassCheck Rule Index
 
-All 33 rules, grouped by category. Rules with a dedicated docs page are linked; others show "(no docs page yet)".
+All 42 rules, grouped by category. Rules with a dedicated docs page are linked; others show "(no docs page yet)".
 
 ## HACS structure
 
@@ -41,6 +41,11 @@ All 33 rules, grouped by category. Rules with a dedicated docs page are linked; 
 | `config_flow.reconfigure_step.exists` | `config_flow.py` defines `async_step_reconfigure` (AST inspection). | (no docs page yet) |
 | `config_flow.unique_id.set` | `config_flow.py` calls `async_set_unique_id` (AST inspection). | (no docs page yet) |
 | `config_flow.connection_test` | A discovery-flow step awaits a non-plumbing call (AST heuristic). | (no docs page yet) |
+| `init.async_setup_entry.defined` | `__init__.py` defines `async_setup_entry` (AST inspection). | (no docs page yet) |
+| `init.runtime_data.used` | `__init__.py` accesses `entry.runtime_data` (HA 2024.4+ pattern, AST inspection). | (no docs page yet) |
+| `entity.unique_id.set` | At least one entity platform sets `_attr_unique_id` (AST inspection). | (no docs page yet) |
+| `entity.has_entity_name.set` | At least one entity platform sets `_attr_has_entity_name = True` (AST inspection). | (no docs page yet) |
+| `entity.device_info.set` | At least one entity platform sets `_attr_device_info` or returns `DeviceInfo` (AST inspection). | (no docs page yet) |
 
 ## Diagnostics and repairs
 
