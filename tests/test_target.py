@@ -186,9 +186,12 @@ def test_detect_target_never_raises_on_missing_integration_path(
 
     monkeypatch.setattr("hasscheck.target.subprocess.run", fake_run)
 
-    # integration_path=None must never raise
+    # integration_path=None must never raise; helpers fall through to "unknown"
     target = detect_target(tmp_path, None, None)
-    assert target is not None or target is None  # either is acceptable
+    assert target is not None
+    assert target.integration_domain is None
+    assert target.integration_version is None
+    assert target.integration_version_source == "unknown"
 
 
 # ---------------------------------------------------------------------------

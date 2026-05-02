@@ -14,6 +14,7 @@ from hasscheck.models import (
     HassCheckReport,
     ProjectInfo,
     ReportSummary,
+    ReportTarget,
     RuleSeverity,
     RuleSource,
     RuleStatus,
@@ -340,8 +341,6 @@ def test_report_to_md_no_config_marker_for_default_source() -> None:
 
 
 # ---------- Phase 141: Compat policy footer scenarios (RED) ----------
-
-from hasscheck.models import ReportTarget  # noqa: E402
 
 _EXPECTED_FOOTER_FRAGMENT = "compatibility-claim-policy.md"
 
