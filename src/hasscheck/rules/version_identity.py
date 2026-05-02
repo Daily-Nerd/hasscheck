@@ -128,6 +128,28 @@ _TAG_TITLE = "Manifest version matches the latest git release tag"
 
 
 def matches_release_tag_check(context: ProjectContext) -> Finding:
+    # Source-type guard: rule only applies when the version is sourced from a
+    # git tag or GitHub release. Any other source (e.g. "manifest", "unknown")
+    # means comparing against the latest git tag is meaningless.
+    if context.integration_version_source not in {"git_tag", "github_release"}:
+        return Finding(
+            rule_id=_TAG_RULE_ID,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.RECOMMENDED,
+            title=_TAG_TITLE,
+            message=(
+                f"Version source is {context.integration_version_source!r}; "
+                "rule only applies to git_tag and github_release."
+            ),
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="Version source is not tag-based.",
+            ),
+            source=_SOURCE,
+        )
+
     latest_tag = _latest_version_tag(context.root)
     manifest_version = context.integration_version
     release_tag = context.integration_release_tag

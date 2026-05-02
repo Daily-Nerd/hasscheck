@@ -213,7 +213,7 @@ def test_matches_release_tag_passes_when_versions_equal(
     ctx = _make_ctx(
         root=tmp_path,
         integration_version="1.2.3",
-        integration_version_source="manifest",
+        integration_version_source="git_tag",
     )
     finding = matches_release_tag_check(ctx)  # type: ignore[arg-type]
     assert finding.status == RuleStatus.PASS
@@ -230,7 +230,7 @@ def test_matches_release_tag_passes_when_tag_has_v_prefix(
     ctx = _make_ctx(
         root=tmp_path,
         integration_version="1.2.3",
-        integration_version_source="manifest",
+        integration_version_source="git_tag",
     )
     finding = matches_release_tag_check(ctx)  # type: ignore[arg-type]
     assert finding.status == RuleStatus.PASS
@@ -248,6 +248,7 @@ def test_matches_release_tag_passes_when_release_tag_set(
         root=tmp_path,
         integration_version=None,
         integration_release_tag="v1.2.3",
+        integration_version_source="github_release",
     )
     finding = matches_release_tag_check(ctx)  # type: ignore[arg-type]
     assert finding.status == RuleStatus.PASS
@@ -264,7 +265,7 @@ def test_matches_release_tag_warns_when_versions_differ(
     ctx = _make_ctx(
         root=tmp_path,
         integration_version="1.2.4",
-        integration_version_source="manifest",
+        integration_version_source="git_tag",
     )
     finding = matches_release_tag_check(ctx)  # type: ignore[arg-type]
     assert finding.status == RuleStatus.WARN
@@ -282,6 +283,30 @@ def test_matches_release_tag_handles_git_subprocess_failure(
     ctx = _make_ctx(
         root=tmp_path,
         integration_version="1.0.0",
+    )
+    finding = matches_release_tag_check(ctx)  # type: ignore[arg-type]
+    assert finding.status == RuleStatus.NOT_APPLICABLE
+
+
+def test_matches_release_tag_not_applicable_when_source_not_tag_based(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Rule only applies to git_tag / github_release sources.
+
+    Patch _latest_version_tag so git IS present and has a tag, but
+    integration_version_source is 'manifest' — rule must return NOT_APPLICABLE
+    immediately without comparing versions.
+    """
+    from hasscheck.models import RuleStatus
+    from hasscheck.rules.version_identity import matches_release_tag_check
+
+    # Git is present and has a tag different from the integration version —
+    # a spurious WARN would be raised if the source-type guard is missing.
+    _patch_latest_tag(monkeypatch, "9.9.9")
+    ctx = _make_ctx(
+        root=tmp_path,
+        integration_version="1.0.0",
+        integration_version_source="manifest",
     )
     finding = matches_release_tag_check(ctx)  # type: ignore[arg-type]
     assert finding.status == RuleStatus.NOT_APPLICABLE
