@@ -1,14 +1,15 @@
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
 
 from hasscheck import __version__
 
-SCHEMA_VERSION = "0.4.0"
+SCHEMA_VERSION = "0.5.0"
 # See docs/decisions/0006-ruleset-versioning.md for bump policy.
 DEFAULT_RULESET_ID = "hasscheck-ha-2026.5"
 DEFAULT_SOURCE_CHECKED_AT = "2026-05-01"
@@ -35,6 +36,16 @@ class RuleSeverity(StrEnum):
 
 
 ApplicabilitySource = Literal["default", "detected", "config"]
+
+IntegrationVersionSource = Literal[
+    "manifest",
+    "git_tag",
+    "github_release",
+    "hacs_metadata",
+    "unknown",
+]
+CheckMode = Literal["static", "import-smoke", "test-matrix"]
+ClaimScope = Literal["exact_build_only"]
 
 
 class RuleSource(BaseModel):
@@ -135,6 +146,34 @@ class ProjectInfo(BaseModel):
     domain: str | None = None
     integration_path: str | None = None
     repo_slug: str | None = None
+    # NEW (0.5.0)
+    integration_version: str | None = None
+    integration_version_source: IntegrationVersionSource = "unknown"
+    manifest_hash: str | None = None
+    requirements_hash: str | None = None
+
+
+class ReportTarget(BaseModel):
+    integration_domain: str | None = None
+    integration_version: str | None = None
+    integration_version_source: IntegrationVersionSource = "unknown"
+    integration_release_tag: str | None = None
+    commit_sha: str | None = None
+    ha_version: str | None = None
+    python_version: str | None = None
+    check_mode: CheckMode = "static"
+
+
+class ReportValidity(BaseModel):
+    claim_scope: ClaimScope = "exact_build_only"
+    checked_at: datetime  # required, ISO-8601 UTC Z
+    expires_after_days: int | None = 90
+    superseded_by_integration_version: str | None = None
+    # ALWAYS None from CLI; hub sets this after indexing
+
+    @field_serializer("checked_at")
+    def _serialize_checked_at(self, v: datetime) -> str:
+        return v.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
 
 
 class ToolInfo(BaseModel):
@@ -168,6 +207,9 @@ class HassCheckReport(BaseModel):
     summary: ReportSummary
     findings: list[Finding]
     provenance: Provenance | None = None
+    # NEW (0.5.0)
+    target: ReportTarget | None = None
+    validity: ReportValidity | None = None
 
     def to_json_dict(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
