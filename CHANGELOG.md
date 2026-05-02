@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-05-02
+
+### Added
+- **Compatibility Claim Policy + ADR 0012** (#154). New `docs/compatibility-claim-policy.md` is the public wording contract for every consumer of HassCheck output (CLI, GitHub Action, hub, badges, downstream tools). Defines exact-build claim semantics, wording rules, status taxonomy (`PASS`/`WARN`/`FAIL`/`STALE`/`SUPERSEDED`/`NOT_CHECKED`/`UNKNOWN_VERSION`/`VERSION_MISMATCH`), confidence levels, three trust levels (`local`/`ci-published`/`server-verified`), and anti-inference rules. Linked from README. Rationale recorded in `docs/decisions/0012-compatibility-claim-policy.md`.
+- **`RuleDefinition` metadata expansion** (#147). 13 optional metadata fields added to `RuleDefinition` so downstream consumers (Upgrade Radar, Profiles, QS mapping, advisories, hub filtering, replacement chains) read metadata instead of special-casing rules in code:
+  - Categorization: `tags: tuple[str, ...]`, `profiles: tuple[str, ...]`
+  - HA version range: `min_ha_version`, `max_ha_version`
+  - Provenance / lineage: `introduced_by`, `introduced_at_version`
+  - External links: `advisory_id`, `related_quality_scale_rule`
+  - Quality / confidence: `confidence: Literal["high","medium","low"]`, `false_positive_notes`
+  - Lifecycle: `replacement_rule`, `deprecated`, `deprecated_in_version`
+  Eager `__post_init__` validation rejects `list` for collection fields (frozen dataclass requires `tuple`). Registry-level contract test enforces `replacement_rule` cross-references. Validation for `advisory_id`/`profiles`/`related_quality_scale_rule` deferred to O4/O15/O6.
+- **`docs-render` extension** (#147). `render_page()` surfaces 4 new sections when populated: `Tags`, `Confidence` (suppressed when `"high"` to reduce noise), `Deprecated`, `Replacement`. No drift across existing rule docs.
+- **`report.target` block** (#141). New optional `ReportTarget` Pydantic model carries the exact-build identity: `integration_domain`, `integration_version`, `integration_version_source` (`manifest`/`git_tag`/`github_release`/`hacs_metadata`/`unknown`), `integration_release_tag`, `commit_sha`, `ha_version`, `python_version`, `check_mode` (`static`/`import-smoke`/`test-matrix`).
+- **`report.validity` block** (#141). New optional `ReportValidity` Pydantic model carries claim scope and freshness: `claim_scope: Literal["exact_build_only"]`, `checked_at: datetime`, `expires_after_days: int | None = 90`, `superseded_by_integration_version: str | None`. The `superseded_by_integration_version` field is hub-only (CLI never sets it; same trust pattern as `provenance.verified_by` per ADR 0010).
+- **`ProjectInfo` extension** (#141). 4 new optional fields: `integration_version`, `integration_version_source`, `manifest_hash` (sha256 of `manifest.json` bytes), `requirements_hash` (sha256 of LF-joined sorted PEP 508 strings; empty list → `None`).
+- **`src/hasscheck/target.py`** (#141). New module mirrors `detect_provenance()`. `detect_target()` populates `ReportTarget` via a frozen first-match-wins detection priority for `integration_version`: `manifest.json` → `git describe --tags --exact-match HEAD` → `GITHUB_REF=refs/tags/*` → HACS metadata (stub returns None this release) → `unknown`. `commit_sha`, `python_version`, `integration_domain` populate independently. Subprocess uses `check=False, timeout=5.0` and falls through silently on shallow clones / non-zero exits. `build_validity()` emits `ReportValidity` with `claim_scope="exact_build_only"` and `expires_after_days=90`.
+- **CLI compatibility-policy footer** (#141, inherited from ADR 0012 §7). Text + Markdown reports emit a footer linking to the Compatibility Claim Policy whenever `report.target.ha_version` is populated. JSON output unaffected. Footer is dormant in production this release: `static` mode never populates `ha_version`; the footer activates automatically when #150 (smoke harness) lands `import-smoke` / `test-matrix` modes.
+- **Schema bump**: `schema_version` `0.4.0` → `0.5.0` (additive per ADR 0009). Reports without `target` / `validity` keys remain valid (fields default to `null`). Existing `ProjectInfo` extension fields default to `None` / `"unknown"`.
+- **ADR 0013 — Integration version identity** (#141). New `docs/decisions/0013-integration-version-identity.md` documents the schema bump, model shape, hub-only writer contract for `superseded_by_integration_version`, frozen detection priority, footer wiring, and the 3-step lockstep release sequence with `hasscheck-web`.
+
+### Changed
+- Bumped `version` and `__version__` to `0.14.0`
+
+### Notes
+- `SCHEMA_VERSION`: `0.4.0` → `0.5.0` (additive)
+- `hasscheck-web` lockstep coordinated: hub accepts schema 0.5.0 (`hasscheck-web`#53) before this OSS tag
+- `DEFAULT_RULESET_ID` unchanged at `hasscheck-ha-2026.5` per ADR 0006
+- Rule count unchanged at 52 (no new rules in this release; metadata fields available for backfill in follow-up PRs)
+- Test count: 856 → **889** (+33 — schema model coverage, target detection, footer scenarios, RuleDefinition metadata, registry contract)
+- All commits in this release are GPG-signed
+- Backward compat: existing 0.4.0 / 0.3.0 / 0.2.0 reports parse unchanged via `HassCheckReport.model_validate(...)`; existing 50+ rule definitions construct unmodified
+- Follow-ups filed: #159 (PEP 508 normalization for `requirements_hash`), #160 (`_read_manifest_version` rename / refactor), #161 (single source of truth for `integration_version_source`)
+
+[Compare v0.13.0...v0.14.0](https://github.com/Daily-Nerd/hasscheck/compare/v0.13.0...v0.14.0)
+
 ## [0.13.0] — 2026-05-02
 
 ### Added
