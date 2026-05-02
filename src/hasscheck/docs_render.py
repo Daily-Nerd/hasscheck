@@ -48,8 +48,52 @@ def render_page(rule: RuleDefinition) -> str:
         f"- {rule.source_url}",
         f"- `source_checked_at`: {rule.source.checked_at}",
         "",
-        _AUTOGEN_MARKER,
     ]
+
+    # --- Optional metadata sections (rendered only when non-default) ---
+    # Order: Tags, Confidence, Deprecated, Replacement
+    # Spec §4 + Design §5: profiles, advisory_id, related_quality_scale_rule deferred.
+
+    if rule.tags:
+        tag_list = ", ".join(f"`{t}`" for t in rule.tags)
+        lines += [
+            "## Tags",
+            "",
+            tag_list,
+            "",
+        ]
+
+    if rule.confidence != "high":
+        lines += [
+            "## Confidence",
+            "",
+            rule.confidence,
+            "",
+        ]
+
+    if rule.deprecated:
+        deprecation_lines = [
+            "## Deprecated",
+            "",
+            "> This rule is deprecated.",
+        ]
+        if rule.deprecated_in_version:
+            deprecation_lines += [
+                ">",
+                f"> Deprecated in version: {rule.deprecated_in_version}",
+            ]
+        deprecation_lines.append("")
+        lines += deprecation_lines
+
+    if rule.replacement_rule is not None:
+        lines += [
+            "## Replacement",
+            "",
+            f"See [{rule.replacement_rule}](./{rule.replacement_rule}.md).",
+            "",
+        ]
+
+    lines.append(_AUTOGEN_MARKER)
 
     return "\n".join(lines)
 
