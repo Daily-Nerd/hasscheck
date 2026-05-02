@@ -52,7 +52,7 @@ def make_report(findings: list[Finding]) -> HassCheckReport:
 
 def capture_output(report: HassCheckReport) -> str:
     sio = StringIO()
-    console = Console(file=sio, no_color=True, highlight=False)
+    console = Console(file=sio, no_color=True, highlight=False, width=200)
     print_terminal_report(report, console)
     return sio.getvalue()
 
