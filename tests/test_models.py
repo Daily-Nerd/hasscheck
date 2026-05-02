@@ -1,3 +1,5 @@
+from datetime import UTC
+
 import pytest
 from pydantic import ValidationError
 
@@ -181,3 +183,121 @@ def test_report_summary_applicability_applied_default_is_empty() -> None:
     summary = ReportSummary()
 
     assert summary.applicability_applied == ApplicabilityApplied()
+
+
+# ---------- Phase 141: Schema 0.5.0 model assertions (RED) ----------
+
+
+def test_schema_version_is_0_5_0() -> None:
+    from hasscheck.models import SCHEMA_VERSION
+
+    assert SCHEMA_VERSION == "0.5.0"
+
+
+def test_project_info_new_fields_default_none_or_unknown() -> None:
+    from hasscheck.models import ProjectInfo
+
+    pi = ProjectInfo(path="/tmp/test")
+    assert pi.integration_version is None
+    assert pi.integration_version_source == "unknown"
+    assert pi.manifest_hash is None
+    assert pi.requirements_hash is None
+
+
+def test_report_target_model_constructs_with_defaults() -> None:
+    from hasscheck.models import ReportTarget
+
+    t = ReportTarget()
+    assert t.integration_domain is None
+    assert t.integration_version is None
+    assert t.integration_version_source == "unknown"
+    assert t.integration_release_tag is None
+    assert t.commit_sha is None
+    assert t.ha_version is None
+    assert t.python_version is None
+    assert t.check_mode == "static"
+
+
+def test_report_target_check_mode_rejects_invalid_literal() -> None:
+    from hasscheck.models import ReportTarget
+
+    with pytest.raises(ValidationError):
+        ReportTarget(check_mode="dynamic")
+
+
+def test_report_validity_claim_scope_frozen() -> None:
+    from datetime import datetime
+
+    from hasscheck.models import ReportValidity
+
+    with pytest.raises(ValidationError):
+        ReportValidity(
+            claim_scope="anything_else", checked_at=datetime(2026, 1, 1, tzinfo=UTC)
+        )
+
+
+def test_hasscheck_report_target_and_validity_optional() -> None:
+    from hasscheck.models import HassCheckReport, ProjectInfo, ReportSummary
+
+    report = HassCheckReport(
+        project=ProjectInfo(path="/tmp"),
+        summary=ReportSummary(),
+        findings=[],
+    )
+    serialized = report.to_json_dict()
+    deserialized = HassCheckReport.model_validate(serialized)
+    assert deserialized.target is None
+    assert deserialized.validity is None
+
+
+def test_hasscheck_report_serializes_target_and_validity_when_set() -> None:
+    from datetime import datetime
+
+    from hasscheck.models import (
+        HassCheckReport,
+        ProjectInfo,
+        ReportSummary,
+        ReportTarget,
+        ReportValidity,
+    )
+
+    target = ReportTarget(integration_version="1.2.3", check_mode="static")
+    validity = ReportValidity(
+        checked_at=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    report = HassCheckReport(
+        project=ProjectInfo(path="/tmp"),
+        summary=ReportSummary(),
+        findings=[],
+        target=target,
+        validity=validity,
+    )
+    d = report.to_json_dict()
+    assert "target" in d
+    assert "validity" in d
+    assert d["target"]["integration_version"] == "1.2.3"
+    assert d["validity"]["claim_scope"] == "exact_build_only"
+
+
+def test_old_0_4_0_report_still_parses_into_v0_5_0_model() -> None:
+    from hasscheck.models import HassCheckReport
+
+    old_dict = {
+        "schema_version": "0.4.0",
+        "tool": {"name": "hasscheck", "version": "0.13.0"},
+        "project": {"path": "/old/path"},
+        "ruleset": {"id": "hasscheck-ha-2026.5", "source_checked_at": "2026-05-01"},
+        "summary": {
+            "overall": "informational_only",
+            "security_review": "not_performed",
+            "official_ha_tier": "not_assigned",
+            "hacs_acceptance": "not_guaranteed",
+            "categories": [],
+            "overrides_applied": {"count": 0, "rule_ids": []},
+            "applicability_applied": {"count": 0, "rule_ids": [], "flags": []},
+        },
+        "findings": [],
+    }
+    report = HassCheckReport.model_validate(old_dict)
+    assert report.target is None
+    assert report.validity is None
