@@ -23,7 +23,7 @@ def test_check_json_outputs_report(tmp_path) -> None:
 
     assert result.exit_code == 1
     payload = json.loads(result.stdout)
-    assert payload["schema_version"] == "0.4.0"
+    assert payload["schema_version"] == "0.5.0"
     assert payload["summary"]["security_review"] == "not_performed"
     assert payload["summary"]["official_ha_tier"] == "not_assigned"
     assert payload["summary"]["hacs_acceptance"] == "not_guaranteed"
@@ -243,7 +243,7 @@ def test_format_json_shortflag_outputs_json(tmp_path) -> None:
 
     assert result.exit_code == 1
     payload = json.loads(result.stdout)
-    assert payload["schema_version"] == "0.4.0"
+    assert payload["schema_version"] == "0.5.0"
 
 
 # ---------- Exit code behaviour ----------
@@ -517,7 +517,7 @@ def test_publish_dry_run_shows_schema_version(tmp_path, monkeypatch) -> None:
         ["publish", "--path", str(tmp_path), "--dry-run"],
     )
     assert result.exit_code == 0
-    assert "schema_version: 0.4.0" in result.output
+    assert "schema_version: 0.5.0" in result.output
 
 
 def test_publish_dry_run_withdraw_no_network(tmp_path, monkeypatch) -> None:

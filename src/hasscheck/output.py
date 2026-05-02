@@ -7,6 +7,12 @@ from rich.table import Table
 
 from hasscheck.models import Finding, HassCheckReport, RuleStatus
 
+_COMPAT_POLICY_FOOTER = (
+    "Compatibility claims policy: "
+    "https://github.com/Daily-Nerd/hasscheck/blob/main/docs/compatibility-claim-policy.md"
+    " — HassCheck reports are exact-build signals."
+)
+
 _NON_PASS_STATUSES = {
     RuleStatus.WARN,
     RuleStatus.FAIL,
@@ -68,6 +74,10 @@ def print_terminal_report(
     console.print(table)
 
     _print_fix_suggestions(report.findings, console)
+
+    if report.target and report.target.ha_version:
+        console.print()
+        console.print(_COMPAT_POLICY_FOOTER)
 
 
 def report_to_md(report: HassCheckReport) -> str:
@@ -133,6 +143,10 @@ def report_to_md(report: HassCheckReport) -> str:
     lines.append(
         "> Security Review: Not performed. Official HA Tier: Not assigned. HACS Acceptance: Not guaranteed."
     )
+
+    if report.target and report.target.ha_version:
+        lines.append("")
+        lines.append(_COMPAT_POLICY_FOOTER)
 
     return "\n".join(lines) + "\n"
 
