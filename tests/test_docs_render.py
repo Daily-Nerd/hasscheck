@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from hasscheck.models import RuleSeverity
 from hasscheck.rules.base import RuleDefinition
@@ -22,6 +23,20 @@ def _make_rule(
     source_url: str = "https://example.com/docs",
     version: str = "1.0.0",
     overridable: bool = False,
+    # --- 13 new optional metadata fields ---
+    tags: tuple[str, ...] = (),
+    profiles: tuple[str, ...] = (),
+    min_ha_version: str | None = None,
+    max_ha_version: str | None = None,
+    introduced_by: str | None = None,
+    introduced_at_version: str | None = None,
+    advisory_id: str | None = None,
+    related_quality_scale_rule: str | None = None,
+    confidence: Literal["high", "medium", "low"] = "high",
+    false_positive_notes: str | None = None,
+    replacement_rule: str | None = None,
+    deprecated: bool = False,
+    deprecated_in_version: str | None = None,
 ) -> RuleDefinition:
     def _noop(ctx):  # pragma: no cover
         raise NotImplementedError
@@ -36,6 +51,19 @@ def _make_rule(
         source_url=source_url,
         check=_noop,
         overridable=overridable,
+        tags=tags,
+        profiles=profiles,
+        min_ha_version=min_ha_version,
+        max_ha_version=max_ha_version,
+        introduced_by=introduced_by,
+        introduced_at_version=introduced_at_version,
+        advisory_id=advisory_id,
+        related_quality_scale_rule=related_quality_scale_rule,
+        confidence=confidence,
+        false_positive_notes=false_positive_notes,
+        replacement_rule=replacement_rule,
+        deprecated=deprecated,
+        deprecated_in_version=deprecated_in_version,
     )
 
 
@@ -311,3 +339,63 @@ class TestCheckDrift:
         drift = check_drift(tmp_path)
 
         assert rule_id in drift
+
+
+# ---------------------------------------------------------------------------
+# Metadata rendering — new sections from #147
+# ---------------------------------------------------------------------------
+
+
+class TestMetadataSectionsSkippedWhenDefault:
+    """Scenario 7 — all new fields at defaults → no metadata section headers emitted."""
+
+    def test_docs_render_skips_empty_metadata_sections(self) -> None:
+        from hasscheck.docs_render import render_page
+
+        rule = _make_rule()  # all new fields at defaults
+        output = render_page(rule)
+
+        assert "## Tags" not in output
+        assert "## Confidence" not in output
+        assert "## Deprecated" not in output
+        assert "## Replacement" not in output
+
+
+class TestMetadataSectionsEmittedWhenPopulated:
+    """Scenario 8 — non-default field values → metadata sections are rendered."""
+
+    def test_docs_render_emits_populated_metadata_sections(self) -> None:
+        from hasscheck.docs_render import render_page
+
+        rule = _make_rule(
+            tags=("ha-2026",),
+            deprecated=True,
+            replacement_rule="new.better.rule",
+            confidence="low",
+        )
+        output = render_page(rule)
+
+        assert "## Tags" in output
+        assert "ha-2026" in output
+        assert "## Confidence" in output
+        assert "low" in output
+        assert "## Deprecated" in output
+        assert "## Replacement" in output
+        assert "new.better.rule" in output
+
+
+class TestDocsRenderCheckPassesAfterFieldAddition:
+    """Scenario 9 — docs-render --check returns no drift after regeneration."""
+
+    def test_docs_render_check_passes_after_field_addition(
+        self, tmp_path: Path
+    ) -> None:
+        from hasscheck.docs_render import check_drift, render_all
+
+        render_all(tmp_path)
+        drift = check_drift(tmp_path)
+
+        assert drift == {}, (
+            f"Drift detected after render_all — renderer and docs are out of sync: "
+            f"{list(drift.keys())}"
+        )
