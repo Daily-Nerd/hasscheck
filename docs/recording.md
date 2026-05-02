@@ -21,25 +21,44 @@ From the repo root, in an interactive terminal:
 
 ```bash
 asciinema rec \
-  --idle-time-limit 1.5 \
+  --idle-time-limit 2.5 \
   --command 'bash docs/demo.sh' \
   docs/demo.cast
 ```
 
-`--idle-time-limit 1.5` keeps the recording compact — long pauses inside
-`demo.sh` are clamped to 1.5 seconds during playback.
+`--idle-time-limit 2.5` clamps the deliberate inter-command pauses inside
+`demo.sh` (3s) to 2.5s during playback while preserving the per-character
+typing rhythm. The script types each command character-by-character via a
+custom `typed()` helper to feel like a human at the keyboard.
 
 The recording exits when `demo.sh` finishes. Confirm length is in the 30–90
 second window per acceptance criteria from #105.
 
+### Tuning the pacing
+
+`docs/demo.sh` reads three env vars:
+
+- `TYPE_DELAY` (default `0.045`) — seconds per character when typing a command
+- `INTER_CMD_PAUSE` (default `3.0`) — seconds between one command's output and
+  the next command's first keystroke
+- `PRE_RUN_PAUSE` (default `0.8`) — seconds between finishing typing and the
+  command actually running
+
+Tweak inline before recording, e.g. `INTER_CMD_PAUSE=2.0 asciinema rec ...`
+for a tighter cut.
+
+`DEMO_FAST=1` skips the per-character sleeps entirely — used for smoke-testing
+the script without recording.
+
 ## Render to GIF
 
 ```bash
-agg --theme github-dark --speed 1.2 docs/demo.cast docs/demo.gif
+agg --theme github-dark --speed 1.0 docs/demo.cast docs/demo.gif
 ```
 
 Tweak `--speed` and `--theme` if the result feels too fast/slow or contrast is
-off on the README's background.
+off on the README's background. With the typed pacing baked into `demo.sh`,
+`--speed 1.0` is usually the right default — the script does the slowing.
 
 ## Commit
 
