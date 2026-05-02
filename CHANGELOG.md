@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-05-02
+
+### Added
+- **Per-rule settings** in `hasscheck.yaml` (#117). `RuleOverride` gains an optional `settings: dict[str, Any] | None` field so users can tune per-rule behavior without monkey-patching:
+  ```yaml
+  rules:
+    maintenance.recent_commit.detected:
+      settings:
+        max_age_months: 18
+  ```
+- **`get_rule_setting(context, rule_id, key, default)`** helper in `src/hasscheck/rules/base.py` for rule check functions to read configured values with default fallback.
+- **`ProjectContext.rule_settings: dict[str, dict[str, Any]]`** — populated by `checker.py` from the loaded `HassCheckConfig` and forwarded through `detect_project()`.
+- **#109 maintenance rules now read configurable thresholds**:
+  - `maintenance.recent_commit.detected` reads `max_age_months` (default `12`)
+  - `maintenance.recent_release.detected` reads `max_age_months` (default `12`)
+  - `_resolve_max_age()` validates the configured value is `int > 0`; falls back to default on bad input (string, negative, zero, missing, wrong type)
+- **Four more README content rules** in `src/hasscheck/rules/docs_readme.py` (#102) — same factory + heading-only heuristic as v0.9 PR #97:
+  - `docs.examples.exists` — examples, example, usage, demo
+  - `docs.supported_devices.exists` — supported, devices, services, hardware, compatibility, models
+  - `docs.limitations.exists` — limitations, caveats, known limitations, restrictions
+  - `docs.hacs_instructions.exists` — hacs, custom repository, hacs install
+- **`examples/good_integration/README.md`** — extended with four new sections (Examples, Supported Devices, Limitations, HACS Installation) so the positive integration test continues asserting PASS across the full docs rule pack.
+
+### Removed
+- **`imports_async_redact` field** from `_DiagnosticsSignals` in `src/hasscheck/rules/diagnostics.py` (#106). The field was captured by the AST walker but never consulted in PASS resolution — design D6 narrowed PASS to "actual call required, import alone is not evidence." Path B from #106 locks the conservative stance permanently and removes the dead carrier. PASS-resolution behavior unchanged.
+
+### Changed
+- Bumped `version` and `__version__` to `0.12.0`
+
+### Notes
+- `SCHEMA_VERSION` unchanged at `0.3.0` — v0.12 adds a config-file field and removes a private dataclass member; no `Finding` (report) shape changes (additive only per ADR 0009)
+- `DEFAULT_RULESET_ID` unchanged at `hasscheck-ha-2026.5` — same ruleset cycle as v0.8 / v0.9 / v0.10 / v0.11 per ADR 0006
+- Rule count: 48 → **52** (+4)
+- Test count: 737 → **823** (+86 — 25 config + 12 maintenance threshold + 49 README extras)
+- Per-rule docs pages: 48 → **52** (4 new auto-generated via `hasscheck docs-render`)
+- Backward compat: existing `hasscheck.yaml` files work unchanged; missing `settings` block → all rules use hardcoded defaults
+
+[Compare v0.11.0...v0.12.0](https://github.com/Daily-Nerd/hasscheck/compare/v0.11.0...v0.12.0)
+
 ## [0.11.0] — 2026-05-02
 
 ### Added
@@ -294,7 +333,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Initial release](https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.1.0)
 
-[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.12.0
 [0.11.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.11.0
 [0.10.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.10.0
 [0.9.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.9.0
