@@ -12,6 +12,7 @@ from hasscheck.badges import generate_badges
 from hasscheck.badges.policy import BadgePolicyError
 from hasscheck.checker import run_check
 from hasscheck.config import ConfigError, discover_config
+from hasscheck.docs_render import check_drift, render_all
 from hasscheck.init import init_project
 from hasscheck.models import HassCheckReport, RuleStatus
 from hasscheck.output import print_terminal_report, report_to_json, report_to_md
@@ -411,6 +412,34 @@ def init(
         return
     for artifact in artifacts:
         console.print(f"[green]Created:[/] {artifact.target}")
+
+
+@app.command("docs-render")
+def docs_render(
+    out_dir: Path = typer.Option(Path("docs/rules"), "--out-dir"),
+    check: bool = typer.Option(
+        False, "--check", help="Exit non-zero if any page is stale"
+    ),
+) -> None:
+    """Generate per-rule docs pages from RuleDefinition metadata.
+
+    Examples:
+      hasscheck docs-render
+      hasscheck docs-render --out-dir docs/rules
+      hasscheck docs-render --check
+    """
+    if check:
+        drift = check_drift(out_dir)
+        if drift:
+            for rule_id, diff in drift.items():
+                typer.echo(f"DRIFT: {rule_id}")
+                typer.echo(diff)
+            raise typer.Exit(1)
+        typer.echo("OK: all rule docs are up to date")
+    else:
+        results = render_all(out_dir)
+        changed = sum(1 for v in results.values() if v)
+        typer.echo(f"Rendered {len(results)} pages ({changed} changed)")
 
 
 app.add_typer(scaffold_app, name="scaffold")
