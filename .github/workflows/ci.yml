@@ -65,3 +65,6 @@ jobs:
 
       - name: Run tests
         run: .venv/bin/python -m pytest -q
+
+      - name: Check rule docs drift
+        run: uv run hasscheck docs-render --check
