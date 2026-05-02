@@ -15,6 +15,7 @@ from hasscheck.rules.manifest import RULES as MANIFEST_RULES
 from hasscheck.rules.repairs import RULES as REPAIRS_RULES
 from hasscheck.rules.repository import RULES as REPOSITORY_RULES
 from hasscheck.rules.tests import RULES as TESTS_RULES
+from hasscheck.rules.version_identity import RULES as VERSION_IDENTITY_RULES
 
 RULES = [
     *HACS_STRUCTURE_RULES,
@@ -31,6 +32,7 @@ RULES = [
     *INIT_MODULE_RULES,
     *ENTITY_RULES,
     *MAINTENANCE_RULES,
+    *VERSION_IDENTITY_RULES,
 ]
 RULES_BY_ID: dict[str, RuleDefinition] = {}
 for _rule in RULES:
