@@ -174,6 +174,11 @@ def badge(
     Badge color reflects integration health. Exit code is always 0 even when
     checks have FAIL findings — the badge color communicates the state instead.
 
+    Generated files are LOCAL PREVIEW ONLY — they are self-reported and
+    cannot be independently verified by consumers. At v1.0, hub-verified
+    badge URLs (generated server-side from an OIDC-authenticated report)
+    should be used in README embeds instead of committed local JSON files.
+
     Examples:
       hasscheck badge --path . --out-dir badges/
       hasscheck badge --path . --include hacs_structure,tests_ci
