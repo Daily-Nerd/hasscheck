@@ -162,6 +162,9 @@ class ReportTarget(BaseModel):
     ha_version: str | None = None
     python_version: str | None = None
     check_mode: CheckMode = "static"
+    # Internal transport fields — excluded from public JSON (schema 0.5.0 shape stable)
+    manifest_hash: str | None = Field(default=None, exclude=True)
+    requirements_hash: str | None = Field(default=None, exclude=True)
 
 
 class ReportValidity(BaseModel):

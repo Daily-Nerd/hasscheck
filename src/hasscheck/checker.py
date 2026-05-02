@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from hasscheck.models import (
 from hasscheck.provenance import detect_provenance
 from hasscheck.rules.registry import RULES
 from hasscheck.slug import detect_repo_slug
-from hasscheck.target import _read_manifest_version, build_validity, detect_target
+from hasscheck.target import build_validity, detect_target
 
 APPLICABILITY_FLAGS_BY_RULE = {
     "diagnostics.file.exists": "supports_diagnostics",
@@ -41,6 +42,7 @@ CATEGORY_LABELS = {
     "docs_support": "Docs/Support",
     "maintenance_signals": "Maintenance Signals",
     "tests_ci": "Tests/CI",
+    "version": "Version Identity",
 }
 
 
@@ -75,6 +77,16 @@ def run_check(
     now = datetime.now(UTC)
     target = detect_target(root, context.integration_path, context.domain)
     validity = build_validity(checked_at=now)
+
+    # Pipe version identity from detect_target into the rule context (ADR-0002)
+    if target is not None:
+        context = replace(
+            context,
+            integration_version=target.integration_version,
+            integration_version_source=target.integration_version_source,
+            integration_release_tag=target.integration_release_tag,
+            commit_sha=target.commit_sha,
+        )
 
     findings = [rule.check(context) for rule in RULES]
 
@@ -120,14 +132,6 @@ def run_check(
         for category, points_possible in sorted(possible.items())
     ]
 
-    # Populate manifest_hash and requirements_hash for ProjectInfo
-    _manifest_hash: str | None = None
-    _requirements_hash: str | None = None
-    if context.integration_path is not None:
-        _, _manifest_hash, _requirements_hash = _read_manifest_version(
-            context.integration_path
-        )
-
     return HassCheckReport(
         project=ProjectInfo(
             path=str(root),
@@ -141,8 +145,8 @@ def run_check(
             integration_version_source=target.integration_version_source
             if target
             else "unknown",
-            manifest_hash=_manifest_hash,
-            requirements_hash=_requirements_hash,
+            manifest_hash=target.manifest_hash if target else None,
+            requirements_hash=target.requirements_hash if target else None,
         ),
         summary=ReportSummary(
             categories=categories,

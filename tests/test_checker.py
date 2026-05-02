@@ -127,3 +127,58 @@ def test_run_check_report_provenance_is_not_none(tmp_path) -> None:
     """run_check() populates provenance on the returned report."""
     report = run_check(tmp_path)
     assert report.provenance is not None
+
+
+# ---------- Phase 3 — Checker SSoT + ProjectContext wiring ----------
+
+
+def test_checker_calls_read_manifest_version_only_once(monkeypatch, tmp_path) -> None:
+    """Spy on target.read_manifest_version; assert called <= 1 per run_check."""
+    import hasscheck.target as target_module
+
+    call_count = 0
+    original = target_module.read_manifest_version
+
+    def spy(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(target_module, "read_manifest_version", spy)
+
+    import json
+
+    integration = tmp_path / "custom_components" / "demo"
+    integration.mkdir(parents=True)
+    (integration / "manifest.json").write_text(
+        json.dumps({"domain": "demo", "name": "Demo", "version": "1.0.0"})
+    )
+
+    run_check(tmp_path)
+    assert call_count <= 1, (
+        f"read_manifest_version called {call_count} times (expected <= 1)"
+    )
+
+
+def test_checker_populates_version_identity_into_context(tmp_path) -> None:
+    """Run check on a tmp integration path; findings must include 'version' category."""
+    import json
+
+    integration = tmp_path / "custom_components" / "demo"
+    integration.mkdir(parents=True)
+    (integration / "manifest.json").write_text(
+        json.dumps({"domain": "demo", "name": "Demo", "version": "1.0.0"})
+    )
+
+    report = run_check(tmp_path)
+    version_findings = [f for f in report.findings if f.category == "version"]
+    assert len(version_findings) > 0, (
+        "Expected at least one finding with category='version' after context wiring"
+    )
+
+
+def test_category_label_version_identity_present() -> None:
+    """CATEGORY_LABELS['version'] must equal 'Version Identity'."""
+    from hasscheck.checker import CATEGORY_LABELS
+
+    assert CATEGORY_LABELS["version"] == "Version Identity"
