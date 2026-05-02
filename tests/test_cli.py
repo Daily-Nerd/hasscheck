@@ -1,10 +1,20 @@
 import json
 from pathlib import Path
 
+import pytest
 from typer.main import get_command
 from typer.testing import CliRunner
 
-from hasscheck.cli import app
+from hasscheck.cli import app, should_exit_nonzero
+from hasscheck.config import GateConfig, GateMode
+from hasscheck.models import (
+    Applicability,
+    ApplicabilityStatus,
+    Finding,
+    RuleSeverity,
+    RuleSource,
+    RuleStatus,
+)
 
 runner = CliRunner()
 
@@ -558,3 +568,223 @@ def test_publish_dry_run_flag_registered() -> None:
     publish_cmd = cmd.commands["publish"]
     dry_run_param = next((p for p in publish_cmd.params if p.name == "dry_run"), None)
     assert dry_run_param is not None, "publish must declare a --dry-run option"
+
+
+# ---------- Gate modes — pure function ----------
+
+
+def make_finding(
+    *,
+    rule_id: str = "manifest.domain.exists",
+    severity: RuleSeverity = RuleSeverity.REQUIRED,
+    status: RuleStatus = RuleStatus.FAIL,
+) -> Finding:
+    """Build a minimal Finding for gate-mode unit tests."""
+    app_status = (
+        ApplicabilityStatus.APPLICABLE
+        if status not in (RuleStatus.NOT_APPLICABLE, RuleStatus.MANUAL_REVIEW)
+        else ApplicabilityStatus.NOT_APPLICABLE
+    )
+    return Finding(
+        rule_id=rule_id,
+        rule_version="1.0.0",
+        category="test",
+        status=status,
+        severity=severity,
+        title="Test finding",
+        message="Test message",
+        applicability=Applicability(status=app_status, reason="test"),
+        source=RuleSource(url="https://example.com"),
+    )
+
+
+# Legacy behavior (gate=None)
+
+
+def test_should_exit_nonzero_legacy_fail_returns_true() -> None:
+    findings = [make_finding(status=RuleStatus.FAIL)]
+    assert should_exit_nonzero(findings, gate=None) is True
+
+
+def test_should_exit_nonzero_legacy_warn_returns_false() -> None:
+    findings = [make_finding(status=RuleStatus.WARN)]
+    assert should_exit_nonzero(findings, gate=None) is False
+
+
+def test_should_exit_nonzero_legacy_multiple_findings_any_fail() -> None:
+    findings = [
+        make_finding(status=RuleStatus.WARN),
+        make_finding(rule_id="other.rule", status=RuleStatus.FAIL),
+    ]
+    assert should_exit_nonzero(findings, gate=None) is True
+
+
+# Advisory mode
+
+
+@pytest.mark.parametrize("status", [RuleStatus.FAIL, RuleStatus.WARN])
+def test_should_exit_nonzero_advisory_always_false(status: RuleStatus) -> None:
+    gate = GateConfig(mode=GateMode.ADVISORY)
+    findings = [make_finding(status=status)]
+    assert should_exit_nonzero(findings, gate=gate) is False
+
+
+# Strict-required mode
+
+
+@pytest.mark.parametrize(
+    "severity,status,expected",
+    [
+        (RuleSeverity.REQUIRED, RuleStatus.FAIL, True),
+        (RuleSeverity.REQUIRED, RuleStatus.WARN, True),
+        (RuleSeverity.REQUIRED, RuleStatus.PASS, False),
+        (RuleSeverity.RECOMMENDED, RuleStatus.FAIL, False),
+        (RuleSeverity.INFORMATIONAL, RuleStatus.FAIL, False),
+    ],
+)
+def test_should_exit_nonzero_strict_required(
+    severity: RuleSeverity, status: RuleStatus, expected: bool
+) -> None:
+    gate = GateConfig(mode=GateMode.STRICT_REQUIRED)
+    findings = [make_finding(severity=severity, status=status)]
+    assert should_exit_nonzero(findings, gate=gate) is expected
+
+
+# HACS-publish mode
+
+
+@pytest.mark.parametrize(
+    "severity,status,expected",
+    [
+        (RuleSeverity.REQUIRED, RuleStatus.FAIL, True),
+        (RuleSeverity.REQUIRED, RuleStatus.WARN, True),
+        (RuleSeverity.RECOMMENDED, RuleStatus.FAIL, True),
+        (RuleSeverity.RECOMMENDED, RuleStatus.WARN, True),
+        (RuleSeverity.INFORMATIONAL, RuleStatus.FAIL, False),
+    ],
+)
+def test_should_exit_nonzero_hacs_publish(
+    severity: RuleSeverity, status: RuleStatus, expected: bool
+) -> None:
+    gate = GateConfig(mode=GateMode.HACS_PUBLISH)
+    findings = [make_finding(severity=severity, status=status)]
+    assert should_exit_nonzero(findings, gate=gate) is expected
+
+
+# Upgrade-radar mode
+
+
+@pytest.mark.parametrize(
+    "rule_id,status,expected",
+    [
+        ("version.foo", RuleStatus.WARN, True),
+        ("version.bar", RuleStatus.FAIL, True),
+        ("manifest.domain", RuleStatus.FAIL, False),
+    ],
+)
+def test_should_exit_nonzero_upgrade_radar(
+    rule_id: str, status: RuleStatus, expected: bool
+) -> None:
+    gate = GateConfig(mode=GateMode.UPGRADE_RADAR)
+    findings = [make_finding(rule_id=rule_id, status=status)]
+    assert should_exit_nonzero(findings, gate=gate) is expected
+
+
+# Boundary cases
+
+
+@pytest.mark.parametrize(
+    "gate",
+    [
+        None,
+        GateConfig(mode=GateMode.ADVISORY),
+        GateConfig(mode=GateMode.STRICT_REQUIRED),
+        GateConfig(mode=GateMode.HACS_PUBLISH),
+        GateConfig(mode=GateMode.UPGRADE_RADAR),
+    ],
+)
+def test_should_exit_nonzero_empty_findings_all_modes(
+    gate: GateConfig | None,
+) -> None:
+    assert should_exit_nonzero([], gate=gate) is False
+
+
+@pytest.mark.parametrize(
+    "gate",
+    [
+        None,
+        GateConfig(mode=GateMode.ADVISORY),
+        GateConfig(mode=GateMode.STRICT_REQUIRED),
+        GateConfig(mode=GateMode.HACS_PUBLISH),
+        GateConfig(mode=GateMode.UPGRADE_RADAR),
+    ],
+)
+def test_should_exit_nonzero_all_pass_findings(gate: GateConfig | None) -> None:
+    findings = [
+        make_finding(severity=RuleSeverity.REQUIRED, status=RuleStatus.PASS),
+        make_finding(
+            rule_id="other.rule",
+            severity=RuleSeverity.RECOMMENDED,
+            status=RuleStatus.PASS,
+        ),
+    ]
+    assert should_exit_nonzero(findings, gate=gate) is False
+
+
+# ---------- Gate modes — CliRunner ----------
+
+
+def write_config_with_gate(tmp_path: Path, mode: str, schema: str = "0.6.0") -> None:
+    """Write a hasscheck.yaml with a gate stanza to tmp_path."""
+    (tmp_path / "hasscheck.yaml").write_text(
+        f"schema_version: '{schema}'\ngate:\n  mode: {mode}\n",
+        encoding="utf-8",
+    )
+
+
+def test_check_exit_code_advisory_no_exit_on_fail(tmp_path: Path) -> None:
+    """Advisory gate: FAIL findings present but exit code must be 0."""
+    write_config_with_gate(tmp_path, "advisory")
+    # Empty tmp_path → manifest.exists FAIL (REQUIRED) → gate=advisory → exit 0
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--format", "json"])
+    payload = json.loads(result.stdout)
+    assert any(f["status"] == "fail" for f in payload["findings"]), (
+        "Expected FAIL findings to confirm gate suppression is being tested"
+    )
+    assert result.exit_code == 0
+
+
+def test_check_exit_code_strict_required_exits_on_required_fail(
+    tmp_path: Path,
+) -> None:
+    """Strict-required gate: REQUIRED FAIL → exit 1."""
+    write_config_with_gate(tmp_path, "strict-required")
+    # Empty tmp_path → manifest.exists FAIL (REQUIRED) → exit 1
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--format", "json"])
+    payload = json.loads(result.stdout)
+    assert any(
+        f["status"] == "fail" and f["severity"] == "required"
+        for f in payload["findings"]
+    ), "Expected a REQUIRED FAIL finding for strict-required test"
+    assert result.exit_code == 1
+
+
+def test_check_legacy_no_gate_stanza_fail_exits_nonzero(tmp_path: Path) -> None:
+    """Legacy (no gate): any FAIL → exit 1 (backward-compat regression guard)."""
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.5.0'\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--format", "json"])
+    payload = json.loads(result.stdout)
+    assert any(f["status"] == "fail" for f in payload["findings"])
+    assert result.exit_code == 1
+
+
+def test_check_legacy_no_gate_stanza_no_fail_exits_zero(tmp_path: Path) -> None:
+    """Legacy (no gate): no FAIL findings → exit 0."""
+    examples = Path(__file__).parent.parent / "examples" / "good_integration"
+    result = runner.invoke(app, ["check", "--path", str(examples), "--format", "json"])
+    payload = json.loads(result.stdout)
+    assert all(f["status"] != "fail" for f in payload["findings"])
+    assert result.exit_code == 0

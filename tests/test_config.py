@@ -9,6 +9,8 @@ from pydantic import ValidationError
 
 from hasscheck.config import (
     ConfigError,
+    GateConfig,
+    GateMode,
     HassCheckConfig,
     ProjectConfig,
     RuleOverride,
@@ -94,10 +96,11 @@ def test_project_config_rejects_extra_fields() -> None:
 
 def test_hasscheck_config_empty_defaults() -> None:
     cfg = HassCheckConfig()
-    assert cfg.schema_version == "0.5.0"
+    assert cfg.schema_version == "0.6.0"
     assert cfg.project is None
     assert cfg.applicability is None
     assert cfg.rules == {}
+    assert cfg.gate is None
 
 
 def test_hasscheck_config_with_rules() -> None:
@@ -515,7 +518,7 @@ def test_hasscheck_config_accepts_applicability_block() -> None:
         applicability=ProjectApplicability(supports_diagnostics=False)
     )
 
-    assert cfg.schema_version == "0.5.0"
+    assert cfg.schema_version == "0.6.0"
     assert cfg.applicability is not None
     assert cfg.applicability.supports_diagnostics is False
 
@@ -642,10 +645,10 @@ def test_load_config_file_v03_backward_compat_no_publish(tmp_path: Path) -> None
 # ---------- v0.14: Schema version 0.5.0 (#141) — default bumped ----------
 
 
-def test_hasscheck_config_default_schema_version_is_0_5_0() -> None:
-    """Default instantiation yields schema_version 0.5.0 (bumped from 0.4.0 in #141)."""
+def test_hasscheck_config_default_schema_version_is_0_6_0() -> None:
+    """Default instantiation yields schema_version 0.6.0 (bumped from 0.5.0 in #148)."""
     cfg = HassCheckConfig()
-    assert cfg.schema_version == "0.5.0"
+    assert cfg.schema_version == "0.6.0"
 
 
 def test_hasscheck_config_accepts_explicit_0_4_0() -> None:
@@ -671,3 +674,73 @@ def test_load_config_file_v04_schema_version(tmp_path: Path) -> None:
     (tmp_path / "hasscheck.yaml").write_text("schema_version: '0.4.0'\n")
     cfg = load_config_file(tmp_path / "hasscheck.yaml")
     assert cfg.schema_version == "0.4.0"
+
+
+# ---------- GateMode + GateConfig ----------
+
+
+@pytest.mark.parametrize(
+    "value,expected_member",
+    [
+        ("advisory", GateMode.ADVISORY),
+        ("strict-required", GateMode.STRICT_REQUIRED),
+        ("hacs-publish", GateMode.HACS_PUBLISH),
+        ("upgrade-radar", GateMode.UPGRADE_RADAR),
+    ],
+)
+def test_gate_mode_valid_values(value: str, expected_member: GateMode) -> None:
+    cfg = GateConfig(mode=value)
+    assert cfg.mode == expected_member
+
+
+def test_gate_mode_rejects_unknown() -> None:
+    with pytest.raises(ValidationError):
+        GateConfig(mode="banana")
+
+
+def test_gate_mode_rejects_underscore_form() -> None:
+    with pytest.raises(ValidationError):
+        GateConfig(mode="strict_required")
+
+
+def test_gate_config_requires_mode() -> None:
+    with pytest.raises(ValidationError):
+        GateConfig()  # type: ignore[call-arg]
+
+
+def test_gate_config_rejects_extra_field() -> None:
+    with pytest.raises(ValidationError):
+        GateConfig(mode="advisory", severities=["required"])  # type: ignore[call-arg]
+
+
+def test_gate_accepted_on_schema_0_6_0() -> None:
+    cfg = HassCheckConfig(schema_version="0.6.0", gate=GateConfig(mode="advisory"))
+    assert cfg.gate is not None
+    assert cfg.gate.mode == GateMode.ADVISORY
+
+
+def test_gate_rejected_on_schema_0_5_0() -> None:
+    with pytest.raises(ValidationError):
+        HassCheckConfig(schema_version="0.5.0", gate=GateConfig(mode="advisory"))
+
+
+def test_schema_0_6_0_accepted_without_gate() -> None:
+    cfg = HassCheckConfig(schema_version="0.6.0")
+    assert cfg.schema_version == "0.6.0"
+    assert cfg.gate is None
+
+
+def test_schema_0_5_0_still_accepted() -> None:
+    cfg = HassCheckConfig(schema_version="0.5.0")
+    assert cfg.schema_version == "0.5.0"
+    assert cfg.gate is None
+
+
+def test_no_gate_field_defaults_to_none() -> None:
+    cfg = HassCheckConfig()
+    assert cfg.gate is None
+
+
+def test_unknown_schema_version_rejected() -> None:
+    with pytest.raises(ValidationError):
+        HassCheckConfig(schema_version="9.9.9")  # type: ignore[arg-type]
