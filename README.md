@@ -29,10 +29,8 @@ HassCheck starts as a local CLI. Public badges, hosted reports, and any future h
 
 HassCheck is designed to produce concrete next steps, not a vague score.
 
-<!-- demo:gif -->
 <!-- The GIF below is rendered from `docs/demo.sh`. See `docs/recording.md` to regenerate. -->
-<!-- Drop the embed back in once `docs/demo.gif` is checked in: -->
-<!-- ![HassCheck demo](docs/demo.gif) -->
+![HassCheck demo](docs/demo.gif)
 
 ```bash
 uv run hasscheck check --path examples/bad_integration
