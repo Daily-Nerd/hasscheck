@@ -31,7 +31,8 @@ _LOCAL_REDACT_RE = re.compile(r"^_?redact(_.*)?$")
 
 @dataclass(frozen=True)
 class _DiagnosticsSignals:
-    imports_async_redact: bool
+    # Per design D6 (v0.8 PR4) and #106 Path B: import without a call is not
+    # evidence of active redaction. PASS resolution requires an actual call.
     calls_async_redact: bool
     calls_local_redact: bool  # local def + call to name matching ^_?redact(_.*)?$
     returns_raw_entry_data: (
@@ -41,7 +42,6 @@ class _DiagnosticsSignals:
 
 def _diagnostics_signals(tree: ast.Module) -> _DiagnosticsSignals:
     """Walk the AST and extract redaction-related signals."""
-    imports_async_redact = False
     calls_async_redact = False
 
     # Collect names of local functions matching the redact pattern
@@ -51,13 +51,6 @@ def _diagnostics_signals(tree: ast.Module) -> _DiagnosticsSignals:
     returns_raw_entry_data = False
 
     for node in ast.walk(tree):
-        # Detect imports of async_redact_data
-        if isinstance(node, ast.ImportFrom):
-            for alias in node.names:
-                name = alias.asname or alias.name
-                if name == "async_redact_data" or alias.name == "async_redact_data":
-                    imports_async_redact = True
-
         # Detect calls to async_redact_data (Name or Attribute)
         if isinstance(node, ast.Call):
             func = node.func
@@ -103,7 +96,6 @@ def _diagnostics_signals(tree: ast.Module) -> _DiagnosticsSignals:
     calls_local_redact = bool(local_redact_defs & called_names)
 
     return _DiagnosticsSignals(
-        imports_async_redact=imports_async_redact,
         calls_async_redact=calls_async_redact,
         calls_local_redact=calls_local_redact,
         returns_raw_entry_data=returns_raw_entry_data,
