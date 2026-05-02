@@ -66,6 +66,8 @@ See [`docs/demo.md`](docs/demo.md) for the full walkthrough or
 
 HassCheck is intentionally not a replacement for hassfest and does not assign Home Assistant quality tiers. It provides maintainer-facing, sourced findings that help custom integration authors improve their repositories.
 
+HassCheck reports are **exact-build signals**, not blanket compatibility claims. Before consuming, summarising, or surfacing a HassCheck report anywhere downstream, read the [Compatibility Claim Policy](docs/compatibility-claim-policy.md) — it is the public wording contract that defines what a HassCheck verdict means and what inferences are forbidden. The rationale is recorded in [ADR 0012](docs/decisions/0012-compatibility-claim-policy.md).
+
 ## Current status
 
 **Current package version**: v0.13.0 — beta.
