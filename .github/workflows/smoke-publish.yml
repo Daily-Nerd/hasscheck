@@ -1,0 +1,59 @@
+name: Smoke — publish to hasscheck.io
+
+# One-off manual smoke test for the v1.0 launch. Runs hasscheck against the
+# tracked `examples/good_integration` fixture and publishes the report to the
+# live hub via GitHub OIDC. Validates the full ingest path end-to-end against
+# the deployed Cloud Run service.
+#
+# Trigger:
+#   gh workflow run smoke-publish.yml --repo Daily-Nerd/hasscheck
+#
+# After a successful run, the report appears at:
+#   https://hasscheck.io/Daily-Nerd/hasscheck
+# To withdraw the test report (run the action locally or via gh):
+#   uv run hasscheck publish --withdraw-all --slug Daily-Nerd/hasscheck --force
+#
+# Delete this workflow file after the v1.0 launch validation is done.
+
+on:
+  workflow_dispatch:
+    inputs:
+      endpoint:
+        description: Publish endpoint URL
+        required: false
+        default: https://hasscheck.io
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  smoke:
+    name: Publish good_integration to hub
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./
+        with:
+          path: examples/good_integration
+          emit-publish: "true"
+          publish-endpoint: ${{ inputs.endpoint }}
+
+      - name: Verify report appears in hub
+        run: |
+          set -euo pipefail
+          ENDPOINT="${{ inputs.endpoint }}"
+          # Cloud Run + Cloudflare can take a few seconds to propagate cache
+          # on the first publish for a slug. Retry briefly.
+          for i in 1 2 3 4 5; do
+            BODY=$(curl -fsSL --max-time 10 "${ENDPOINT}/api/projects/Daily-Nerd/hasscheck" || true)
+            if [ -n "$BODY" ]; then
+              echo "$BODY" | head -c 1000
+              echo
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::Report did not appear at ${ENDPOINT}/api/projects/Daily-Nerd/hasscheck after retries"
+          exit 1
