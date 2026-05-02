@@ -729,3 +729,62 @@ def test_should_exit_nonzero_all_pass_findings(gate: GateConfig | None) -> None:
         ),
     ]
     assert should_exit_nonzero(findings, gate=gate) is False
+
+
+# ---------- Gate modes — CliRunner ----------
+
+
+def write_config_with_gate(tmp_path: Path, mode: str, schema: str = "0.6.0") -> None:
+    """Write a hasscheck.yaml with a gate stanza to tmp_path."""
+    (tmp_path / "hasscheck.yaml").write_text(
+        f"schema_version: '{schema}'\ngate:\n  mode: {mode}\n",
+        encoding="utf-8",
+    )
+
+
+def test_check_exit_code_advisory_no_exit_on_fail(tmp_path: Path) -> None:
+    """Advisory gate: FAIL findings present but exit code must be 0."""
+    write_config_with_gate(tmp_path, "advisory")
+    # Empty tmp_path → manifest.exists FAIL (REQUIRED) → gate=advisory → exit 0
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--format", "json"])
+    payload = json.loads(result.stdout)
+    assert any(f["status"] == "fail" for f in payload["findings"]), (
+        "Expected FAIL findings to confirm gate suppression is being tested"
+    )
+    assert result.exit_code == 0
+
+
+def test_check_exit_code_strict_required_exits_on_required_fail(
+    tmp_path: Path,
+) -> None:
+    """Strict-required gate: REQUIRED FAIL → exit 1."""
+    write_config_with_gate(tmp_path, "strict-required")
+    # Empty tmp_path → manifest.exists FAIL (REQUIRED) → exit 1
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--format", "json"])
+    payload = json.loads(result.stdout)
+    assert any(
+        f["status"] == "fail" and f["severity"] == "required"
+        for f in payload["findings"]
+    ), "Expected a REQUIRED FAIL finding for strict-required test"
+    assert result.exit_code == 1
+
+
+def test_check_legacy_no_gate_stanza_fail_exits_nonzero(tmp_path: Path) -> None:
+    """Legacy (no gate): any FAIL → exit 1 (backward-compat regression guard)."""
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.5.0'\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(app, ["check", "--path", str(tmp_path), "--format", "json"])
+    payload = json.loads(result.stdout)
+    assert any(f["status"] == "fail" for f in payload["findings"])
+    assert result.exit_code == 1
+
+
+def test_check_legacy_no_gate_stanza_no_fail_exits_zero(tmp_path: Path) -> None:
+    """Legacy (no gate): no FAIL findings → exit 0."""
+    examples = Path(__file__).parent.parent / "examples" / "good_integration"
+    result = runner.invoke(app, ["check", "--path", str(examples), "--format", "json"])
+    payload = json.loads(result.stdout)
+    assert all(f["status"] != "fail" for f in payload["findings"])
+    assert result.exit_code == 0
