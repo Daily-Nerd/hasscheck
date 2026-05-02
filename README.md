@@ -307,6 +307,9 @@ Per-rule documentation pages with status behavior tables, fix instructions, and 
 | `manifest.iot_class.valid` | Manifest `iot_class` is a recognized value. |
 | `manifest.integration_type.exists` | Manifest declares `integration_type`. |
 | `manifest.integration_type.valid` | Manifest `integration_type` is a recognized value. |
+| `manifest.requirements.is_list` | Manifest `requirements` is a JSON array. |
+| `manifest.requirements.entries_well_formed` | Manifest `requirements` entries are valid PEP 508 specifiers. |
+| `manifest.requirements.no_git_or_url_specs` | Manifest `requirements` contains no git/URL install specs. |
 
 ### Modern Home Assistant patterns
 

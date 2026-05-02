@@ -4,6 +4,8 @@ import json
 from collections.abc import Callable
 from typing import Any, cast
 
+from packaging.requirements import InvalidRequirement, Requirement
+
 from hasscheck.models import (
     Applicability,
     ApplicabilityStatus,
@@ -705,6 +707,386 @@ def manifest_exists(context: ProjectContext) -> Finding:
     )
 
 
+# ---------------------------------------------------------------------------
+# Issue #100 — manifest.requirements sanity checks
+# Source: https://developers.home-assistant.io/docs/creating_integration_manifest/#requirements
+# Source-checked-at: 2026-05-01
+# ---------------------------------------------------------------------------
+
+_HA_REQUIREMENTS_DOCS_URL = (
+    "https://developers.home-assistant.io/docs/creating_integration_manifest"
+    "#requirements"
+)
+
+_PEP_508_URL_PREFIXES = ("git+", "http://", "https://", "file://")
+
+RULE_ID_REQUIREMENTS_IS_LIST = "manifest.requirements.is_list"
+RULE_ID_REQUIREMENTS_WELL_FORMED = "manifest.requirements.entries_well_formed"
+RULE_ID_REQUIREMENTS_NO_GIT = "manifest.requirements.no_git_or_url_specs"
+
+_REQUIREMENTS_WHY_IS_LIST = (
+    "Home Assistant's manifest loader requires requirements to be a JSON array. "
+    "A non-array value will cause a hard error during integration loading. "
+    f"Source: {_HA_REQUIREMENTS_DOCS_URL} (verified 2026-05-01)."
+)
+_REQUIREMENTS_WHY_WELL_FORMED = (
+    "Each entry in requirements must be a valid PEP 508 specifier so pip can "
+    "resolve and install the dependency. Malformed specifiers will fail at "
+    "integration install time. "
+    f"Source: {_HA_REQUIREMENTS_DOCS_URL} (verified 2026-05-01)."
+)
+_REQUIREMENTS_WHY_NO_GIT = (
+    "Direct git+ or URL-based install specs are not supported by HACS and may "
+    "fail in sandboxed or offline HA installations. Publish packages to PyPI and "
+    "reference them by name instead. "
+    f"Source: {_HA_REQUIREMENTS_DOCS_URL} (verified 2026-05-01)."
+)
+
+
+def _is_url_or_git_spec(entry: str) -> bool:
+    """Return True if *entry* is a direct URL / VCS spec that PEP 508 cannot parse."""
+    s = entry.strip()
+    return s.startswith(_PEP_508_URL_PREFIXES) or "@ git+" in s
+
+
+def _manifest_requirements_is_list(context: ProjectContext) -> Finding:
+    rule_id = RULE_ID_REQUIREMENTS_IS_LIST
+    title = "manifest.json requirements is a JSON array"
+    path = _manifest_path(context)
+    display = _manifest_display_path(context)
+
+    if path is None or not path.is_file():
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.REQUIRED,
+            title=title,
+            message="manifest.json is missing, so the requirements field cannot be inspected yet.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="manifest.json must exist before HassCheck can inspect manifest.requirements.",
+            ),
+            source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+            fix=FixSuggestion(summary="Create manifest.json first."),
+            path="custom_components/<domain>/manifest.json",
+        )
+
+    payload, error = _read_manifest(context)
+    if error is not None:
+        return _invalid_manifest_finding(rule_id, title, error, display)
+
+    assert payload is not None
+    if "requirements" not in payload:
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.REQUIRED,
+            title=title,
+            message="manifest.json has no requirements key; rule is not applicable.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="manifest.requirements must be present before its type can be validated.",
+            ),
+            source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+            fix=None,
+            path=display,
+        )
+
+    value = payload["requirements"]
+    if isinstance(value, list):
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.PASS,
+            severity=RuleSeverity.REQUIRED,
+            title=title,
+            message="manifest.requirements is a JSON array.",
+            applicability=Applicability(
+                reason="Home Assistant expects requirements to be a JSON array of PEP 508 strings."
+            ),
+            source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+            fix=None,
+            path=display,
+        )
+
+    type_name = type(value).__name__
+    return Finding(
+        rule_id=rule_id,
+        rule_version="1.0.0",
+        category=CATEGORY,
+        status=RuleStatus.FAIL,
+        severity=RuleSeverity.REQUIRED,
+        title=title,
+        message=f"manifest.requirements must be a JSON array, got {type_name}.",
+        applicability=Applicability(
+            reason="Home Assistant expects requirements to be a JSON array of PEP 508 strings."
+        ),
+        source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+        fix=FixSuggestion(summary="Change manifest.requirements to a JSON array."),
+        path=display,
+    )
+
+
+def _manifest_requirements_entries_well_formed(context: ProjectContext) -> Finding:
+    rule_id = RULE_ID_REQUIREMENTS_WELL_FORMED
+    title = "manifest.json requirements entries are valid PEP 508 specifiers"
+    path = _manifest_path(context)
+    display = _manifest_display_path(context)
+
+    if path is None or not path.is_file():
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.RECOMMENDED,
+            title=title,
+            message="manifest.json is missing, so requirements entries cannot be validated.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="manifest.json must exist before HassCheck can validate requirements entries.",
+            ),
+            source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+            fix=FixSuggestion(summary="Create manifest.json first."),
+            path="custom_components/<domain>/manifest.json",
+        )
+
+    payload, error = _read_manifest(context)
+    if error is not None:
+        return _invalid_manifest_finding(rule_id, title, error, display)
+
+    assert payload is not None
+
+    if "requirements" not in payload:
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.RECOMMENDED,
+            title=title,
+            message="manifest.json has no requirements key; rule is not applicable.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="manifest.requirements must be present before entries can be validated.",
+            ),
+            source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+            fix=None,
+            path=display,
+        )
+
+    value = payload["requirements"]
+
+    if not isinstance(value, list):
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.RECOMMENDED,
+            title=title,
+            message="manifest.requirements is not a list; entry validation is skipped.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="manifest.requirements must be a list before entries can be validated.",
+            ),
+            source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+            fix=None,
+            path=display,
+        )
+
+    # Empty list is trivially valid
+    for entry in value:
+        if not isinstance(entry, str):
+            type_name = type(entry).__name__
+            return Finding(
+                rule_id=rule_id,
+                rule_version="1.0.0",
+                category=CATEGORY,
+                status=RuleStatus.FAIL,
+                severity=RuleSeverity.RECOMMENDED,
+                title=title,
+                message=(
+                    f"manifest.requirements contains a non-string entry of type {type_name}; "
+                    "expected a PEP 508 string."
+                ),
+                applicability=Applicability(
+                    reason="Each requirements entry must be a PEP 508 string."
+                ),
+                source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+                fix=FixSuggestion(
+                    summary="Replace non-string requirements entries with PEP 508 specifier strings."
+                ),
+                path=display,
+            )
+        # Skip URL / VCS specs — rule 3 handles those; PEP 508 parser rejects them.
+        if _is_url_or_git_spec(entry):
+            continue
+        try:
+            Requirement(entry)
+        except InvalidRequirement:
+            return Finding(
+                rule_id=rule_id,
+                rule_version="1.0.0",
+                category=CATEGORY,
+                status=RuleStatus.FAIL,
+                severity=RuleSeverity.RECOMMENDED,
+                title=title,
+                message=(
+                    f'manifest.requirements entry "{entry}" is not a valid PEP 508 specifier.'
+                ),
+                applicability=Applicability(
+                    reason="Each requirements entry must be a valid PEP 508 specifier string."
+                ),
+                source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+                fix=FixSuggestion(
+                    summary="Fix or remove the invalid PEP 508 specifier from requirements."
+                ),
+                path=display,
+            )
+
+    return Finding(
+        rule_id=rule_id,
+        rule_version="1.0.0",
+        category=CATEGORY,
+        status=RuleStatus.PASS,
+        severity=RuleSeverity.RECOMMENDED,
+        title=title,
+        message="All manifest.requirements entries are valid PEP 508 specifiers.",
+        applicability=Applicability(
+            reason="Each requirements entry must be a valid PEP 508 specifier string."
+        ),
+        source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+        fix=None,
+        path=display,
+    )
+
+
+def _manifest_requirements_no_git_or_url_specs(context: ProjectContext) -> Finding:
+    rule_id = RULE_ID_REQUIREMENTS_NO_GIT
+    title = "manifest.json requirements contains no git/URL install specs"
+    path = _manifest_path(context)
+    display = _manifest_display_path(context)
+
+    if path is None or not path.is_file():
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.RECOMMENDED,
+            title=title,
+            message="manifest.json is missing, so requirements cannot be inspected.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="manifest.json must exist before HassCheck can inspect requirements.",
+            ),
+            source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+            fix=FixSuggestion(summary="Create manifest.json first."),
+            path="custom_components/<domain>/manifest.json",
+        )
+
+    payload, error = _read_manifest(context)
+    if error is not None:
+        return _invalid_manifest_finding(rule_id, title, error, display)
+
+    assert payload is not None
+
+    if "requirements" not in payload:
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.RECOMMENDED,
+            title=title,
+            message="manifest.json has no requirements key; rule is not applicable.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="manifest.requirements must be present before it can be inspected.",
+            ),
+            source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+            fix=None,
+            path=display,
+        )
+
+    value = payload["requirements"]
+
+    if not isinstance(value, list):
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.NOT_APPLICABLE,
+            severity=RuleSeverity.RECOMMENDED,
+            title=title,
+            message="manifest.requirements is not a list; rule is not applicable.",
+            applicability=Applicability(
+                status=ApplicabilityStatus.NOT_APPLICABLE,
+                reason="manifest.requirements must be a list before entries can be inspected.",
+            ),
+            source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+            fix=None,
+            path=display,
+        )
+
+    flagged = [
+        entry
+        for entry in value
+        if isinstance(entry, str) and _is_url_or_git_spec(entry)
+    ]
+
+    if flagged:
+        flagged_display = ", ".join(flagged)
+        return Finding(
+            rule_id=rule_id,
+            rule_version="1.0.0",
+            category=CATEGORY,
+            status=RuleStatus.WARN,
+            severity=RuleSeverity.RECOMMENDED,
+            title=title,
+            message=(
+                f"manifest.requirements contains non-PyPI install specs: {flagged_display}. "
+                "Use PyPI package names to ensure installability via HACS and pip."
+            ),
+            applicability=Applicability(
+                reason=(
+                    "Direct git/URL specs cannot be installed in all environments "
+                    "and are not supported by HACS."
+                )
+            ),
+            source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+            fix=FixSuggestion(
+                summary="Replace git/URL specs with published PyPI package names."
+            ),
+            path=display,
+        )
+
+    return Finding(
+        rule_id=rule_id,
+        rule_version="1.0.0",
+        category=CATEGORY,
+        status=RuleStatus.PASS,
+        severity=RuleSeverity.RECOMMENDED,
+        title=title,
+        message="manifest.requirements contains no git/URL install specs.",
+        applicability=Applicability(
+            reason=(
+                "Direct git/URL specs cannot be installed in all environments "
+                "and are not supported by HACS."
+            )
+        ),
+        source=RuleSource(url=_HA_REQUIREMENTS_DOCS_URL),
+        fix=None,
+        path=display,
+    )
+
+
 RULES = [
     RuleDefinition(
         id="manifest.exists",
@@ -842,6 +1224,40 @@ RULES = [
         why=_INTEGRATION_TYPE_VALID_WHY,
         source_url=_HA_DEV_DOCS_URL,
         check=_integration_type_valid_check,
+        overridable=True,
+    ),
+    # Issue #100 — manifest.requirements sanity checks
+    RuleDefinition(
+        id=RULE_ID_REQUIREMENTS_IS_LIST,
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.REQUIRED,
+        title="manifest.json requirements is a JSON array",
+        why=_REQUIREMENTS_WHY_IS_LIST,
+        source_url=_HA_REQUIREMENTS_DOCS_URL,
+        check=_manifest_requirements_is_list,
+        overridable=False,
+    ),
+    RuleDefinition(
+        id=RULE_ID_REQUIREMENTS_WELL_FORMED,
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title="manifest.json requirements entries are valid PEP 508 specifiers",
+        why=_REQUIREMENTS_WHY_WELL_FORMED,
+        source_url=_HA_REQUIREMENTS_DOCS_URL,
+        check=_manifest_requirements_entries_well_formed,
+        overridable=True,
+    ),
+    RuleDefinition(
+        id=RULE_ID_REQUIREMENTS_NO_GIT,
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title="manifest.json requirements contains no git/URL install specs",
+        why=_REQUIREMENTS_WHY_NO_GIT,
+        source_url=_HA_REQUIREMENTS_DOCS_URL,
+        check=_manifest_requirements_no_git_or_url_specs,
         overridable=True,
     ),
 ]

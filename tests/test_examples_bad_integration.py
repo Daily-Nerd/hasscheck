@@ -115,3 +115,32 @@ def test_privacy_section_warns_on_bad_integration_fixture() -> None:
     """bad_integration README has no Privacy section — must WARN."""
     findings = _findings_by_id()
     assert findings["docs.privacy.exists"].status is RuleStatus.WARN
+
+
+# ---------------------------------------------------------------------------
+# issue #100: manifest.requirements rules — fixture has
+#   ["pyhomematic", "git+https://github.com/example/lib.git"]
+#   → is_list PASS, entries_well_formed PASS, no_git_or_url_specs WARN
+# ---------------------------------------------------------------------------
+
+
+def test_requirements_is_list_passes_on_bad_integration_fixture() -> None:
+    """Fixture requirements is a list — is_list must PASS."""
+    findings = _findings_by_id()
+    assert findings["manifest.requirements.is_list"].status is RuleStatus.PASS
+
+
+def test_requirements_well_formed_passes_on_bad_integration_fixture() -> None:
+    """Fixture has 'pyhomematic' (valid PEP 508) + git+ (filtered) — entries_well_formed PASS."""
+    findings = _findings_by_id()
+    assert (
+        findings["manifest.requirements.entries_well_formed"].status is RuleStatus.PASS
+    )
+
+
+def test_requirements_no_git_warns_on_bad_integration_fixture() -> None:
+    """Fixture has git+https://... entry — no_git_or_url_specs must WARN."""
+    findings = _findings_by_id()
+    f = findings["manifest.requirements.no_git_or_url_specs"]
+    assert f.status is RuleStatus.WARN
+    assert "git+https://github.com/example/lib.git" in f.message
