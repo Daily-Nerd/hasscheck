@@ -44,16 +44,24 @@ jobs:
         run: |
           set -euo pipefail
           ENDPOINT="${{ inputs.endpoint }}"
+          SLUG="Daily-Nerd/hasscheck"
+          SUMMARY_URL="${ENDPOINT}/api/projects/${SLUG}/summary"
           # Cloud Run + Cloudflare can take a few seconds to propagate cache
           # on the first publish for a slug. Retry briefly.
           for i in 1 2 3 4 5; do
-            BODY=$(curl -fsSL --max-time 10 "${ENDPOINT}/api/projects/Daily-Nerd/hasscheck" || true)
+            BODY=$(curl -fsSL --max-time 10 "${SUMMARY_URL}" || true)
             if [ -n "$BODY" ]; then
-              echo "$BODY" | head -c 1000
+              echo "${BODY}" | head -c 1000
               echo
+              # Assert response shape: slug matches and at least one report
+              # exists. Schema-version validation is implicit — the hub
+              # rejects mismatched schema_version with HTTP 422 at publish
+              # time, so a successful publish + non-empty summary together
+              # prove the lockstep is cleared.
+              echo "${BODY}" | jq -e --arg slug "${SLUG}" '.slug == $slug and .report_count >= 1' >/dev/null
               exit 0
             fi
             sleep 3
           done
-          echo "::error::Report did not appear at ${ENDPOINT}/api/projects/Daily-Nerd/hasscheck after retries"
+          echo "::error::Report did not appear at ${SUMMARY_URL} after retries"
           exit 1
