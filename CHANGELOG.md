@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-05-01
+
+### Added
+- **Manifest requirements sanity rules** in `src/hasscheck/rules/manifest.py` (#100):
+  - `manifest.requirements.is_list` (REQUIRED, non-overridable) — FAIL when `requirements` is present but not a JSON array
+  - `manifest.requirements.entries_well_formed` (RECOMMENDED, overridable) — PEP 508 parse via `packaging.requirements.Requirement`; FAIL on any unparseable entry; URL/git specs are filtered out before parsing (rule 3 owns that signal)
+  - `manifest.requirements.no_git_or_url_specs` (RECOMMENDED, overridable) — WARN when entries use `git+`, `http://`, `https://`, `file://`, or `@ git+` install specs
+- **Config flow advanced detection rules** in `src/hasscheck/rules/config_flow.py` (#101):
+  - `config_flow.reauth_step.exists` — `async_step_reauth` or `async_step_reauth_confirm` AsyncFunctionDef
+  - `config_flow.reconfigure_step.exists` — `async_step_reconfigure` AsyncFunctionDef
+  - `config_flow.unique_id.set` — any `Call` to `async_set_unique_id` (Name or Attribute)
+  - `config_flow.connection_test` — discovery flow step (`async_step_user`/`zeroconf`/`dhcp`/`bluetooth`/`usb`) awaits a non-plumbing call (heuristic: not `async_show_form` / `async_create_entry` / `async_abort` / `async_set_unique_id` / `_abort_if_unique_id_configured` / any `async_step_*`)
+- **Modern HA pattern rules** across two new modules (#107):
+  - `src/hasscheck/rules/init_module.py`:
+    - `init.async_setup_entry.defined` — `__init__.py` defines `async_setup_entry`
+    - `init.runtime_data.used` — `__init__.py` accesses `entry.runtime_data` (HA 2024.4+ pattern)
+  - `src/hasscheck/rules/entity.py`:
+    - `entity.unique_id.set` — at least one entity platform file sets `_attr_unique_id` (class-level or instance-level)
+    - `entity.has_entity_name.set` — at least one entity platform file sets `_attr_has_entity_name = True` (literal True)
+    - `entity.device_info.set` — at least one entity platform file sets `_attr_device_info` or returns `DeviceInfo(...)` from a `device_info` method/property
+    - Canonical `_HA_PLATFORM_NAMES` frozenset (~40 platform names sourced from HA core's `Platform` enum) drives multi-file iteration
+- `hasscheck.ast_utils.has_async_function(tree, name)` — extracted as a public helper from the inline `_has_async_function` previously living in `config_flow.py`. Third extraction after `parse_module` (#93). `config_flow.py`'s local copy delegates to the public version.
+- `examples/bad_integration/custom_components/demo_bad/__init__.py` — minimal legacy `setup()` fixture so the bad-integration fixture demonstrates `init.*` WARNs deterministically. The fixture's `manifest.json` gained a `"requirements"` array with one valid + one `git+` entry to demonstrate `manifest.requirements.no_git_or_url_specs` WARN.
+- `CONTRIBUTING.md` — issue-first workflow, rule-add checklist, rule philosophy (sourced + conservative + overridable + no-certification language), conventional commits.
+- `CODE_OF_CONDUCT.md` — Contributor Covenant 2.1, fetched canonical from EthicalSource source repo with maintainer contact filled in.
+- README "How HassCheck relates to other tools" / "See it in action" / hasscheck.io launch note (#110, #111).
+- `idea.md` Section 3 (Product ladder) and Section 15 (Roadmap) refreshed to reflect v0.7→v0.9 reality + v0.10 in-progress + v1.0 hub prerequisites (#111).
+
+### Changed
+- Bumped `version` and `__version__` to `0.10.0`
+- `packaging>=23.0` added to `[project] dependencies` — was already transitive via `pip` and `setuptools`; made explicit for runtime-surface honesty
+- `tests/test_cli.py::test_terminal_applicability_finding_has_config_marker` assertion split — long rule IDs cause Rich to wrap the rule line and `(config)` marker across rendered lines. Behavior under test still verified, just not as a single contiguous string.
+
+### Notes
+- `SCHEMA_VERSION` unchanged at `0.3.0` — v0.10 adds no new finding fields (additive only per ADR 0009)
+- `DEFAULT_RULESET_ID` unchanged at `hasscheck-ha-2026.5` — same ruleset cycle as v0.8 + v0.9 per ADR 0006
+- Rule count: 30 → **42** (+12 — three batches of 3 / 4 / 5)
+- Test count: 486 → **606** (+120 across the three rule-expansion batches)
+- New rule modules: `src/hasscheck/rules/init_module.py`, `src/hasscheck/rules/entity.py`
+- Net new public AST helpers: `parse_module` (already shipped in v0.9), `has_async_function`
+
+[Compare v0.9.0...v0.10.0](https://github.com/Daily-Nerd/hasscheck/compare/v0.9.0...v0.10.0)
+
 ## [0.9.0] — 2026-05-01
 
 ### Added
@@ -213,7 +256,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Initial release](https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.1.0)
 
-[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/Daily-Nerd/hasscheck/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.10.0
 [0.9.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.9.0
 [0.8.1]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.8.1
 [0.8.0]: https://github.com/Daily-Nerd/hasscheck/releases/tag/v0.8.0
