@@ -1,0 +1,707 @@
+"""Deprecation rules for HassCheck (issue #144).
+
+Rules:
+  Batch 1 (config_flow.unique_id.*):
+    1. config_flow.unique_id.uses_ip_address
+    2. config_flow.unique_id.uses_device_name
+    3. config_flow.unique_id.uses_url
+    4. config_flow.unique_id.missing_abort_if_configured
+    5. config_flow.unique_id.not_normalized
+
+  Batch 2:
+    6.  config_entry.runtime_data.missing
+    7.  entity.unique_id.mutable_source
+    8.  setup.async_setup_entry.missing
+    9.  helpers.deprecated_import
+    10. manifest.config_flow.true_but_no_class
+
+Category: deprecations
+Severity: RECOMMENDED (all overridable)
+"""
+
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+from hasscheck.ast_utils import module_calls_name, parse_module
+from hasscheck.models import (
+    Applicability,
+    ApplicabilityStatus,
+    Finding,
+    FixSuggestion,
+    RuleSeverity,
+    RuleSource,
+    RuleStatus,
+)
+from hasscheck.rules.base import ProjectContext, RuleDefinition
+
+CATEGORY = "deprecations"
+
+_SOURCE_CHECKED_AT = "2026-05-01"
+
+# ---------------------------------------------------------------------------
+# Advisory source URLs
+# ---------------------------------------------------------------------------
+_UNIQUE_ID_SOURCE = (
+    "https://developers.home-assistant.io/docs/config_entries_config_flow_handler"
+    "#unique-id"
+)
+_RUNTIME_DATA_SOURCE = (
+    "https://developers.home-assistant.io/docs/config_entries_index/#runtime_data"
+)
+_ENTITY_UNIQUE_ID_SOURCE = (
+    "https://developers.home-assistant.io/docs/entity_registry_index/#unique-id"
+)
+_ASYNC_SETUP_ENTRY_SOURCE = (
+    "https://developers.home-assistant.io/docs/config_entries_index/#an-example"
+)
+_HELPERS_SOURCE = "https://developers.home-assistant.io/docs/core/entity/"
+_MANIFEST_SOURCE = (
+    "https://developers.home-assistant.io/docs/creating_integration_manifest"
+)
+
+# ---------------------------------------------------------------------------
+# Deprecated helper paths (rule 9)
+# ---------------------------------------------------------------------------
+_DEPRECATED_HELPER_MODULES = frozenset(
+    {
+        "homeassistant.helpers.entity",
+        "homeassistant.helpers.entity_platform",
+        "homeassistant.helpers.entity_registry",
+    }
+)
+
+# ---------------------------------------------------------------------------
+# Shared path helpers
+# ---------------------------------------------------------------------------
+
+
+def _config_flow_path(context: ProjectContext) -> Path | None:
+    if context.integration_path is None:
+        return None
+    return context.integration_path / "config_flow.py"
+
+
+def _init_path(context: ProjectContext) -> Path | None:
+    if context.integration_path is None:
+        return None
+    return context.integration_path / "__init__.py"
+
+
+def _manifest_path(context: ProjectContext) -> Path | None:
+    if context.integration_path is None:
+        return None
+    return context.integration_path / "manifest.json"
+
+
+def _display_path(path: Path | None, context: ProjectContext, fallback: str) -> str:
+    if path is None:
+        return fallback
+    try:
+        return str(path.relative_to(context.root))
+    except ValueError:
+        return str(path)
+
+
+# ---------------------------------------------------------------------------
+# Shared Finding factories
+# ---------------------------------------------------------------------------
+
+
+def _make_not_applicable(
+    rule_id: str,
+    title: str,
+    source_url: str,
+    message: str,
+    reason: str,
+    path: str,
+) -> Finding:
+    return Finding(
+        rule_id=rule_id,
+        rule_version="1.0.0",
+        category=CATEGORY,
+        status=RuleStatus.NOT_APPLICABLE,
+        severity=RuleSeverity.RECOMMENDED,
+        title=title,
+        message=message,
+        applicability=Applicability(
+            status=ApplicabilityStatus.NOT_APPLICABLE,
+            reason=reason,
+        ),
+        source=RuleSource(url=source_url, checked_at=_SOURCE_CHECKED_AT),
+        fix=None,
+        path=path,
+    )
+
+
+def _make_finding(
+    rule_id: str,
+    title: str,
+    source_url: str,
+    *,
+    status: RuleStatus,
+    message: str,
+    reason: str,
+    path: str,
+    fix: FixSuggestion | None = None,
+) -> Finding:
+    return Finding(
+        rule_id=rule_id,
+        rule_version="1.0.0",
+        category=CATEGORY,
+        status=status,
+        severity=RuleSeverity.RECOMMENDED,
+        title=title,
+        message=message,
+        applicability=Applicability(reason=reason),
+        source=RuleSource(url=source_url, checked_at=_SOURCE_CHECKED_AT),
+        fix=fix,
+        path=path,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Shared config_flow.py gating helper
+# ---------------------------------------------------------------------------
+
+
+def _gate_config_flow_rule(
+    context: ProjectContext,
+    rule_id: str,
+    title: str,
+    source_url: str,
+) -> tuple[Finding | None, ast.Module | None, str]:
+    """Gate rule on config_flow.py existence and parseability.
+
+    Returns (early_finding, tree, display_path).
+    If early_finding is not None, return it immediately.
+    """
+    fallback = "custom_components/<domain>/config_flow.py"
+
+    if context.integration_path is None:
+        return (
+            _make_not_applicable(
+                rule_id,
+                title,
+                source_url,
+                message="No integration directory was detected.",
+                reason="integration_path must exist before this rule can run.",
+                path=fallback,
+            ),
+            None,
+            fallback,
+        )
+
+    cf_path = context.integration_path / "config_flow.py"
+    display = _display_path(cf_path, context, fallback)
+
+    if not cf_path.is_file():
+        return (
+            _make_not_applicable(
+                rule_id,
+                title,
+                source_url,
+                message="config_flow.py does not exist; rule cannot be checked.",
+                reason="config_flow.py must exist before this rule can run.",
+                path=display,
+            ),
+            None,
+            display,
+        )
+
+    tree, error = parse_module(cf_path)
+    if error is not None:
+        return (
+            _make_finding(
+                rule_id,
+                title,
+                source_url,
+                status=RuleStatus.WARN,
+                message=f"config_flow.py could not be parsed ({error}); rule cannot be determined.",
+                reason="config_flow.py exists but has a syntax error.",
+                path=display,
+                fix=FixSuggestion(summary="Fix syntax errors in config_flow.py."),
+            ),
+            None,
+            display,
+        )
+
+    return None, tree, display
+
+
+# ---------------------------------------------------------------------------
+# Shared helpers: detect mutable-looking unique_id assignment near a call
+# ---------------------------------------------------------------------------
+
+
+def _find_unique_id_assignments(tree: ast.Module) -> list[ast.Assign | ast.AnnAssign]:
+    """Return all assignment nodes that assign to a name containing 'unique_id'."""
+    assignments = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and "unique_id" in target.id:
+                    assignments.append(node)
+        elif isinstance(node, ast.AnnAssign):
+            if isinstance(node.target, ast.Name) and "unique_id" in node.target.id:
+                assignments.append(node)
+    return assignments
+
+
+def _variables_near_unique_id_call(tree: ast.Module) -> list[str]:
+    """Return names of variables assigned in the same function scope as async_set_unique_id.
+
+    Walk every AsyncFunctionDef/FunctionDef that contains an async_set_unique_id call.
+    Collect Name assignments within that scope and return them as lowercase.
+    """
+    names: list[str] = []
+    for fn_node in ast.walk(tree):
+        if not isinstance(fn_node, (ast.AsyncFunctionDef, ast.FunctionDef)):
+            continue
+
+        # Does this function call async_set_unique_id?
+        fn_tree = ast.Module(body=[fn_node], type_ignores=[])
+        if not module_calls_name(fn_tree, "async_set_unique_id"):
+            continue
+
+        # Collect all assigned names in this function
+        for node in ast.walk(fn_node):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        names.append(target.id.lower())
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+                names.append(node.target.id.lower())
+            # Also collect the argument name of async_set_unique_id call itself
+            elif isinstance(node, ast.Call):
+                func = node.func
+                if (
+                    isinstance(func, ast.Name) and func.id == "async_set_unique_id"
+                ) or (
+                    isinstance(func, ast.Attribute)
+                    and func.attr == "async_set_unique_id"
+                ):
+                    for arg in node.args:
+                        if isinstance(arg, ast.Name):
+                            names.append(arg.id.lower())
+    return names
+
+
+def _has_normalization_near_unique_id(tree: ast.Module) -> bool:
+    """Return True if .lower() or .strip() appears in a scope with async_set_unique_id."""
+    for fn_node in ast.walk(tree):
+        if not isinstance(fn_node, (ast.AsyncFunctionDef, ast.FunctionDef)):
+            continue
+
+        fn_tree = ast.Module(body=[fn_node], type_ignores=[])
+        if not module_calls_name(fn_tree, "async_set_unique_id"):
+            continue
+
+        # Check for .lower() or .strip() calls anywhere in this function
+        for node in ast.walk(fn_node):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            if isinstance(func, ast.Attribute) and func.attr in ("lower", "strip"):
+                return True
+
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Rule 1: config_flow.unique_id.uses_ip_address
+# ---------------------------------------------------------------------------
+
+_RULE1_ID = "config_flow.unique_id.uses_ip_address"
+_RULE1_TITLE = "Config flow unique ID derived from mutable IP address"
+_IP_KEYWORDS = frozenset({"ip", "ip_address", "ipaddress", "host", "address"})
+
+
+def check_uses_ip_address(context: ProjectContext) -> Finding:
+    """Check that config_flow.py does not use an IP/host variable as unique ID."""
+    early, tree, display = _gate_config_flow_rule(
+        context, _RULE1_ID, _RULE1_TITLE, _UNIQUE_ID_SOURCE
+    )
+    if early is not None:
+        return early
+
+    assert tree is not None
+
+    if not module_calls_name(tree, "async_set_unique_id"):
+        return _make_finding(
+            _RULE1_ID,
+            _RULE1_TITLE,
+            _UNIQUE_ID_SOURCE,
+            status=RuleStatus.PASS,
+            message="async_set_unique_id not found in config_flow.py.",
+            reason="No unique ID assignment detected; rule does not apply.",
+            path=display,
+        )
+
+    var_names = _variables_near_unique_id_call(tree)
+    if any(kw in name for name in var_names for kw in _IP_KEYWORDS):
+        return _make_finding(
+            _RULE1_ID,
+            _RULE1_TITLE,
+            _UNIQUE_ID_SOURCE,
+            status=RuleStatus.WARN,
+            message=(
+                "config_flow.py appears to use an IP address or hostname as the unique ID. "
+                "Use a stable identifier (MAC address, serial number) instead."
+            ),
+            reason="IP addresses are mutable (DHCP) and make poor unique IDs.",
+            path=display,
+            fix=FixSuggestion(
+                summary="Replace IP-derived unique ID with a stable device identifier.",
+                docs_url=_UNIQUE_ID_SOURCE,
+            ),
+        )
+
+    return _make_finding(
+        _RULE1_ID,
+        _RULE1_TITLE,
+        _UNIQUE_ID_SOURCE,
+        status=RuleStatus.PASS,
+        message="config_flow.py does not appear to use a mutable IP address as the unique ID.",
+        reason="No IP/host variable names detected near async_set_unique_id.",
+        path=display,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rule 2: config_flow.unique_id.uses_device_name
+# ---------------------------------------------------------------------------
+
+_RULE2_ID = "config_flow.unique_id.uses_device_name"
+_RULE2_TITLE = "Config flow unique ID derived from mutable device name"
+_NAME_KEYWORDS = frozenset({"name", "device_name", "devicename", "friendly_name"})
+
+
+def check_uses_device_name(context: ProjectContext) -> Finding:
+    """Check that config_flow.py does not use a device name as unique ID."""
+    early, tree, display = _gate_config_flow_rule(
+        context, _RULE2_ID, _RULE2_TITLE, _UNIQUE_ID_SOURCE
+    )
+    if early is not None:
+        return early
+
+    assert tree is not None
+
+    if not module_calls_name(tree, "async_set_unique_id"):
+        return _make_finding(
+            _RULE2_ID,
+            _RULE2_TITLE,
+            _UNIQUE_ID_SOURCE,
+            status=RuleStatus.PASS,
+            message="async_set_unique_id not found in config_flow.py.",
+            reason="No unique ID assignment detected; rule does not apply.",
+            path=display,
+        )
+
+    var_names = _variables_near_unique_id_call(tree)
+    if any(kw in name for name in var_names for kw in _NAME_KEYWORDS):
+        return _make_finding(
+            _RULE2_ID,
+            _RULE2_TITLE,
+            _UNIQUE_ID_SOURCE,
+            status=RuleStatus.WARN,
+            message=(
+                "config_flow.py appears to use a device name as the unique ID. "
+                "Use a stable identifier (MAC address, serial number) instead."
+            ),
+            reason="Device names are mutable and make poor unique IDs.",
+            path=display,
+            fix=FixSuggestion(
+                summary="Replace name-derived unique ID with a stable device identifier.",
+                docs_url=_UNIQUE_ID_SOURCE,
+            ),
+        )
+
+    return _make_finding(
+        _RULE2_ID,
+        _RULE2_TITLE,
+        _UNIQUE_ID_SOURCE,
+        status=RuleStatus.PASS,
+        message="config_flow.py does not appear to use a mutable device name as the unique ID.",
+        reason="No name variable detected near async_set_unique_id.",
+        path=display,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rule 3: config_flow.unique_id.uses_url
+# ---------------------------------------------------------------------------
+
+_RULE3_ID = "config_flow.unique_id.uses_url"
+_RULE3_TITLE = "Config flow unique ID derived from URL or host"
+_URL_KEYWORDS = frozenset({"url", "base_url", "endpoint", "host", "hostname"})
+
+
+def check_uses_url(context: ProjectContext) -> Finding:
+    """Check that config_flow.py does not use a URL or hostname as unique ID."""
+    early, tree, display = _gate_config_flow_rule(
+        context, _RULE3_ID, _RULE3_TITLE, _UNIQUE_ID_SOURCE
+    )
+    if early is not None:
+        return early
+
+    assert tree is not None
+
+    if not module_calls_name(tree, "async_set_unique_id"):
+        return _make_finding(
+            _RULE3_ID,
+            _RULE3_TITLE,
+            _UNIQUE_ID_SOURCE,
+            status=RuleStatus.PASS,
+            message="async_set_unique_id not found in config_flow.py.",
+            reason="No unique ID assignment detected; rule does not apply.",
+            path=display,
+        )
+
+    var_names = _variables_near_unique_id_call(tree)
+    if any(kw in name for name in var_names for kw in _URL_KEYWORDS):
+        return _make_finding(
+            _RULE3_ID,
+            _RULE3_TITLE,
+            _UNIQUE_ID_SOURCE,
+            status=RuleStatus.WARN,
+            message=(
+                "config_flow.py appears to use a URL or hostname as the unique ID. "
+                "Use a stable identifier (MAC address, serial number) instead."
+            ),
+            reason="URLs and hostnames change with network reconfiguration.",
+            path=display,
+            fix=FixSuggestion(
+                summary="Replace URL-derived unique ID with a stable device identifier.",
+                docs_url=_UNIQUE_ID_SOURCE,
+            ),
+        )
+
+    return _make_finding(
+        _RULE3_ID,
+        _RULE3_TITLE,
+        _UNIQUE_ID_SOURCE,
+        status=RuleStatus.PASS,
+        message="config_flow.py does not appear to use a mutable URL/host as the unique ID.",
+        reason="No URL/host variable detected near async_set_unique_id.",
+        path=display,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rule 4: config_flow.unique_id.missing_abort_if_configured
+# ---------------------------------------------------------------------------
+
+_RULE4_ID = "config_flow.unique_id.missing_abort_if_configured"
+_RULE4_TITLE = "Config flow sets unique ID without aborting on duplicate"
+
+
+def check_missing_abort_if_configured(context: ProjectContext) -> Finding:
+    """Check that config_flow.py calls _abort_if_unique_id_configured alongside set_unique_id."""
+    early, tree, display = _gate_config_flow_rule(
+        context, _RULE4_ID, _RULE4_TITLE, _UNIQUE_ID_SOURCE
+    )
+    if early is not None:
+        return early
+
+    assert tree is not None
+
+    if not module_calls_name(tree, "async_set_unique_id"):
+        return _make_finding(
+            _RULE4_ID,
+            _RULE4_TITLE,
+            _UNIQUE_ID_SOURCE,
+            status=RuleStatus.PASS,
+            message="async_set_unique_id not called; rule does not apply.",
+            reason="No unique ID being set; abort check not needed.",
+            path=display,
+        )
+
+    if module_calls_name(tree, "_abort_if_unique_id_configured"):
+        return _make_finding(
+            _RULE4_ID,
+            _RULE4_TITLE,
+            _UNIQUE_ID_SOURCE,
+            status=RuleStatus.PASS,
+            message="config_flow.py calls both async_set_unique_id and _abort_if_unique_id_configured.",
+            reason="Both calls present — duplicate config entry protection is in place.",
+            path=display,
+        )
+
+    return _make_finding(
+        _RULE4_ID,
+        _RULE4_TITLE,
+        _UNIQUE_ID_SOURCE,
+        status=RuleStatus.WARN,
+        message=(
+            "config_flow.py calls async_set_unique_id but does not call "
+            "_abort_if_unique_id_configured — duplicate config entries may be created."
+        ),
+        reason="async_set_unique_id should always be paired with _abort_if_unique_id_configured.",
+        path=display,
+        fix=FixSuggestion(
+            summary="Add self._abort_if_unique_id_configured() after async_set_unique_id.",
+            docs_url=_UNIQUE_ID_SOURCE,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rule 5: config_flow.unique_id.not_normalized
+# ---------------------------------------------------------------------------
+
+_RULE5_ID = "config_flow.unique_id.not_normalized"
+_RULE5_TITLE = "Config flow unique ID not normalized"
+
+
+def check_not_normalized(context: ProjectContext) -> Finding:
+    """Check that the unique ID is normalized (lowercased or stripped) before being set."""
+    early, tree, display = _gate_config_flow_rule(
+        context, _RULE5_ID, _RULE5_TITLE, _UNIQUE_ID_SOURCE
+    )
+    if early is not None:
+        return early
+
+    assert tree is not None
+
+    if not module_calls_name(tree, "async_set_unique_id"):
+        return _make_finding(
+            _RULE5_ID,
+            _RULE5_TITLE,
+            _UNIQUE_ID_SOURCE,
+            status=RuleStatus.PASS,
+            message="async_set_unique_id not called; normalization check not applicable.",
+            reason="No unique ID being set.",
+            path=display,
+        )
+
+    if _has_normalization_near_unique_id(tree):
+        return _make_finding(
+            _RULE5_ID,
+            _RULE5_TITLE,
+            _UNIQUE_ID_SOURCE,
+            status=RuleStatus.PASS,
+            message="config_flow.py normalizes the unique ID with .lower() or .strip().",
+            reason="Normalization detected in the same scope as async_set_unique_id.",
+            path=display,
+        )
+
+    return _make_finding(
+        _RULE5_ID,
+        _RULE5_TITLE,
+        _UNIQUE_ID_SOURCE,
+        status=RuleStatus.WARN,
+        message=(
+            "config_flow.py calls async_set_unique_id but does not appear to normalize "
+            "the unique ID with .lower() or .strip()."
+        ),
+        reason="Unique IDs should be normalized for consistency across setups.",
+        path=display,
+        fix=FixSuggestion(
+            summary="Add .lower().strip() to the unique ID value before calling async_set_unique_id.",
+            docs_url=_UNIQUE_ID_SOURCE,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Placeholder stubs for batch 2 (Groups 5–6 will implement these)
+# ---------------------------------------------------------------------------
+
+# Rule 6: config_entry.runtime_data.missing
+# Rule 7: entity.unique_id.mutable_source
+# Rule 8: setup.async_setup_entry.missing
+# Rule 9: helpers.deprecated_import
+# Rule 10: manifest.config_flow.true_but_no_class
+
+
+# ---------------------------------------------------------------------------
+# Rule registry — batch 1
+# ---------------------------------------------------------------------------
+
+RULES: list[RuleDefinition] = [
+    RuleDefinition(
+        id=_RULE1_ID,
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title=_RULE1_TITLE,
+        why=(
+            "IP addresses change on DHCP renewal, causing duplicate config entries "
+            "or broken integrations. Use a stable device identifier (MAC address, "
+            "serial number) instead."
+        ),
+        source_url=_UNIQUE_ID_SOURCE,
+        check=check_uses_ip_address,
+        overridable=True,
+        advisory_id="ha-2025-03-unique-id-ip-source",
+        min_ha_version="2025.3",
+    ),
+    RuleDefinition(
+        id=_RULE2_ID,
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title=_RULE2_TITLE,
+        why=(
+            "Device names can be changed by users or by the device itself, causing "
+            "duplicate config entries or broken integrations. Use a stable identifier instead."
+        ),
+        source_url=_UNIQUE_ID_SOURCE,
+        check=check_uses_device_name,
+        overridable=True,
+        advisory_id="ha-2025-03-unique-id-name-source",
+        min_ha_version="2025.3",
+    ),
+    RuleDefinition(
+        id=_RULE3_ID,
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title=_RULE3_TITLE,
+        why=(
+            "URLs and hostnames change with network reconfiguration, causing duplicate "
+            "config entries or broken integrations. Use a stable identifier instead."
+        ),
+        source_url=_UNIQUE_ID_SOURCE,
+        check=check_uses_url,
+        overridable=True,
+        advisory_id="ha-2025-03-unique-id-url-source",
+        min_ha_version="2025.3",
+    ),
+    RuleDefinition(
+        id=_RULE4_ID,
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title=_RULE4_TITLE,
+        why=(
+            "When async_set_unique_id is called, _abort_if_unique_id_configured should "
+            "also be called to prevent duplicate config entries. Missing this call allows "
+            "users to set up the same device multiple times."
+        ),
+        source_url=_UNIQUE_ID_SOURCE,
+        check=check_missing_abort_if_configured,
+        overridable=True,
+        advisory_id="ha-2025-03-unique-id-missing-abort",
+        min_ha_version="2025.3",
+    ),
+    RuleDefinition(
+        id=_RULE5_ID,
+        version="1.0.0",
+        category=CATEGORY,
+        severity=RuleSeverity.RECOMMENDED,
+        title=_RULE5_TITLE,
+        why=(
+            "Unique IDs should be normalized (e.g., lowercased, stripped) to ensure "
+            "consistency across setups and HA versions. Without normalization, the same "
+            "device may get different unique IDs depending on the identifier source."
+        ),
+        source_url=_UNIQUE_ID_SOURCE,
+        check=check_not_normalized,
+        overridable=True,
+        advisory_id="ha-2025-03-unique-id-not-normalized",
+        min_ha_version="2025.3",
+    ),
+]
