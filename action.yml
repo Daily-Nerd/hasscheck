@@ -31,6 +31,14 @@ inputs:
     description: 'Publish endpoint URL when emit-publish is true. Defaults to https://hasscheck.io.'
     required: false
     default: 'https://hasscheck.io'
+  token:
+    description: 'GitHub token for diff-mode PR comment posting. Alias for github-token; used by the diff-mode steps.'
+    required: false
+    default: ''
+  diff-mode:
+    description: 'Run diff-aware PR comment showing only new/fixed findings between base and HEAD (requires fetch-depth: 0 in parent workflow).'
+    required: false
+    default: 'false'
 
 outputs:
   exit-code:
@@ -83,6 +91,38 @@ runs:
           --edit-last 2>/dev/null || \
         gh pr comment "${{ github.event.pull_request.number }}" \
           --body-file hasscheck-report.md
+
+    - name: Checkout base branch for diff
+      if: inputs.diff-mode == 'true' && github.event_name == 'pull_request'
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.base.sha }}
+        fetch-depth: 0
+
+    - name: Run hasscheck on base branch
+      if: inputs.diff-mode == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      run: hasscheck check --path "${{ inputs.path }}" --format json > /tmp/hasscheck-base.json || true
+
+    - name: Checkout PR HEAD for diff
+      if: inputs.diff-mode == 'true' && github.event_name == 'pull_request'
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 0
+
+    - name: Post diff PR comment
+      if: inputs.diff-mode == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        hasscheck check --path "${{ inputs.path }}" --format json > /tmp/hasscheck-head.json || true
+        hasscheck diff /tmp/hasscheck-base.json /tmp/hasscheck-head.json --format md > /tmp/hasscheck-delta.md || true
+        gh pr comment ${{ github.event.pull_request.number }} \
+          --edit-last --body-file /tmp/hasscheck-delta.md 2>/dev/null || \
+        gh pr comment ${{ github.event.pull_request.number }} \
+          --body-file /tmp/hasscheck-delta.md
 
     - name: Generate badges
       if: inputs.emit-badges == 'true'

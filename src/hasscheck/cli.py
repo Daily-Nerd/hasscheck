@@ -20,6 +20,7 @@ from hasscheck.baseline import (
 from hasscheck.baseline.cli import baseline_app
 from hasscheck.checker import run_check
 from hasscheck.config import ConfigError, GateConfig, GateMode, discover_config
+from hasscheck.diff import _load_report, compute_delta, delta_to_md
 from hasscheck.docs_render import check_drift, render_all
 from hasscheck.init import init_project
 from hasscheck.models import Finding, HassCheckReport, RuleSeverity, RuleStatus
@@ -571,6 +572,67 @@ def init(
         return
     for artifact in artifacts:
         console.print(f"[green]Created:[/] {artifact.target}")
+
+
+@app.command("diff")
+def diff_cmd(
+    base_json: Path = typer.Argument(..., help="Base branch report JSON"),
+    head_json: Path = typer.Argument(..., help="PR HEAD report JSON"),
+    format: str = typer.Option(
+        "md", "--format", "-f", help="Output format: md or json"
+    ),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Write to file instead of stdout"
+    ),
+) -> None:
+    """Compare two HassCheck JSON reports and show new / fixed findings.
+
+    BASE_JSON is the report from the base branch; HEAD_JSON is the report from
+    the PR HEAD. Exits 0 when no new findings are introduced, 1 when new
+    findings exist, and 2 on read/parse error.
+
+    Examples:
+      hasscheck diff base.json head.json
+      hasscheck diff base.json head.json --format json
+      hasscheck diff base.json head.json --output delta.md
+    """
+    try:
+        base_report = _load_report(base_json)
+    except FileNotFoundError as exc:
+        typer.echo(f"hasscheck diff: file not found: {base_json}", err=True)
+        raise typer.Exit(code=2) from exc
+    except ValueError as exc:
+        typer.echo(f"hasscheck diff: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    try:
+        head_report = _load_report(head_json)
+    except FileNotFoundError as exc:
+        typer.echo(f"hasscheck diff: file not found: {head_json}", err=True)
+        raise typer.Exit(code=2) from exc
+    except ValueError as exc:
+        typer.echo(f"hasscheck diff: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    delta = compute_delta(base_report, head_report)
+
+    if format == "json":
+        payload = {
+            "new": [f.model_dump(mode="json") for f in delta.new],
+            "fixed": [f.model_dump(mode="json") for f in delta.fixed],
+            "unchanged": [f.model_dump(mode="json") for f in delta.unchanged],
+        }
+        rendered = json.dumps(payload, indent=2)
+    else:
+        rendered = delta_to_md(delta)
+
+    if output is not None:
+        output.write_text(rendered, encoding="utf-8")
+    else:
+        typer.echo(rendered, nl=False)
+
+    if delta.new:
+        raise typer.Exit(code=1)
 
 
 @app.command("docs-render")
