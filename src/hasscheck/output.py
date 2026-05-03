@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
 from rich.console import Console
+from rich.markup import escape as markup_escape
 from rich.table import Table
 
 from hasscheck.models import Finding, HassCheckReport, RuleStatus
+
+if TYPE_CHECKING:
+    from hasscheck.baseline.core import FindingPartition
 
 _COMPAT_POLICY_FOOTER = (
     "Compatibility claims policy: "
@@ -34,7 +39,10 @@ def report_to_json(report: HassCheckReport) -> str:
 
 
 def print_terminal_report(
-    report: HassCheckReport, console: Console | None = None
+    report: HassCheckReport,
+    console: Console | None = None,
+    *,
+    partition: FindingPartition | None = None,
 ) -> None:
     console = console or Console()
     console.print("[bold]HassCheck Summary[/bold]")
@@ -62,18 +70,34 @@ def print_terminal_report(
         )
         console.print()
 
+    # Build a per-finding label map only when a partition is supplied (D4).
+    # Labels use escaped brackets so Rich renders them as literal text, not markup tags.
+    label_by_id: dict[int, str] = {}
+    if partition is not None:
+        for f in partition.new:
+            label_by_id[id(f)] = markup_escape("[new]")
+        for f in partition.accepted:
+            label_by_id[id(f)] = markup_escape("[accepted]")
+
     table = Table(title="Findings")
     table.add_column("Status", no_wrap=True)
     table.add_column("Rule")
     table.add_column("Message")
     for finding in report.findings:
         marker = " (config)" if finding.applicability.source == "config" else ""
-        table.add_row(
-            STATUS_ICON[finding.status], f"{finding.rule_id}{marker}", finding.message
-        )
+        baseline_label = label_by_id.get(id(finding), "")
+        rule_cell = f"{finding.rule_id}{marker}"
+        if baseline_label:
+            rule_cell = f"{rule_cell} {baseline_label}"
+        table.add_row(STATUS_ICON[finding.status], rule_cell, finding.message)
     console.print(table)
 
     _print_fix_suggestions(report.findings, console)
+
+    # "N fixed since baseline" — terminal only (D4).
+    if partition is not None and partition.fixed:
+        console.print()
+        console.print(f"[green]{len(partition.fixed)} fixed since baseline.[/green]")
 
     if report.target and report.target.ha_version:
         console.print()

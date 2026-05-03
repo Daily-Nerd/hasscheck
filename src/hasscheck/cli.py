@@ -11,6 +11,12 @@ from rich.console import Console
 from hasscheck import __version__
 from hasscheck.badges import generate_badges
 from hasscheck.badges.policy import BadgePolicyError
+from hasscheck.baseline import (
+    BaselineError,
+    FindingPartition,
+    load_baseline,
+    partition_findings,
+)
 from hasscheck.baseline.cli import baseline_app
 from hasscheck.checker import run_check
 from hasscheck.config import ConfigError, GateConfig, GateMode, discover_config
@@ -133,6 +139,19 @@ def check(
             ),
         ),
     ] = None,
+    baseline: Annotated[
+        Path | None,
+        typer.Option(
+            "--baseline",
+            "-b",
+            help=(
+                "Path to a baseline file. Findings matching the baseline are "
+                "labeled [accepted] and excluded from the gate. New findings "
+                "trigger the gate; resolved findings show as [fixed]. "
+                "Generate one with `hasscheck baseline create`."
+            ),
+        ),
+    ] = None,
 ) -> None:
     """Check a custom integration repository and print actionable findings.
 
@@ -174,15 +193,27 @@ def check(
         typer.echo(f"hasscheck: error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
-    if format == OutputFormat.JSON:
-        typer.echo(report_to_json(report), nl=False)
-    elif format == OutputFormat.MD:
-        typer.echo(report_to_md(report), nl=False)
-    else:
-        print_terminal_report(report, console)
+    # Baseline partition (no-op when --baseline omitted).
+    bl_partition: FindingPartition | None = None
+    if baseline is not None:
+        try:
+            baseline_file = load_baseline(baseline)
+        except BaselineError as exc:
+            typer.echo(f"hasscheck: error: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+        bl_partition = partition_findings(report.findings, baseline_file)
 
+    if format == OutputFormat.JSON:
+        typer.echo(report_to_json(report), nl=False)  # D3 — JSON unchanged
+    elif format == OutputFormat.MD:
+        typer.echo(report_to_md(report), nl=False)  # D4 — MD unchanged
+    else:
+        print_terminal_report(report, console, partition=bl_partition)
+
+    # Gate decision: gate on new findings only when a baseline is active.
+    gate_findings = bl_partition.new if bl_partition is not None else report.findings
     _gate = cfg.gate if cfg else None
-    if should_exit_nonzero(report.findings, _gate):
+    if should_exit_nonzero(gate_findings, _gate):
         raise typer.Exit(code=1)
 
 
