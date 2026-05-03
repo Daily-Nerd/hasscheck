@@ -1380,3 +1380,137 @@ def test_smoke_sub_command_reachable_from_root_app() -> None:
     result = runner.invoke(app, ["smoke", "--help"])
     assert result.exit_code == 0, result.output
     assert "run" in result.output.lower()
+
+
+# ---------------------------------------------------------------------------
+# Group 4 — hasscheck diff command
+# ---------------------------------------------------------------------------
+
+
+def _minimal_report_json(findings: list[dict] | None = None) -> str:
+    """Return a minimal valid HassCheckReport JSON string."""
+    return json.dumps(
+        {
+            "schema_version": "0.5.0",
+            "project": {"path": "/repo"},
+            "summary": {
+                "overall": "informational_only",
+                "security_review": "not_performed",
+                "official_ha_tier": "not_assigned",
+                "hacs_acceptance": "not_guaranteed",
+            },
+            "findings": findings or [],
+        }
+    )
+
+
+def _finding_dict(
+    rule_id: str = "x.y",
+    message: str = "msg",
+    path: str | None = None,
+    status: str = "fail",
+) -> dict:
+    return {
+        "rule_id": rule_id,
+        "rule_version": "1.0",
+        "category": "test",
+        "status": status,
+        "severity": "required",
+        "title": "Test",
+        "message": message,
+        "applicability": {"status": "applicable", "reason": "ok", "source": "default"},
+        "source": {"url": "https://example.com"},
+        "path": path,
+    }
+
+
+def test_s5_identical_files_exit_0(tmp_path: Path) -> None:
+    """S5 — identical base and head → exit 0 (no new findings)."""
+    report = _minimal_report_json([_finding_dict("a.b")])
+    base = tmp_path / "base.json"
+    head = tmp_path / "head.json"
+    base.write_text(report, encoding="utf-8")
+    head.write_text(report, encoding="utf-8")
+
+    result = runner.invoke(app, ["diff", str(base), str(head)])
+    assert result.exit_code == 0, result.output
+
+
+def test_s6_new_findings_exit_1(tmp_path: Path) -> None:
+    """S6 — head introduces a new finding → exit 1."""
+    base_report = _minimal_report_json([_finding_dict("a.b")])
+    head_report = _minimal_report_json([_finding_dict("a.b"), _finding_dict("c.d")])
+    base = tmp_path / "base.json"
+    head = tmp_path / "head.json"
+    base.write_text(base_report, encoding="utf-8")
+    head.write_text(head_report, encoding="utf-8")
+
+    result = runner.invoke(app, ["diff", str(base), str(head)])
+    assert result.exit_code == 1, result.output
+
+
+def test_s7_missing_file_exit_2(tmp_path: Path) -> None:
+    """S7 — nonexistent base file → exit 2 with stderr message."""
+    nonexistent = tmp_path / "nonexistent.json"
+    head = tmp_path / "head.json"
+    head.write_text(_minimal_report_json(), encoding="utf-8")
+
+    result = runner.invoke(app, ["diff", str(nonexistent), str(head)])
+    assert result.exit_code == 2, result.output
+
+
+def test_s8_format_json_output(tmp_path: Path) -> None:
+    """S8 — --format json emits valid JSON with new/fixed/unchanged keys."""
+    base_report = _minimal_report_json([_finding_dict("a.b")])
+    head_report = _minimal_report_json([_finding_dict("a.b"), _finding_dict("c.d")])
+    base = tmp_path / "base.json"
+    head = tmp_path / "head.json"
+    base.write_text(base_report, encoding="utf-8")
+    head.write_text(head_report, encoding="utf-8")
+
+    result = runner.invoke(app, ["diff", str(base), str(head), "--format", "json"])
+    assert result.exit_code == 1, result.output
+    payload = json.loads(result.stdout)
+    assert set(payload.keys()) == {"new", "fixed", "unchanged"}
+    assert len(payload["new"]) == 1
+    assert payload["new"][0]["rule_id"] == "c.d"
+
+
+def test_diff_md_output_contains_marker(tmp_path: Path) -> None:
+    """Default --format md output contains the sticky PR comment marker."""
+    base_report = _minimal_report_json([_finding_dict("a.b")])
+    head_report = _minimal_report_json([_finding_dict("a.b"), _finding_dict("c.d")])
+    base = tmp_path / "base.json"
+    head = tmp_path / "head.json"
+    base.write_text(base_report, encoding="utf-8")
+    head.write_text(head_report, encoding="utf-8")
+
+    result = runner.invoke(app, ["diff", str(base), str(head)])
+    assert "<!-- hasscheck-pr-comment -->" in result.stdout
+
+
+def test_diff_output_file_written(tmp_path: Path) -> None:
+    """--output PATH writes the result to a file instead of stdout."""
+    base_report = _minimal_report_json()
+    head_report = _minimal_report_json()
+    base = tmp_path / "base.json"
+    head = tmp_path / "head.json"
+    out = tmp_path / "delta.md"
+    base.write_text(base_report, encoding="utf-8")
+    head.write_text(head_report, encoding="utf-8")
+
+    result = runner.invoke(app, ["diff", str(base), str(head), "--output", str(out)])
+    assert result.exit_code == 0, result.output
+    assert out.exists()
+    assert "hasscheck" in out.read_text(encoding="utf-8").lower()
+
+
+def test_diff_malformed_json_exit_2(tmp_path: Path) -> None:
+    """Malformed JSON in base file → exit 2."""
+    base = tmp_path / "base.json"
+    head = tmp_path / "head.json"
+    base.write_text("not valid json {{{", encoding="utf-8")
+    head.write_text(_minimal_report_json(), encoding="utf-8")
+
+    result = runner.invoke(app, ["diff", str(base), str(head)])
+    assert result.exit_code == 2, result.output
