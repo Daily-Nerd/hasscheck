@@ -47,6 +47,7 @@ CATEGORY_LABELS = {
     "maintenance_signals": "Maintenance Signals",
     "tests_ci": "Tests/CI",
     "version": "Version Identity",
+    "compatibility": "Import Compatibility",
 }
 
 

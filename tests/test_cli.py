@@ -1373,3 +1373,10 @@ def test_check_advisory_gate_with_baseline_always_exits_zero(tmp_path: Path) -> 
         app, ["check", "--path", str(tmp_path), "--baseline", str(baseline_path)]
     )
     assert result.exit_code == 0, result.output
+
+
+def test_smoke_sub_command_reachable_from_root_app() -> None:
+    """hasscheck smoke --help exits 0 from the root app (Group 8)."""
+    result = runner.invoke(app, ["smoke", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "run" in result.output.lower()

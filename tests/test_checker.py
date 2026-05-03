@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from hasscheck.checker import run_check
+from hasscheck.checker import CATEGORY_LABELS, run_check
 from hasscheck.config import HassCheckConfig, RuleOverride
 from hasscheck.models import Finding, RuleStatus
 
@@ -479,3 +479,8 @@ def test_run_check_user_rule_override_wins_over_profile_boost(tmp_path) -> None:
         findings_by_id["config_flow.reauth_step.exists"].status
         == RuleStatus.NOT_APPLICABLE
     )
+
+
+def test_category_labels_includes_compatibility() -> None:
+    """CATEGORY_LABELS must include 'compatibility' → 'Import Compatibility' (Group 6)."""
+    assert CATEGORY_LABELS["compatibility"] == "Import Compatibility"
