@@ -441,6 +441,22 @@ def test_run_check_cli_profile_name_overrides_config_profile(tmp_path) -> None:
     )
 
 
+def test_run_check_read_only_sensor_disables_reauth_step(tmp_path) -> None:
+    """A4: read-only-sensor profile marks config_flow.reauth_step.exists as not_applicable."""
+    from hasscheck.models import RuleStatus
+
+    report = run_check(tmp_path, no_config=True, profile_name="read-only-sensor")
+    findings_by_id = {f.rule_id: f for f in report.findings}
+    assert (
+        findings_by_id["config_flow.reauth_step.exists"].status
+        == RuleStatus.NOT_APPLICABLE
+    )
+    assert (
+        findings_by_id["config_flow.reauth_step.exists"].applicability.source
+        == "profile"
+    )
+
+
 def test_run_check_user_rule_override_wins_over_profile_boost(tmp_path) -> None:
     """Per-rule config override supersedes profile severity boost."""
     from hasscheck.config import HassCheckConfig, RuleOverride

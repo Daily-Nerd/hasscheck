@@ -215,3 +215,8 @@ PROFILES: dict[str, ProfileDefinition] = {
         CORE_SUBMISSION_CANDIDATE,
     )
 }
+
+
+def get_profile(name: str) -> ProfileDefinition | None:
+    """Return a built-in profile by name, or None if not found."""
+    return PROFILES.get(name)
