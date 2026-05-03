@@ -11,6 +11,7 @@ from rich.console import Console
 from hasscheck import __version__
 from hasscheck.badges import generate_badges
 from hasscheck.badges.policy import BadgePolicyError
+from hasscheck.baseline.cli import baseline_app
 from hasscheck.checker import run_check
 from hasscheck.config import ConfigError, GateConfig, GateMode, discover_config
 from hasscheck.docs_render import check_drift, render_all
@@ -569,6 +570,7 @@ def docs_render(
 
 
 app.add_typer(scaffold_app, name="scaffold")
+app.add_typer(baseline_app, name="baseline")
 
 
 def main() -> None:
