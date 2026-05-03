@@ -1,0 +1,14 @@
+id: ha-2025-03-entity-unique-id-mutable
+introduced_in: "2025.3"
+enforced_in: null
+source_url: "https://developers.home-assistant.io/docs/entity_registry_index/#unique-id"
+title: "Entity unique_id derived from mutable source"
+summary: |
+  Entity unique IDs should be derived from stable, immutable identifiers.
+  Using mutable values like device name or IP address can cause entity registry
+  corruption when the source value changes.
+affected_patterns:
+  - "unique_id property returns value derived from name or ip attribute"
+severity: warn
+rule_ids:
+  - "entity.unique_id.mutable_source"

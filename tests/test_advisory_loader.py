@@ -82,3 +82,95 @@ def test_advisory_defaults() -> None:
     assert advisory.severity == "warn"
     assert advisory.introduced_in is None
     assert advisory.enforced_in is None
+
+
+# ---------------------------------------------------------------------------
+# Group 2: ADVISORIES loader
+# ---------------------------------------------------------------------------
+
+
+def test_advisories_count_is_ten() -> None:
+    """len(ADVISORIES) == 10 at import (spec S1)."""
+    from hasscheck.advisories import ADVISORIES
+
+    assert len(ADVISORIES) == 10, (
+        f"Expected 10 advisories, got {len(ADVISORIES)}: {list(ADVISORIES.keys())}"
+    )
+
+
+def test_advisories_all_valid_instances() -> None:
+    """Every value in ADVISORIES is an Advisory instance."""
+    from hasscheck.advisories import ADVISORIES, Advisory
+
+    for key, advisory in ADVISORIES.items():
+        assert isinstance(advisory, Advisory), (
+            f"ADVISORIES[{key!r}] is not an Advisory instance"
+        )
+
+
+def test_get_advisory_returns_matching_instance() -> None:
+    """get_advisory returns Advisory for known id (spec S3)."""
+    from hasscheck.advisories import ADVISORIES, get_advisory
+
+    # Pick the first advisory ID from the loaded dict
+    known_id = next(iter(ADVISORIES))
+    result = get_advisory(known_id)
+
+    assert result is not None
+    assert result.id == known_id
+
+
+def test_get_advisory_returns_none_for_unknown_id() -> None:
+    """get_advisory returns None for unknown id."""
+    from hasscheck.advisories import get_advisory
+
+    result = get_advisory("nonexistent-advisory-id")
+
+    assert result is None
+
+
+def test_loader_malformed_yaml_raises_runtime_error(
+    tmp_path: pytest.MonkeyPatch,
+) -> None:
+    """Malformed YAML (extra field) raises RuntimeError at load time (spec S2)."""
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    bad_yaml = data_dir / "bad-advisory.yaml"
+    bad_yaml.write_text(
+        "id: bad-advisory\n"
+        "source_url: https://example.com\n"
+        "title: Bad\n"
+        "summary: Bad advisory\n"
+        "affected_patterns: []\n"
+        "rule_ids: []\n"
+        "unknown_extra_field: should_fail\n",
+        encoding="utf-8",
+    )
+
+    # Import loader module directly with patched data path
+    from hasscheck.advisories import loader as loader_mod
+
+    original_data_dir = loader_mod._DATA_DIR
+    try:
+        loader_mod._DATA_DIR = data_dir
+        with pytest.raises(RuntimeError, match="bad-advisory"):
+            loader_mod._load_all()
+    finally:
+        loader_mod._DATA_DIR = original_data_dir
+
+
+def test_loader_missing_directory_raises_runtime_error(
+    tmp_path: pytest.MonkeyPatch,
+) -> None:
+    """Missing data directory raises RuntimeError at load time."""
+    from hasscheck.advisories import loader as loader_mod
+
+    nonexistent = tmp_path / "does_not_exist"
+    original_data_dir = loader_mod._DATA_DIR
+    try:
+        loader_mod._DATA_DIR = nonexistent
+        with pytest.raises(RuntimeError, match="does_not_exist"):
+            loader_mod._load_all()
+    finally:
+        loader_mod._DATA_DIR = original_data_dir

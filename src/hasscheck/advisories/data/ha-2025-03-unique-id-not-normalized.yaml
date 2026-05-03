@@ -1,0 +1,15 @@
+id: ha-2025-03-unique-id-not-normalized
+introduced_in: "2025.3"
+enforced_in: null
+source_url: "https://developers.home-assistant.io/docs/config_entries_config_flow_handler#unique-id"
+title: "Config flow unique ID not normalized"
+summary: |
+  Unique IDs should be normalized (e.g., lowercased, stripped of whitespace) to
+  ensure consistency across setups and HA versions. Without normalization, the
+  same device may get different unique IDs depending on how the identifier is
+  obtained.
+affected_patterns:
+  - "async_set_unique_id called without .lower() or .strip() normalization"
+severity: warn
+rule_ids:
+  - "config_flow.unique_id.not_normalized"
