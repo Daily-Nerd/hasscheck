@@ -856,3 +856,520 @@ def test_check_unknown_profile_exits_nonzero_with_error_message(tmp_path: Path) 
     assert result.exit_code == 1
     combined_output = (result.output or "") + (result.stderr or "")
     assert "Unknown profile" in combined_output or "unknown" in combined_output.lower()
+
+
+# ---------- Phase 6: baseline subapp (#149) ----------
+
+
+def test_baseline_subcommand_is_registered() -> None:
+    """hasscheck baseline --help exits 0 and mentions the subcommands."""
+    result = runner.invoke(app, ["baseline", "--help"])
+    assert result.exit_code == 0
+    assert "baseline" in result.output.lower()
+
+
+def test_baseline_create_writes_valid_file(tmp_path: Path) -> None:
+    """baseline create writes hasscheck-baseline.yaml that passes load_baseline."""
+    from hasscheck.baseline import load_baseline
+
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    result = runner.invoke(
+        app,
+        ["baseline", "create", "--path", str(tmp_path), "--out", str(out_file)],
+    )
+    assert result.exit_code == 0, result.output
+    assert out_file.exists()
+    loaded = load_baseline(out_file)
+    assert loaded.hasscheck_version is not None
+
+
+def test_baseline_create_refuses_overwrite_without_force(tmp_path: Path) -> None:
+    """baseline create exits 1 when file exists and --force is not passed (D5)."""
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    # Create the file first
+    runner.invoke(
+        app,
+        ["baseline", "create", "--path", str(tmp_path), "--out", str(out_file)],
+    )
+    assert out_file.exists()
+    # Try again without --force
+    result = runner.invoke(
+        app,
+        ["baseline", "create", "--path", str(tmp_path), "--out", str(out_file)],
+    )
+    assert result.exit_code == 1
+    combined = (result.output or "") + (result.stderr or "")
+    assert "update" in combined.lower() or "force" in combined.lower()
+
+
+def test_baseline_create_force_overwrites(tmp_path: Path) -> None:
+    """baseline create --force overwrites an existing file."""
+    from hasscheck.baseline import load_baseline
+
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    runner.invoke(
+        app,
+        ["baseline", "create", "--path", str(tmp_path), "--out", str(out_file)],
+    )
+    result = runner.invoke(
+        app,
+        [
+            "baseline",
+            "create",
+            "--path",
+            str(tmp_path),
+            "--out",
+            str(out_file),
+            "--force",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    loaded = load_baseline(out_file)
+    assert loaded.accepted_findings is not None
+
+
+def test_baseline_create_only_includes_fail_and_warn(tmp_path: Path) -> None:
+    """baseline create produces entries only for FAIL and WARN findings (D6)."""
+    from hasscheck.baseline import load_baseline
+
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    runner.invoke(
+        app,
+        ["baseline", "create", "--path", str(tmp_path), "--out", str(out_file)],
+    )
+    loaded = load_baseline(out_file)
+    # Run a live check and verify only FAIL/WARN entries in baseline
+    from hasscheck.checker import run_check
+    from hasscheck.models import RuleStatus
+
+    report = run_check(tmp_path)
+    baseline_ids = {e.rule_id for e in loaded.accepted_findings}
+    # All baseline entries must correspond to eligible findings
+    assert baseline_ids.issubset({f.rule_id for f in report.findings}), (
+        "Baseline entries should only come from actual findings"
+    )
+    # PASS findings must not be in baseline entries
+    pass_ids = {f.rule_id for f in report.findings if f.status == RuleStatus.PASS}
+    assert not baseline_ids.intersection(pass_ids), (
+        "PASS findings should not appear in baseline"
+    )
+
+
+def test_baseline_update_preserves_reason(tmp_path: Path) -> None:
+    """baseline update keeps the reason for hash-matched entries (D1)."""
+    import yaml
+
+    from hasscheck.baseline import load_baseline
+
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    # Create initial baseline
+    runner.invoke(
+        app,
+        ["baseline", "create", "--path", str(tmp_path), "--out", str(out_file)],
+    )
+    # Manually inject a reason into the first entry
+    loaded = load_baseline(out_file)
+    if not loaded.accepted_findings:
+        pytest.skip("no findings to baseline in this integration fixture")
+    raw = yaml.safe_load(out_file.read_text())
+    raw["accepted_findings"][0]["reason"] = "preserved reason"
+    out_file.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
+    # Run update
+    result = runner.invoke(
+        app,
+        ["baseline", "update", "--path", str(tmp_path), "--file", str(out_file)],
+    )
+    assert result.exit_code == 0, result.output
+    updated = load_baseline(out_file)
+    reasons = [e.reason for e in updated.accepted_findings]
+    assert "preserved reason" in reasons
+
+
+def test_baseline_update_drops_stale_entries(tmp_path: Path) -> None:
+    """baseline update removes entries that don't match any live finding."""
+    import yaml
+
+    from hasscheck.baseline import load_baseline
+
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    # Create initial baseline
+    runner.invoke(
+        app,
+        ["baseline", "create", "--path", str(tmp_path), "--out", str(out_file)],
+    )
+    # Inject a stale entry with a hash that no live finding can match
+    raw = yaml.safe_load(out_file.read_text())
+    raw["accepted_findings"].append(
+        {
+            "rule_id": "nonexistent.rule",
+            "path": None,
+            "finding_hash": "dead1234",
+            "accepted_at": "2026-01-01",
+            "reason": "stale",
+        }
+    )
+    out_file.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
+    result = runner.invoke(
+        app,
+        ["baseline", "update", "--path", str(tmp_path), "--file", str(out_file)],
+    )
+    assert result.exit_code == 0, result.output
+    updated = load_baseline(out_file)
+    assert all(e.rule_id != "nonexistent.rule" for e in updated.accepted_findings)
+
+
+def test_baseline_update_missing_file_errors(tmp_path: Path) -> None:
+    """baseline update exits 1 when baseline file does not exist."""
+    write_minimal_integration(tmp_path)
+    result = runner.invoke(
+        app,
+        [
+            "baseline",
+            "update",
+            "--path",
+            str(tmp_path),
+            "--file",
+            str(tmp_path / "missing.yaml"),
+        ],
+    )
+    assert result.exit_code == 1
+    combined = (result.output or "") + (result.stderr or "")
+    assert "error" in combined.lower()
+
+
+def test_baseline_drop_rule_removes_all(tmp_path: Path) -> None:
+    """baseline drop --rule removes all entries for that rule (D2)."""
+    from hasscheck.baseline import load_baseline
+
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    runner.invoke(
+        app,
+        ["baseline", "create", "--path", str(tmp_path), "--out", str(out_file)],
+    )
+    loaded = load_baseline(out_file)
+    if not loaded.accepted_findings:
+        pytest.skip("no findings to drop in this integration fixture")
+    target_rule = loaded.accepted_findings[0].rule_id
+    result = runner.invoke(
+        app,
+        ["baseline", "drop", "--rule", target_rule, "--file", str(out_file)],
+    )
+    assert result.exit_code == 0, result.output
+    updated = load_baseline(out_file)
+    assert all(e.rule_id != target_rule for e in updated.accepted_findings)
+
+
+def test_baseline_drop_rule_path_narrows(tmp_path: Path) -> None:
+    """baseline drop --rule --path removes only that exact (rule, path) entry (D2)."""
+    from datetime import UTC, date, datetime
+
+    from hasscheck.baseline import (
+        BaselineEntry,
+        BaselineFile,
+        load_baseline,
+        write_baseline,
+    )
+
+    out_file = tmp_path / "baseline.yaml"
+    entries = [
+        BaselineEntry(
+            rule_id="demo.rule",
+            path="file_a.py",
+            finding_hash="aaaa1111",
+            accepted_at=date(2026, 5, 1),
+        ),
+        BaselineEntry(
+            rule_id="demo.rule",
+            path="file_b.py",
+            finding_hash="bbbb2222",
+            accepted_at=date(2026, 5, 1),
+        ),
+    ]
+    bl = BaselineFile(
+        generated_at=datetime(2026, 5, 1, 0, 0, 0, tzinfo=UTC),
+        hasscheck_version="0.14.0",
+        ruleset="test",
+        accepted_findings=entries,
+    )
+    write_baseline(bl, out_file)
+    result = runner.invoke(
+        app,
+        [
+            "baseline",
+            "drop",
+            "--rule",
+            "demo.rule",
+            "--path",
+            "file_a.py",
+            "--file",
+            str(out_file),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    updated = load_baseline(out_file)
+    paths = [e.path for e in updated.accepted_findings]
+    assert "file_a.py" not in paths
+    assert "file_b.py" in paths
+
+
+def test_baseline_drop_unknown_rule_errors(tmp_path: Path) -> None:
+    """baseline drop exits 1 when no entries match the rule (D2 guard)."""
+    from datetime import UTC, date, datetime
+
+    from hasscheck.baseline import BaselineEntry, BaselineFile, write_baseline
+
+    out_file = tmp_path / "baseline.yaml"
+    entries = [
+        BaselineEntry(
+            rule_id="real.rule",
+            path=None,
+            finding_hash="aaaa1111",
+            accepted_at=date(2026, 5, 1),
+        )
+    ]
+    bl = BaselineFile(
+        generated_at=datetime(2026, 5, 1, 0, 0, 0, tzinfo=UTC),
+        hasscheck_version="0.14.0",
+        ruleset="test",
+        accepted_findings=entries,
+    )
+    write_baseline(bl, out_file)
+    result = runner.invoke(
+        app,
+        ["baseline", "drop", "--rule", "nonexistent.rule", "--file", str(out_file)],
+    )
+    assert result.exit_code == 1
+    combined = (result.output or "") + (result.stderr or "")
+    assert "error" in combined.lower()
+
+
+# ---------- Phase 7: check --baseline integration (#149) ----------
+
+
+def test_check_with_baseline_round_trip_exits_zero(tmp_path: Path) -> None:
+    """After `baseline create`, `check --baseline` exits 0 (all findings accepted)."""
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    create_result = runner.invoke(
+        app,
+        ["baseline", "create", "--path", str(tmp_path), "--out", str(out_file)],
+    )
+    assert create_result.exit_code == 0, create_result.output
+    result = runner.invoke(
+        app,
+        [
+            "check",
+            "--path",
+            str(tmp_path),
+            "--baseline",
+            str(out_file),
+            "--format",
+            "json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+
+def test_check_with_baseline_new_finding_exits_nonzero(tmp_path: Path) -> None:
+    """A new FAIL/WARN finding not in baseline causes exit 1."""
+    from datetime import UTC, datetime
+
+    from hasscheck.baseline import BaselineFile, write_baseline
+
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    # Write an EMPTY baseline (no accepted findings) — all findings will be new
+    bl = BaselineFile(
+        generated_at=datetime(2026, 5, 1, 0, 0, 0, tzinfo=UTC),
+        hasscheck_version="0.14.0",
+        ruleset="hasscheck-ha-2026.5",
+        accepted_findings=[],
+    )
+    write_baseline(bl, out_file)
+    result = runner.invoke(
+        app,
+        ["check", "--path", str(tmp_path), "--baseline", str(out_file)],
+    )
+    assert result.exit_code == 1, result.output
+
+
+def test_check_with_baseline_corrupt_yaml_errors(tmp_path: Path) -> None:
+    """check --baseline with corrupt YAML exits 1 and shows error."""
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "baseline.yaml"
+    out_file.write_text("{bad: yaml: :\n", encoding="utf-8")
+    result = runner.invoke(
+        app,
+        ["check", "--path", str(tmp_path), "--baseline", str(out_file)],
+    )
+    assert result.exit_code == 1
+    combined = (result.output or "") + (result.stderr or "")
+    assert "error" in combined.lower()
+
+
+def test_check_with_baseline_missing_file_errors(tmp_path: Path) -> None:
+    """check --baseline with non-existent file exits 1 and shows error."""
+    write_minimal_integration(tmp_path)
+    result = runner.invoke(
+        app,
+        [
+            "check",
+            "--path",
+            str(tmp_path),
+            "--baseline",
+            str(tmp_path / "missing.yaml"),
+        ],
+    )
+    assert result.exit_code == 1
+    combined = (result.output or "") + (result.stderr or "")
+    assert "error" in combined.lower()
+
+
+def test_check_with_baseline_accepted_label_in_terminal(tmp_path: Path) -> None:
+    """Terminal output shows [accepted] for findings in the baseline."""
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    runner.invoke(
+        app,
+        ["baseline", "create", "--path", str(tmp_path), "--out", str(out_file)],
+    )
+    result = runner.invoke(
+        app,
+        ["check", "--path", str(tmp_path), "--baseline", str(out_file)],
+    )
+    # At least some findings should be accepted if create worked
+    assert "[accepted]" in result.output, (
+        f"Expected [accepted] label in output but got:\n{result.output}"
+    )
+
+
+def test_check_with_baseline_new_label_in_terminal(tmp_path: Path) -> None:
+    """Terminal output shows [new] for FAIL/WARN findings not in baseline."""
+    from datetime import UTC, datetime
+
+    from hasscheck.baseline import BaselineFile, write_baseline
+
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    # Empty baseline → all findings are [new]
+    bl = BaselineFile(
+        generated_at=datetime(2026, 5, 1, 0, 0, 0, tzinfo=UTC),
+        hasscheck_version="0.14.0",
+        ruleset="hasscheck-ha-2026.5",
+        accepted_findings=[],
+    )
+    write_baseline(bl, out_file)
+    result = runner.invoke(
+        app,
+        ["check", "--path", str(tmp_path), "--baseline", str(out_file)],
+    )
+    assert "[new]" in result.output, (
+        f"Expected [new] label in output but got:\n{result.output}"
+    )
+
+
+def test_check_with_baseline_fixed_summary_in_terminal(tmp_path: Path) -> None:
+    """Terminal output shows 'fixed since baseline' summary for stale entries."""
+    from datetime import UTC, date, datetime
+
+    from hasscheck.baseline import BaselineEntry, BaselineFile, write_baseline
+
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    # Add a stale entry that won't match any live finding
+    bl = BaselineFile(
+        generated_at=datetime(2026, 5, 1, 0, 0, 0, tzinfo=UTC),
+        hasscheck_version="0.14.0",
+        ruleset="hasscheck-ha-2026.5",
+        accepted_findings=[
+            BaselineEntry(
+                rule_id="stale.rule",
+                path=None,
+                finding_hash="stale000",
+                accepted_at=date(2026, 5, 1),
+                reason="",
+            )
+        ],
+    )
+    write_baseline(bl, out_file)
+    result = runner.invoke(
+        app,
+        ["check", "--path", str(tmp_path), "--baseline", str(out_file)],
+    )
+    assert "fixed since baseline" in result.output.lower(), (
+        f"Expected 'fixed since baseline' in output but got:\n{result.output}"
+    )
+
+
+def test_check_with_baseline_does_not_change_json_output(tmp_path: Path) -> None:
+    """JSON output is identical whether or not --baseline is passed (D3)."""
+    write_minimal_integration(tmp_path)
+    out_file = tmp_path / "hasscheck-baseline.yaml"
+    runner.invoke(
+        app,
+        ["baseline", "create", "--path", str(tmp_path), "--out", str(out_file)],
+    )
+    # JSON without baseline
+    without = runner.invoke(app, ["check", "--path", str(tmp_path), "--format", "json"])
+    # JSON with baseline
+    with_bl = runner.invoke(
+        app,
+        [
+            "check",
+            "--path",
+            str(tmp_path),
+            "--format",
+            "json",
+            "--baseline",
+            str(out_file),
+        ],
+    )
+    payload_without = json.loads(without.stdout)
+    payload_with = json.loads(with_bl.stdout)
+    # The JSON structure must be identical (no extra baseline keys)
+    assert payload_without["findings"] == payload_with["findings"]
+    assert payload_without["summary"] == payload_with["summary"]
+
+
+def test_check_no_baseline_flag_unchanged(tmp_path: Path) -> None:
+    """Without --baseline, check behavior is identical to pre-baseline behavior."""
+    write_minimal_integration(tmp_path)
+    result_new = runner.invoke(
+        app, ["check", "--path", str(tmp_path), "--format", "json"]
+    )
+    result_json = json.loads(result_new.stdout)
+    # Must still have FAIL findings and exit 1 (no PASS for empty integration)
+    assert any(f["status"] == "fail" for f in result_json["findings"])
+    assert result_new.exit_code == 1
+
+
+def test_check_advisory_gate_with_baseline_always_exits_zero(tmp_path: Path) -> None:
+    """advisory gate mode + --baseline → always exit 0 even if new findings exist."""
+    write_minimal_integration(tmp_path)
+    # Create baseline with zero entries (so all findings are "new")
+    baseline_path = tmp_path / "hasscheck-baseline.yaml"
+    runner.invoke(app, ["baseline", "create", "--path", str(tmp_path)])
+    # Clear the baseline so all findings are treated as new
+    baseline_path.write_text(
+        "generated_at: '2026-01-01T00:00:00'\n"
+        "hasscheck_version: '0.0.0'\n"
+        "ruleset: 'test'\n"
+        "accepted_findings: []\n",
+        encoding="utf-8",
+    )
+    # Write a hasscheck.yaml with advisory gate
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.7.0'\ngate:\n  mode: advisory\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(
+        app, ["check", "--path", str(tmp_path), "--baseline", str(baseline_path)]
+    )
+    assert result.exit_code == 0, result.output
