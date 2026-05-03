@@ -37,6 +37,7 @@ from hasscheck.publish import (
 from hasscheck.rules.registry import RULES_BY_ID
 from hasscheck.scaffold.cli import scaffold_app
 from hasscheck.slug import detect_repo_slug
+from hasscheck.smoke.cli import smoke_app
 
 # CLI philosophy: developer-friendly but scriptable. Human output is explanatory;
 # --format controls output: terminal (default), json (machine-readable), or md (Markdown).
@@ -602,6 +603,7 @@ def docs_render(
 
 app.add_typer(scaffold_app, name="scaffold")
 app.add_typer(baseline_app, name="baseline")
+app.add_typer(smoke_app, name="smoke")
 
 
 def main() -> None:
