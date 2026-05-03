@@ -8,14 +8,18 @@ from pathlib import Path
 from hasscheck.config import HassCheckConfig, apply_overrides, discover_config
 from hasscheck.detect import detect_project
 from hasscheck.models import (
+    Applicability,
     ApplicabilityApplied,
+    ApplicabilityStatus,
     CategorySignal,
     HassCheckReport,
     ProjectInfo,
     ReportSummary,
     RuleStatus,
 )
+from hasscheck.profiles import PROFILES, ProfileDefinition
 from hasscheck.provenance import detect_provenance
+from hasscheck.rules.base import RuleDefinition
 from hasscheck.rules.registry import RULES
 from hasscheck.slug import detect_repo_slug
 from hasscheck.target import build_validity, detect_target
@@ -46,12 +50,89 @@ CATEGORY_LABELS = {
 }
 
 
+def apply_profile_overrides(
+    findings: list,
+    profile: ProfileDefinition | None,
+    rules: list[RuleDefinition],
+) -> list:
+    """Apply profile severity boosts and disables to findings.
+
+    Returns a new list. Findings whose rule_id is in profile.disabled_rules
+    become NOT_APPLICABLE with applicability.source='profile'. Findings whose
+    rule_id is in profile.severity_overrides AND whose rule is overridable
+    receive the boosted severity. Non-overridable rules are silently passed
+    through unchanged (D6 — profiles cannot mutate locked rules).
+
+    profile=None is the no-op case: findings are returned as a new list,
+    unchanged in content.
+
+    Override order documented here: (1) rules fire, (2) profile overrides,
+    (3) per-rule config overrides.
+    """
+    if profile is None:
+        return list(findings)
+
+    rule_by_id = {r.id: r for r in rules}
+    result = []
+
+    for finding in findings:
+        rule = rule_by_id.get(finding.rule_id)
+
+        # Disabled by profile → mark not_applicable, source='profile'
+        if finding.rule_id in profile.disabled_rules:
+            if rule is None or not rule.overridable:
+                # D6 — silently skip non-overridable rules
+                result.append(finding)
+                continue
+            result.append(
+                finding.model_copy(
+                    update={
+                        "status": RuleStatus.NOT_APPLICABLE,
+                        "applicability": Applicability(
+                            status=ApplicabilityStatus.NOT_APPLICABLE,
+                            reason=f"Disabled by profile '{profile.id}'.",
+                            source="profile",
+                        ),
+                    }
+                )
+            )
+            continue
+
+        # Severity boost — only when rule is overridable
+        if (
+            finding.rule_id in profile.severity_overrides
+            and rule is not None
+            and rule.overridable
+        ):
+            result.append(
+                finding.model_copy(
+                    update={"severity": profile.severity_overrides[finding.rule_id]}
+                )
+            )
+            continue
+
+        # Pass through unchanged
+        result.append(finding)
+
+    return result
+
+
 def run_check(
     path: Path | str,
     *,
     config: HassCheckConfig | None = None,
     no_config: bool = False,
+    profile_name: str | None = None,
 ) -> HassCheckReport:
+    """Run a full HassCheck report for the given repository path.
+
+    Override order:
+      1. Rules fire and produce raw findings.
+      2. Profile severity_overrides and disabled_rules are applied
+         (apply_profile_overrides). Only overridable rules are affected.
+      3. Per-rule RuleOverride entries from hasscheck.yaml are applied last
+         (apply_overrides). User intent always wins over profile.
+    """
     if config is not None and no_config:
         raise ValueError("Cannot pass both config= and no_config=True; pick one.")
 
@@ -89,6 +170,18 @@ def run_check(
         )
 
     findings = [rule.check(context) for rule in RULES]
+
+    # --- profile resolution: CLI argument wins over config (D5) ---
+    effective_profile_name = profile_name or (config.profile if config else None)
+    if effective_profile_name is not None:
+        if effective_profile_name not in PROFILES:
+            raise ValueError(
+                f"Unknown profile: {effective_profile_name!r}. "
+                f"Known profiles: {sorted(PROFILES)}."
+            )
+        findings = apply_profile_overrides(
+            findings, PROFILES[effective_profile_name], RULES
+        )
 
     config_applicability_rule_ids = sorted(
         finding.rule_id

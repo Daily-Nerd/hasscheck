@@ -21,7 +21,7 @@ def test_init_yaml_is_valid_hasscheck_config(tmp_path):
     init_project(tmp_path)
     parsed = yaml.safe_load((tmp_path / "hasscheck.yaml").read_text())
     config = HassCheckConfig(**parsed)
-    assert config.schema_version == "0.6.0"
+    assert config.schema_version == "0.7.0"
     assert config.rules == {}
     assert config.gate is None
 
@@ -129,3 +129,15 @@ def test_init_enable_publish_missing_template_raises(tmp_path, monkeypatch):
 
     with pytest.raises(FileNotFoundError):
         init_project(tmp_path, enable_publish=True)
+
+
+# ---------- Phase 7: scaffold schema_version bump to 0.7.0 (#146) ----------
+
+
+def test_init_yaml_contains_schema_version_070(tmp_path):
+    """Scaffold output must contain schema_version: '0.7.0' (bumped from 0.6.0 in #146)."""
+    init_project(tmp_path, skip_action=True)
+    content = (tmp_path / "hasscheck.yaml").read_text()
+    assert '"0.7.0"' in content or "'0.7.0'" in content, (
+        f"Expected schema_version '0.7.0' in scaffold output, got:\n{content}"
+    )

@@ -96,11 +96,12 @@ def test_project_config_rejects_extra_fields() -> None:
 
 def test_hasscheck_config_empty_defaults() -> None:
     cfg = HassCheckConfig()
-    assert cfg.schema_version == "0.6.0"
+    assert cfg.schema_version == "0.7.0"
     assert cfg.project is None
     assert cfg.applicability is None
     assert cfg.rules == {}
     assert cfg.gate is None
+    assert cfg.profile is None
 
 
 def test_hasscheck_config_with_rules() -> None:
@@ -518,7 +519,7 @@ def test_hasscheck_config_accepts_applicability_block() -> None:
         applicability=ProjectApplicability(supports_diagnostics=False)
     )
 
-    assert cfg.schema_version == "0.6.0"
+    assert cfg.schema_version == "0.7.0"
     assert cfg.applicability is not None
     assert cfg.applicability.supports_diagnostics is False
 
@@ -646,9 +647,9 @@ def test_load_config_file_v03_backward_compat_no_publish(tmp_path: Path) -> None
 
 
 def test_hasscheck_config_default_schema_version_is_0_6_0() -> None:
-    """Default instantiation yields schema_version 0.6.0 (bumped from 0.5.0 in #148)."""
+    """Default instantiation yields schema_version 0.7.0 (bumped from 0.6.0 in #146)."""
     cfg = HassCheckConfig()
-    assert cfg.schema_version == "0.6.0"
+    assert cfg.schema_version == "0.7.0"
 
 
 def test_hasscheck_config_accepts_explicit_0_4_0() -> None:
@@ -744,3 +745,36 @@ def test_no_gate_field_defaults_to_none() -> None:
 def test_unknown_schema_version_rejected() -> None:
     with pytest.raises(ValidationError):
         HassCheckConfig(schema_version="9.9.9")  # type: ignore[arg-type]
+
+
+# ---------- Phase 5: schema 0.7.0 + profile field (#146) ----------
+
+
+def test_hasscheck_config_default_schema_version_is_070() -> None:
+    """Default instantiation yields schema_version 0.7.0 (bumped from 0.6.0 in #146)."""
+    cfg = HassCheckConfig()
+    assert cfg.schema_version == "0.7.0"
+    assert cfg.profile is None
+
+
+def test_hasscheck_config_profile_field_accepts_string_on_070() -> None:
+    cfg = HassCheckConfig(schema_version="0.7.0", profile="cloud-service")
+    assert cfg.profile == "cloud-service"
+
+
+def test_hasscheck_config_profile_rejected_on_060() -> None:
+    """profile field must not be accepted on schema_version 0.6.0."""
+    with pytest.raises(ValidationError, match="profile"):
+        HassCheckConfig(schema_version="0.6.0", profile="cloud-service")
+
+
+def test_hasscheck_config_060_without_profile_still_valid() -> None:
+    """Existing 0.6.0 configs without profile field remain valid."""
+    cfg = HassCheckConfig(schema_version="0.6.0")
+    assert cfg.schema_version == "0.6.0"
+    assert cfg.profile is None
+
+
+def test_hasscheck_config_profile_field_defaults_to_none() -> None:
+    cfg = HassCheckConfig(schema_version="0.7.0")
+    assert cfg.profile is None
