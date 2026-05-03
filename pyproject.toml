@@ -1,6 +1,6 @@
 [project]
 name = "hasscheck"
-version = "0.15.5"
+version = "0.15.6"
 description = "Unofficial sourced checks for Home Assistant custom integration repos."
 readme = "README.md"
 requires-python = ">=3.12"

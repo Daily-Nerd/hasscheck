@@ -9,6 +9,7 @@ from hasscheck.rules.diagnostics import RULES as DIAGNOSTICS_RULES
 from hasscheck.rules.docs import RULES as DOCS_RULES
 from hasscheck.rules.docs_readme import RULES as DOCS_README_RULES
 from hasscheck.rules.entity import RULES as ENTITY_RULES
+from hasscheck.rules.hacs import RULES as HACS_INSTALLABILITY_RULES
 from hasscheck.rules.hacs_structure import RULES as HACS_STRUCTURE_RULES
 from hasscheck.rules.init_module import RULES as INIT_MODULE_RULES
 from hasscheck.rules.maintenance import RULES as MAINTENANCE_RULES
@@ -20,6 +21,7 @@ from hasscheck.rules.version_identity import RULES as VERSION_IDENTITY_RULES
 
 RULES = [
     *HACS_STRUCTURE_RULES,
+    *HACS_INSTALLABILITY_RULES,
     *BRAND_RULES,
     *MANIFEST_RULES,
     *CONFIG_FLOW_RULES,

@@ -32,6 +32,9 @@ EXPECTED_LOCKED_RULE_IDS = {
     "manifest.domain.matches_directory",  # v0.8 PR1 — non-overridable REQUIRED
     "config_flow.manifest_flag_consistent",
     "manifest.requirements.is_list",  # v0.10 #100 — correctness check, non-overridable
+    # #145 — HACS installability rules (REQUIRED, overridable=False)
+    "hacs.hacs_json_schema_valid",
+    "hacs.one_integration_per_repo",
 }
 
 EXPECTED_OVERRIDABLE_RULE_IDS = {
@@ -98,11 +101,19 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
     "setup.async_setup_entry.missing",
     "helpers.deprecated_import",
     "manifest.config_flow.true_but_no_class",
+    # #145 — HACS installability rules (RECOMMENDED, overridable=True)
+    "hacs.content_in_root_consistent",
+    "hacs.release_zip_valid",
+    "hacs.github_release_assets_valid",
+    "hacs.default_branch_installable",
+    "hacs.repository_topics_present",
+    "hacs.info_or_readme_present",
+    "hacs.download_strategy_clear",
 }
 
 
-def test_total_rule_count_is_sixty_five() -> None:
-    assert len(RULES) == 65, f"expected 65 rules, got {len(RULES)}"
+def test_total_rule_count_is_seventy_four() -> None:
+    assert len(RULES) == 74, f"expected 74 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:
