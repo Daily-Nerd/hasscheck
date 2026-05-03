@@ -1,4 +1,4 @@
-"""Unit tests for hasscheck.ast_utils.parse_module."""
+"""Unit tests for hasscheck.ast_utils."""
 
 from __future__ import annotations
 
@@ -40,3 +40,65 @@ def test_parse_module_syntax_error(tmp_path: Path) -> None:
 
     assert tree is None
     assert error is not None
+
+
+# ---------------------------------------------------------------------------
+# module_calls_name
+# ---------------------------------------------------------------------------
+
+
+def _make_tree(source: str) -> ast.Module:
+    return ast.parse(source)
+
+
+def test_module_calls_name_with_name_node() -> None:
+    """Returns True when the target function is called as a plain Name."""
+    from hasscheck.ast_utils import module_calls_name
+
+    source = "async_set_unique_id(value)"
+    tree = _make_tree(source)
+
+    assert module_calls_name(tree, "async_set_unique_id") is True
+
+
+def test_module_calls_name_with_attribute_node() -> None:
+    """Returns True when the target function is called as an Attribute."""
+    from hasscheck.ast_utils import module_calls_name
+
+    source = "self._abort_if_unique_id_configured()"
+    tree = _make_tree(source)
+
+    assert module_calls_name(tree, "_abort_if_unique_id_configured") is True
+
+
+def test_module_calls_name_absent() -> None:
+    """Returns False when the target function is not called anywhere."""
+    from hasscheck.ast_utils import module_calls_name
+
+    source = "x = some_other_function()\ny = 42"
+    tree = _make_tree(source)
+
+    assert module_calls_name(tree, "async_set_unique_id") is False
+
+
+def test_module_calls_name_nested_in_class() -> None:
+    """Returns True when call is nested inside a class method."""
+    from hasscheck.ast_utils import module_calls_name
+
+    source = (
+        "class ConfigFlow:\n"
+        "    async def async_step_user(self, user_input):\n"
+        "        await self.async_set_unique_id(device_id)\n"
+    )
+    tree = _make_tree(source)
+
+    assert module_calls_name(tree, "async_set_unique_id") is True
+
+
+def test_module_calls_name_empty_module() -> None:
+    """Returns False for an empty module."""
+    from hasscheck.ast_utils import module_calls_name
+
+    tree = _make_tree("")
+
+    assert module_calls_name(tree, "anything") is False

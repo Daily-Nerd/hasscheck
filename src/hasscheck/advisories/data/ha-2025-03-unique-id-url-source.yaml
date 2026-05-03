@@ -1,0 +1,14 @@
+id: ha-2025-03-unique-id-url-source
+introduced_in: "2025.3"
+enforced_in: null
+source_url: "https://developers.home-assistant.io/docs/config_entries_config_flow_handler#unique-id"
+title: "Config flow unique ID derived from URL or host"
+summary: |
+  Using a URL or hostname as the unique ID source is fragile — URLs change with
+  network reconfiguration, causing duplicate config entries or broken integrations.
+  Use a stable device identifier (MAC address, serial number) instead.
+affected_patterns:
+  - "async_set_unique_id called with URL or host-derived value"
+severity: warn
+rule_ids:
+  - "config_flow.unique_id.uses_url"

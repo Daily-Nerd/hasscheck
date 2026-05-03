@@ -1,0 +1,14 @@
+id: ha-2025-01-manifest-config-flow-class
+introduced_in: "2025.1"
+enforced_in: null
+source_url: "https://developers.home-assistant.io/docs/creating_integration_manifest"
+title: "manifest.json declares config_flow: true but no ConfigFlow class found"
+summary: |
+  When manifest.json declares config_flow: true, the integration must define a
+  ConfigFlow class in config_flow.py. Missing this class causes HA to error
+  when attempting to set up the integration via the UI.
+affected_patterns:
+  - "manifest.json config_flow: true with no ConfigFlow subclass in config_flow.py"
+severity: warn
+rule_ids:
+  - "manifest.config_flow.true_but_no_class"

@@ -1,0 +1,14 @@
+id: ha-2025-03-unique-id-missing-abort
+introduced_in: "2025.3"
+enforced_in: null
+source_url: "https://developers.home-assistant.io/docs/config_entries_config_flow_handler#unique-id"
+title: "Config flow sets unique ID without aborting on duplicate"
+summary: |
+  When async_set_unique_id is called, _abort_if_unique_id_configured should also be
+  called to prevent duplicate config entries. Missing this call allows users to
+  set up the same device multiple times.
+affected_patterns:
+  - "async_set_unique_id present but _abort_if_unique_id_configured missing"
+severity: warn
+rule_ids:
+  - "config_flow.unique_id.missing_abort_if_configured"

@@ -1,0 +1,14 @@
+id: ha-2024-01-async-setup-entry
+introduced_in: "2024.1"
+enforced_in: null
+source_url: "https://developers.home-assistant.io/docs/config_entries_index/#an-example"
+title: "Integration defines async_setup but not async_setup_entry"
+summary: |
+  Integrations that support config entries must define async_setup_entry.
+  Defining only the legacy async_setup function without async_setup_entry
+  means the integration cannot be set up via config entries.
+affected_patterns:
+  - "async_setup defined in __init__.py but async_setup_entry missing"
+severity: warn
+rule_ids:
+  - "setup.async_setup_entry.missing"

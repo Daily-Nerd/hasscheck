@@ -1,0 +1,17 @@
+id: ha-2024-03-helpers-deprecated-imports
+introduced_in: "2024.3"
+enforced_in: null
+source_url: "https://developers.home-assistant.io/docs/core/entity/"
+title: "Integration imports from deprecated homeassistant.helpers path"
+summary: |
+  Several helper modules were moved out of homeassistant.helpers in HA 2024.x.
+  Direct imports from the old paths (homeassistant.helpers.entity,
+  homeassistant.helpers.entity_platform, homeassistant.helpers.entity_registry)
+  are deprecated and will be removed in a future HA version.
+affected_patterns:
+  - "from homeassistant.helpers.entity import ..."
+  - "from homeassistant.helpers.entity_platform import ..."
+  - "from homeassistant.helpers.entity_registry import ..."
+severity: warn
+rule_ids:
+  - "helpers.deprecated_import"

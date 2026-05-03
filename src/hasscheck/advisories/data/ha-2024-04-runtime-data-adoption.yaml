@@ -1,0 +1,15 @@
+id: ha-2024-04-runtime-data-adoption
+introduced_in: "2024.4"
+enforced_in: null
+source_url: "https://developers.home-assistant.io/docs/config_entries_index/#runtime_data"
+title: "Integration uses hass.data instead of entry.runtime_data"
+summary: |
+  The hass.data[DOMAIN] pattern for storing per-entry runtime objects was deprecated
+  in HA 2024.4 in favour of entry.runtime_data. The new pattern is type-safe,
+  avoids global state, and is cleaner to test.
+affected_patterns:
+  - "hass.data[DOMAIN] attribute access"
+  - "hass.data.get(DOMAIN) attribute access"
+severity: warn
+rule_ids:
+  - "config_entry.runtime_data.missing"

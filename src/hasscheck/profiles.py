@@ -187,6 +187,17 @@ _CORE_SUBMISSION_RULE_IDS: frozenset[str] = frozenset(
         "version.identity.present",
         "version.manifest.resolvable",
         "version.matches.release_tag",
+        # #144 — deprecation advisory rules
+        "config_flow.unique_id.uses_ip_address",
+        "config_flow.unique_id.uses_device_name",
+        "config_flow.unique_id.uses_url",
+        "config_flow.unique_id.missing_abort_if_configured",
+        "config_flow.unique_id.not_normalized",
+        "config_entry.runtime_data.missing",
+        "entity.unique_id.mutable_source",
+        "setup.async_setup_entry.missing",
+        "helpers.deprecated_import",
+        "manifest.config_flow.true_but_no_class",
     }
 )
 

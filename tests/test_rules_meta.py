@@ -87,11 +87,22 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
     "version.identity.present",
     "version.manifest.resolvable",
     "version.matches.release_tag",
+    # #144 — deprecation advisory rules (RECOMMENDED, overridable=True)
+    "config_flow.unique_id.uses_ip_address",
+    "config_flow.unique_id.uses_device_name",
+    "config_flow.unique_id.uses_url",
+    "config_flow.unique_id.missing_abort_if_configured",
+    "config_flow.unique_id.not_normalized",
+    "config_entry.runtime_data.missing",
+    "entity.unique_id.mutable_source",
+    "setup.async_setup_entry.missing",
+    "helpers.deprecated_import",
+    "manifest.config_flow.true_but_no_class",
 }
 
 
-def test_total_rule_count_is_fifty_five() -> None:
-    assert len(RULES) == 55, f"expected 55 rules, got {len(RULES)}"
+def test_total_rule_count_is_sixty_five() -> None:
+    assert len(RULES) == 65, f"expected 65 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:

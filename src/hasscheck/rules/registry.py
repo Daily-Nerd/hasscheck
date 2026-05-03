@@ -4,6 +4,7 @@ from hasscheck.rules.base import RuleDefinition
 from hasscheck.rules.brand import RULES as BRAND_RULES
 from hasscheck.rules.ci import RULES as CI_RULES
 from hasscheck.rules.config_flow import RULES as CONFIG_FLOW_RULES
+from hasscheck.rules.deprecations import RULES as DEPRECATIONS_RULES
 from hasscheck.rules.diagnostics import RULES as DIAGNOSTICS_RULES
 from hasscheck.rules.docs import RULES as DOCS_RULES
 from hasscheck.rules.docs_readme import RULES as DOCS_README_RULES
@@ -33,6 +34,7 @@ RULES = [
     *ENTITY_RULES,
     *MAINTENANCE_RULES,
     *VERSION_IDENTITY_RULES,
+    *DEPRECATIONS_RULES,
 ]
 RULES_BY_ID: dict[str, RuleDefinition] = {}
 for _rule in RULES:
