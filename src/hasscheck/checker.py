@@ -48,6 +48,7 @@ CATEGORY_LABELS = {
     "tests_ci": "Tests/CI",
     "version": "Version Identity",
     "compatibility": "Import Compatibility",
+    "deprecations": "HA Deprecation Advisories",
 }
 
 
