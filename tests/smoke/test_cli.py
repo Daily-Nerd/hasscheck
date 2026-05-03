@@ -179,7 +179,8 @@ def test_smoke_json_single_version_stdout_is_valid_json(monkeypatch, tmp_path) -
     )
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert isinstance(payload, (dict, list))
+    assert isinstance(payload, list)
+    assert len(payload) == 1
 
 
 def test_smoke_json_matrix_stdout_is_valid_json_array(monkeypatch, tmp_path) -> None:

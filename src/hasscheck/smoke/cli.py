@@ -88,11 +88,7 @@ def run(
 
     # Output
     if json_out:
-        # Multiple versions → JSON array; single version → single object
-        if len(results) > 1:
-            payload = [r.report.model_dump(mode="json") for r in results]
-        else:
-            payload = results[0].report.model_dump(mode="json")
+        payload = [r.report.model_dump(mode="json") for r in results]
         typer.echo(json.dumps(payload, indent=2))
     else:
         for r in results:
