@@ -6,7 +6,11 @@
 
 ## Summary
 
-config_flow.unique_id.missing_abort_if_configured (deprecation advisory rule)
+Config flow sets unique ID without aborting on duplicate
+
+## Why
+
+When async_set_unique_id is called, _abort_if_unique_id_configured should also be called to prevent duplicate config entries. Missing this call allows users to set up the same device multiple times.
 
 ## Status behavior
 
@@ -16,5 +20,10 @@ config_flow.unique_id.missing_abort_if_configured (deprecation advisory rule)
 | Severity | recommended |
 | Overridable | True |
 | Version | 1.0.0 |
+
+## Source
+
+- https://developers.home-assistant.io/docs/config_entries_config_flow_handler#unique-id
+- `source_checked_at`: 2026-05-01
 
 <!-- HANDWRITTEN BELOW THIS LINE -->

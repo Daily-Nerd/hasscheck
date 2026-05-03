@@ -6,7 +6,11 @@
 
 ## Summary
 
-setup.async_setup_entry.missing (deprecation advisory rule)
+Integration defines async_setup but not async_setup_entry
+
+## Why
+
+Integrations that use config entries must define async_setup_entry. Defining only the legacy async_setup function means the integration cannot be set up via config entries.
 
 ## Status behavior
 
@@ -16,5 +20,10 @@ setup.async_setup_entry.missing (deprecation advisory rule)
 | Severity | recommended |
 | Overridable | True |
 | Version | 1.0.0 |
+
+## Source
+
+- https://developers.home-assistant.io/docs/config_entries_index/#an-example
+- `source_checked_at`: 2026-05-01
 
 <!-- HANDWRITTEN BELOW THIS LINE -->

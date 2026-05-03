@@ -6,7 +6,11 @@
 
 ## Summary
 
-config_entry.runtime_data.missing (deprecation advisory rule)
+Integration uses hass.data instead of entry.runtime_data
+
+## Why
+
+hass.data[DOMAIN] is the legacy pattern for storing per-entry runtime objects. entry.runtime_data (HA 2024.4+) is type-safe, avoids global state, and is cleaner to test.
 
 ## Status behavior
 
@@ -16,5 +20,10 @@ config_entry.runtime_data.missing (deprecation advisory rule)
 | Severity | recommended |
 | Overridable | True |
 | Version | 1.0.0 |
+
+## Source
+
+- https://developers.home-assistant.io/docs/config_entries_index/#runtime_data
+- `source_checked_at`: 2026-05-01
 
 <!-- HANDWRITTEN BELOW THIS LINE -->

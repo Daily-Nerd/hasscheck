@@ -6,7 +6,11 @@
 
 ## Summary
 
-helpers.deprecated_import (deprecation advisory rule)
+Integration imports from deprecated homeassistant.helpers path
+
+## Why
+
+Several homeassistant.helpers.* modules were deprecated in HA 2024.x. Importing from these paths will fail in a future HA version.
 
 ## Status behavior
 
@@ -16,5 +20,10 @@ helpers.deprecated_import (deprecation advisory rule)
 | Severity | recommended |
 | Overridable | True |
 | Version | 1.0.0 |
+
+## Source
+
+- https://developers.home-assistant.io/docs/core/entity/
+- `source_checked_at`: 2026-05-01
 
 <!-- HANDWRITTEN BELOW THIS LINE -->

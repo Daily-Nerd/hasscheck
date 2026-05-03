@@ -6,7 +6,11 @@
 
 ## Summary
 
-config_flow.unique_id.uses_ip_address (deprecation advisory rule)
+Config flow unique ID derived from mutable IP address
+
+## Why
+
+IP addresses change on DHCP renewal, causing duplicate config entries or broken integrations. Use a stable device identifier (MAC address, serial number) instead.
 
 ## Status behavior
 
@@ -16,5 +20,10 @@ config_flow.unique_id.uses_ip_address (deprecation advisory rule)
 | Severity | recommended |
 | Overridable | True |
 | Version | 1.0.0 |
+
+## Source
+
+- https://developers.home-assistant.io/docs/config_entries_config_flow_handler#unique-id
+- `source_checked_at`: 2026-05-01
 
 <!-- HANDWRITTEN BELOW THIS LINE -->

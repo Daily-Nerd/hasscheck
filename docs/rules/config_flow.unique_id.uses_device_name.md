@@ -6,7 +6,11 @@
 
 ## Summary
 
-config_flow.unique_id.uses_device_name (deprecation advisory rule)
+Config flow unique ID derived from mutable device name
+
+## Why
+
+Device names can be changed by users or by the device itself, causing duplicate config entries or broken integrations. Use a stable identifier instead.
 
 ## Status behavior
 
@@ -16,5 +20,10 @@ config_flow.unique_id.uses_device_name (deprecation advisory rule)
 | Severity | recommended |
 | Overridable | True |
 | Version | 1.0.0 |
+
+## Source
+
+- https://developers.home-assistant.io/docs/config_entries_config_flow_handler#unique-id
+- `source_checked_at`: 2026-05-01
 
 <!-- HANDWRITTEN BELOW THIS LINE -->

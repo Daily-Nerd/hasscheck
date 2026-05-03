@@ -6,7 +6,11 @@
 
 ## Summary
 
-manifest.config_flow.true_but_no_class (deprecation advisory rule)
+manifest.json declares config_flow: true but no ConfigFlow class found
+
+## Why
+
+When manifest.json declares config_flow: true, HA expects a ConfigFlow class in config_flow.py. Missing this class causes HA to error when attempting to set up the integration via the UI.
 
 ## Status behavior
 
@@ -16,5 +20,10 @@ manifest.config_flow.true_but_no_class (deprecation advisory rule)
 | Severity | recommended |
 | Overridable | True |
 | Version | 1.0.0 |
+
+## Source
+
+- https://developers.home-assistant.io/docs/creating_integration_manifest
+- `source_checked_at`: 2026-05-01
 
 <!-- HANDWRITTEN BELOW THIS LINE -->

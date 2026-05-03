@@ -6,7 +6,11 @@
 
 ## Summary
 
-entity.unique_id.mutable_source (deprecation advisory rule)
+Entity unique_id derived from mutable source
+
+## Why
+
+Entity unique IDs derived from mutable values (name, IP) cause entity registry corruption when the source value changes. Use a stable, immutable identifier.
 
 ## Status behavior
 
@@ -16,5 +20,10 @@ entity.unique_id.mutable_source (deprecation advisory rule)
 | Severity | recommended |
 | Overridable | True |
 | Version | 1.0.0 |
+
+## Source
+
+- https://developers.home-assistant.io/docs/entity_registry_index/#unique-id
+- `source_checked_at`: 2026-05-01
 
 <!-- HANDWRITTEN BELOW THIS LINE -->

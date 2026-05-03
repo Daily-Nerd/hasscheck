@@ -6,7 +6,11 @@
 
 ## Summary
 
-config_flow.unique_id.not_normalized (deprecation advisory rule)
+Config flow unique ID not normalized
+
+## Why
+
+Unique IDs should be normalized (e.g., lowercased, stripped) to ensure consistency across setups and HA versions. Without normalization, the same device may get different unique IDs depending on the identifier source.
 
 ## Status behavior
 
@@ -16,5 +20,10 @@ config_flow.unique_id.not_normalized (deprecation advisory rule)
 | Severity | recommended |
 | Overridable | True |
 | Version | 1.0.0 |
+
+## Source
+
+- https://developers.home-assistant.io/docs/config_entries_config_flow_handler#unique-id
+- `source_checked_at`: 2026-05-01
 
 <!-- HANDWRITTEN BELOW THIS LINE -->
