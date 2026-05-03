@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from hasscheck.ast_utils import has_async_function as _has_async_function_shared
+from hasscheck.ast_utils import module_calls_name as _module_calls_name_shared
 from hasscheck.ast_utils import parse_module
 from hasscheck.models import (
     Applicability,
@@ -123,16 +124,8 @@ def _has_async_function_any(tree: ast.Module, names: Iterable[str]) -> bool:
 
 
 def _module_calls_name(tree: ast.Module, target: str) -> bool:
-    """True if any Call's func is a Name(id=target) or Attribute(attr=target)."""
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        func = node.func
-        if isinstance(func, ast.Name) and func.id == target:
-            return True
-        if isinstance(func, ast.Attribute) and func.attr == target:
-            return True
-    return False
+    """Thin wrapper delegating to hasscheck.ast_utils.module_calls_name."""
+    return _module_calls_name_shared(tree, target)
 
 
 def _has_connection_test(tree: ast.Module) -> bool:

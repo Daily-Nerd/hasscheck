@@ -18,6 +18,24 @@ def has_async_function(tree: ast.Module, name: str) -> bool:
     )
 
 
+def module_calls_name(tree: ast.Module, name: str) -> bool:
+    """Return True if any Call's func is a Name(id=name) or Attribute(attr=name).
+
+    Scans the entire module tree including nested functions and classes.
+    Promoted from rules/config_flow._module_calls_name so that deprecation
+    rules and any future rule modules can reuse it without duplication.
+    """
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == name:
+            return True
+        if isinstance(func, ast.Attribute) and func.attr == name:
+            return True
+    return False
+
+
 def parse_module(path: Path) -> tuple[ast.Module | None, str | None]:
     """Parse a Python file with the standard library AST module.
 
