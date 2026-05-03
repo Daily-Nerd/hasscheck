@@ -106,6 +106,12 @@ def test_compute_finding_hash_changes_on_rule_id_change() -> None:
     assert compute_finding_hash(f1) != compute_finding_hash(f2)
 
 
+def test_compute_finding_hash_changes_on_message_change() -> None:
+    f1 = _make_finding(message="message one")
+    f2 = _make_finding(message="message two")
+    assert compute_finding_hash(f1) != compute_finding_hash(f2)
+
+
 def test_compute_finding_hash_changes_on_path_change() -> None:
     f1 = _make_finding(path="file_a.py")
     f2 = _make_finding(path="file_b.py")

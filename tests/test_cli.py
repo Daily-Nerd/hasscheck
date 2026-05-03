@@ -1348,3 +1348,28 @@ def test_check_no_baseline_flag_unchanged(tmp_path: Path) -> None:
     # Must still have FAIL findings and exit 1 (no PASS for empty integration)
     assert any(f["status"] == "fail" for f in result_json["findings"])
     assert result_new.exit_code == 1
+
+
+def test_check_advisory_gate_with_baseline_always_exits_zero(tmp_path: Path) -> None:
+    """advisory gate mode + --baseline → always exit 0 even if new findings exist."""
+    write_minimal_integration(tmp_path)
+    # Create baseline with zero entries (so all findings are "new")
+    baseline_path = tmp_path / "hasscheck-baseline.yaml"
+    runner.invoke(app, ["baseline", "create", "--path", str(tmp_path)])
+    # Clear the baseline so all findings are treated as new
+    baseline_path.write_text(
+        "generated_at: '2026-01-01T00:00:00'\n"
+        "hasscheck_version: '0.0.0'\n"
+        "ruleset: 'test'\n"
+        "accepted_findings: []\n",
+        encoding="utf-8",
+    )
+    # Write a hasscheck.yaml with advisory gate
+    (tmp_path / "hasscheck.yaml").write_text(
+        "schema_version: '0.7.0'\ngate:\n  mode: advisory\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(
+        app, ["check", "--path", str(tmp_path), "--baseline", str(baseline_path)]
+    )
+    assert result.exit_code == 0, result.output
