@@ -198,6 +198,14 @@ _CORE_SUBMISSION_RULE_IDS: frozenset[str] = frozenset(
         "setup.async_setup_entry.missing",
         "helpers.deprecated_import",
         "manifest.config_flow.true_but_no_class",
+        # #145 — HACS installability rules (7 overridable RECOMMENDED)
+        "hacs.content_in_root_consistent",
+        "hacs.release_zip_valid",
+        "hacs.github_release_assets_valid",
+        "hacs.default_branch_installable",
+        "hacs.repository_topics_present",
+        "hacs.info_or_readme_present",
+        "hacs.download_strategy_clear",
     }
 )
 
