@@ -89,8 +89,18 @@ def should_exit_nonzero(findings: list[Finding], gate: GateConfig | None) -> boo
                 for f in findings
             )
         case GateMode.UPGRADE_RADAR:
+            # #186: gate fires on any finding that signals upgrade risk —
+            # version.* identity rules, smoke.* import results, the manifest
+            # constraint rule, or anything in the compatibility category.
             return any(
-                f.rule_id.startswith("version.") and f.status in triggered
+                (
+                    f.rule_id.startswith("version.")
+                    or f.rule_id.startswith("smoke.")
+                    or f.rule_id
+                    == "manifest.requirements.compatible_with_ha_constraints"
+                    or f.category == "compatibility"
+                )
+                and f.status in triggered
                 for f in findings
             )
 
