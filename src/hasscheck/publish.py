@@ -148,9 +148,10 @@ def publish_report(
     config: HassCheckConfig | None = None,
     no_config: bool = False,
     client: httpx.Client | None = None,
+    ha_version: str | None = None,
 ) -> PublishResult:
     """Run a check and POST the resulting JSON report to the hosted service."""
-    report = run_check(path, config=config, no_config=no_config)
+    report = run_check(path, config=config, no_config=no_config, ha_version=ha_version)
     body = report.to_json_dict()
 
     owns_client = client is None

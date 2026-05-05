@@ -125,6 +125,7 @@ def run_check(
     config: HassCheckConfig | None = None,
     no_config: bool = False,
     profile_name: str | None = None,
+    ha_version: str | None = None,
 ) -> HassCheckReport:
     """Run a full HassCheck report for the given repository path.
 
@@ -158,7 +159,9 @@ def run_check(
     )
 
     now = datetime.now(UTC)
-    target = detect_target(root, context.integration_path, context.domain)
+    target = detect_target(
+        root, context.integration_path, context.domain, ha_version=ha_version
+    )
     validity = build_validity(checked_at=now)
 
     # Pipe version identity from detect_target into the rule context (ADR-0002)

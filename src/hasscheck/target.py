@@ -24,6 +24,7 @@ def detect_target(
     root: Path,
     integration_path: Path | None,
     domain: str | None,
+    ha_version: str | None = None,
 ) -> ReportTarget | None:
     """Detect exact-build identity for the integration under check.
 
@@ -41,7 +42,7 @@ def detect_target(
     Other fields populate independently:
         - commit_sha     ← os.environ["GITHUB_SHA"] (None outside CI)
         - python_version ← sys.version_info major.minor.patch (D11)
-        - ha_version     ← None this PR (D12)
+        - ha_version     ← ha_version parameter (caller-supplied; default None)
         - check_mode     ← "static"
         - integration_domain ← domain parameter
     """
@@ -90,7 +91,7 @@ def detect_target(
             integration_version_source=integration_version_source,  # type: ignore[arg-type]
             integration_release_tag=integration_release_tag,
             commit_sha=commit_sha,
-            ha_version=None,  # D12: always None in this PR
+            ha_version=ha_version,
             python_version=python_version,
             check_mode="static",
             manifest_hash=manifest_hash,

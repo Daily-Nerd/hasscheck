@@ -456,3 +456,36 @@ def test_requirements_hash_handles_mixed_valid_and_invalid() -> None:
     assert result is not None
     assert isinstance(result, str)
     assert len(result) == 64
+
+
+# ---------------------------------------------------------------------------
+# Issue #181 — ha_version threading through detect_target
+# ---------------------------------------------------------------------------
+
+
+def test_detect_target_passes_ha_version(tmp_path: Path) -> None:
+    """detect_target passes ha_version=... to ReportTarget.ha_version (S4)."""
+    import json as json_mod
+
+    from hasscheck.target import detect_target
+
+    (tmp_path / "manifest.json").write_text(
+        json_mod.dumps({"domain": "test", "version": "1.0.0", "name": "Test"})
+    )
+    result = detect_target(tmp_path, tmp_path, "test", ha_version="2026.5.0")
+    assert result is not None
+    assert result.ha_version == "2026.5.0"
+
+
+def test_detect_target_omitted_ha_version_is_none(tmp_path: Path) -> None:
+    """Omitting ha_version leaves ReportTarget.ha_version as None (backward compat)."""
+    import json as json_mod
+
+    from hasscheck.target import detect_target
+
+    (tmp_path / "manifest.json").write_text(
+        json_mod.dumps({"domain": "test", "version": "1.0.0", "name": "Test"})
+    )
+    result = detect_target(tmp_path, tmp_path, "test")
+    assert result is not None
+    assert result.ha_version is None
