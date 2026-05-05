@@ -53,6 +53,7 @@ class InventoryResult:
         return 1 if self.summary.failed > 0 else 0
 
     def to_json_dict(self) -> dict:
+        s = self.summary
         return {
             "ha_config": str(self.ha_config),
             "integrations": [
@@ -65,6 +66,12 @@ class InventoryResult:
                 }
                 for e in self.entries
             ],
+            "summary": {
+                "total": s.total,
+                "pass": s.passed,
+                "warn": s.warned,
+                "fail": s.failed,
+            },
         }
 
 

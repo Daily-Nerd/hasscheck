@@ -369,10 +369,10 @@ def inventory(
         raise typer.Exit(code=2)
     if not (ha_config / "custom_components").is_dir():
         typer.echo(
-            f"hasscheck: error: no custom_components/ directory found at {ha_config}",
+            f"hasscheck: warning: no custom_components/ directory found at {ha_config}",
             err=True,
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=0)
 
     if format is OutputFormat.MD:
         typer.echo(

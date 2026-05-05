@@ -155,6 +155,8 @@ def test_cli_inventory_json_output(tmp_path) -> None:
     data = json.loads(result.output)
     assert "integrations" in data
     assert "ha_config" in data
+    assert "summary" in data
+    assert data["summary"]["total"] == 2
     assert len(data["integrations"]) == 2
 
 
@@ -170,7 +172,7 @@ def test_cli_inventory_missing_path(tmp_path) -> None:
 
 def test_cli_inventory_no_custom_components(tmp_path) -> None:
     result = runner.invoke(app, ["inventory", str(tmp_path)])
-    assert result.exit_code == 1
+    assert result.exit_code == 0
     assert "custom_components" in result.output
 
 
