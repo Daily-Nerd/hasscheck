@@ -18,15 +18,17 @@ from hasscheck.models import (
     ProjectInfo,
     ReportSummary,
     ReportTarget,
-    ReportValidity,
     RuleSeverity,
     RuleSource,
     RuleStatus,
 )
+from hasscheck.provenance import detect_provenance
+from hasscheck.slug import detect_repo_slug
 from hasscheck.smoke import runner as _runner
 from hasscheck.smoke.cache import get_venv_path, is_venv_ready
 from hasscheck.smoke.errors import SmokeError, SmokeTimeoutError
 from hasscheck.smoke.models import ProbeTarget, RunSmokeResult
+from hasscheck.target import build_validity, detect_target
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -227,12 +229,27 @@ def _build_report(
     domain: str | None,
     integration_path: Path | None,
 ) -> HassCheckReport:
-    target = ReportTarget(
-        integration_domain=domain,
-        ha_version=ha_version,
-        python_version=python_version,
-        check_mode="import-smoke",
+    now = datetime.now(UTC)
+
+    detected = detect_target(
+        target_path, integration_path, domain, ha_version=ha_version
     )
+    if detected is not None:
+        target = detected.model_copy(
+            update={
+                "check_mode": "import-smoke",
+                "python_version": python_version,  # smoke venv Python, not host
+            }
+        )
+    else:
+        # Extreme-failure fallback: detect_target returned None
+        target = ReportTarget(
+            integration_domain=domain,
+            ha_version=ha_version,
+            python_version=python_version,
+            check_mode="import-smoke",
+        )
+
     pass_count = sum(1 for f in findings if f.status is RuleStatus.PASS)
     category_signal = CategorySignal(
         id="compatibility",
@@ -241,6 +258,7 @@ def _build_report(
         points_possible=len(findings),
     )
     summary = ReportSummary(categories=[category_signal] if findings else [])
+
     project = ProjectInfo(
         path=str(target_path),
         type="integration" if integration_path is not None else "unknown",
@@ -248,13 +266,16 @@ def _build_report(
         integration_path=str(integration_path.relative_to(target_path))
         if integration_path
         else None,
+        repo_slug=detect_repo_slug(target_path, integration_path),
     )
+
     return HassCheckReport(
         project=project,
         summary=summary,
         findings=findings,
         target=target,
-        validity=ReportValidity(checked_at=datetime.now(UTC)),
+        validity=build_validity(checked_at=now),
+        provenance=detect_provenance(now=now),
     )
 
 
