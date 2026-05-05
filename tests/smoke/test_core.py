@@ -302,3 +302,229 @@ def test_run_smoke_timeout_produces_harness_error_finding(
         cache_dir=tmp_path / "cache",
     )
     assert any(f.rule_id == "smoke.harness.error" for f in result.report.findings)
+
+
+# ---------------------------------------------------------------------------
+# TestBuildReportIdentity — issue #185: smoke reports must carry exact-build
+# target identity (integration_version, manifest_hash, repo_slug, validity,
+# provenance, check_mode override, python_version override).
+# ---------------------------------------------------------------------------
+
+_GITHUB_ENV_KEYS = (
+    "GITHUB_SHA",
+    "GITHUB_REF",
+    "GITHUB_ACTIONS",
+    "GITHUB_REPOSITORY",
+    "GITHUB_SERVER_URL",
+)
+
+
+def _make_integration_with_meta(
+    tmp_path: Path,
+    version: str = "2.5.0",
+    issue_tracker: str | None = None,
+) -> tuple[Path, Path, str]:
+    """Create tmp_path/custom_components/demo_int/manifest.json.
+
+    Returns (root, integration_path, domain).
+    """
+    domain = "demo_int"
+    integration_path = tmp_path / "custom_components" / domain
+    integration_path.mkdir(parents=True)
+    manifest: dict = {
+        "domain": domain,
+        "name": "Demo",
+        "version": version,
+        "documentation": "https://example.com",
+        "codeowners": ["@x"],
+        "requirements": [],
+    }
+    if issue_tracker is not None:
+        manifest["issue_tracker"] = issue_tracker
+    (integration_path / "manifest.json").write_text(json.dumps(manifest))
+    return tmp_path, integration_path, domain
+
+
+class TestBuildReportIdentity:
+    """Tests for _build_report() identity parity with the static path (issue #185)."""
+
+    @pytest.fixture(autouse=True)
+    def _scrub_github_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Remove all GitHub Actions env vars so detectors fall back to local mode."""
+        for key in _GITHUB_ENV_KEYS:
+            monkeypatch.delenv(key, raising=False)
+
+    # G1.2 — S1-happy: integration_version propagated from manifest
+    def test_build_report_carries_integration_version(self, tmp_path: Path) -> None:
+        """_build_report propagates integration_version from manifest.json."""
+        from hasscheck.smoke.core import _build_report
+
+        root, integration_path, domain = _make_integration_with_meta(
+            tmp_path, version="2.5.0"
+        )
+        harness_err = _make_finding_harness_error_helper()
+        report = _build_report(
+            root,
+            [harness_err],
+            ha_version="2025.4",
+            python_version="3.12",
+            domain=domain,
+            integration_path=integration_path,
+        )
+        assert report.target.integration_version == "2.5.0"
+
+    # G1.3 — S1-happy: manifest_hash is a 64-char hex string
+    def test_build_report_carries_manifest_hash(self, tmp_path: Path) -> None:
+        """_build_report produces a 64-char hex manifest_hash."""
+        from hasscheck.smoke.core import _build_report
+
+        root, integration_path, domain = _make_integration_with_meta(tmp_path)
+        harness_err = _make_finding_harness_error_helper()
+        report = _build_report(
+            root,
+            [harness_err],
+            ha_version="2025.4",
+            python_version="3.12",
+            domain=domain,
+            integration_path=integration_path,
+        )
+        assert report.target.manifest_hash is not None
+        assert len(report.target.manifest_hash) == 64
+        assert all(c in "0123456789abcdef" for c in report.target.manifest_hash)
+
+    # G1.4 — S2-python-version-override: caller-supplied python_version wins
+    def test_build_report_python_version_override_wins(self, tmp_path: Path) -> None:
+        """_build_report keeps caller-supplied python_version (\"3.11\") regardless of host."""
+        from hasscheck.smoke.core import _build_report
+
+        root, integration_path, domain = _make_integration_with_meta(tmp_path)
+        harness_err = _make_finding_harness_error_helper()
+        report = _build_report(
+            root,
+            [harness_err],
+            ha_version="2025.4",
+            python_version="3.11",
+            domain=domain,
+            integration_path=integration_path,
+        )
+        assert report.target.python_version == "3.11"
+
+    # G1.5 — S1-happy: check_mode must equal "import-smoke" (not "static")
+    def test_build_report_check_mode_override_wins(self, tmp_path: Path) -> None:
+        """_build_report forces check_mode to \"import-smoke\" regardless of detect_target."""
+        from hasscheck.smoke.core import _build_report
+
+        root, integration_path, domain = _make_integration_with_meta(tmp_path)
+        harness_err = _make_finding_harness_error_helper()
+        report = _build_report(
+            root,
+            [harness_err],
+            ha_version="2025.4",
+            python_version="3.12",
+            domain=domain,
+            integration_path=integration_path,
+        )
+        assert report.target.check_mode == "import-smoke"
+
+    # G1.6 — S5-validity-fields: build_validity semantics
+    def test_build_report_validity_uses_build_validity(self, tmp_path: Path) -> None:
+        """_build_report uses build_validity: claim_scope=exact_build_only, expires_after_days=90."""
+        from hasscheck.smoke.core import _build_report
+
+        root, integration_path, domain = _make_integration_with_meta(tmp_path)
+        harness_err = _make_finding_harness_error_helper()
+        report = _build_report(
+            root,
+            [harness_err],
+            ha_version="2025.4",
+            python_version="3.12",
+            domain=domain,
+            integration_path=integration_path,
+        )
+        assert report.validity.claim_scope == "exact_build_only"
+        assert report.validity.expires_after_days == 90
+
+    # G1.7 — S6-provenance-present: provenance populated in local mode
+    def test_build_report_provenance_populated_local(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """_build_report populates provenance with source=\"local\" outside CI."""
+        monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+        from hasscheck.smoke.core import _build_report
+
+        root, integration_path, domain = _make_integration_with_meta(tmp_path)
+        harness_err = _make_finding_harness_error_helper()
+        report = _build_report(
+            root,
+            [harness_err],
+            ha_version="2025.4",
+            python_version="3.12",
+            domain=domain,
+            integration_path=integration_path,
+        )
+        assert report.provenance is not None
+        assert report.provenance.source == "local"
+
+    # G1.8 — ADR-185-D4: shared timestamp invariant
+    def test_build_report_validity_and_provenance_share_timestamp(
+        self, tmp_path: Path
+    ) -> None:
+        """validity.checked_at.isoformat() == provenance.published_at (ADR-185-D4)."""
+        from hasscheck.smoke.core import _build_report
+
+        root, integration_path, domain = _make_integration_with_meta(tmp_path)
+        harness_err = _make_finding_harness_error_helper()
+        report = _build_report(
+            root,
+            [harness_err],
+            ha_version="2025.4",
+            python_version="3.12",
+            domain=domain,
+            integration_path=integration_path,
+        )
+        assert report.validity.checked_at.isoformat() == report.provenance.published_at
+
+    # G1.9 — S7-error-path-none-args: error path with None domain/integration_path
+    def test_build_report_error_path_no_integration_path(self, tmp_path: Path) -> None:
+        """_build_report with integration_path=None returns valid report with check_mode=import-smoke."""
+        from hasscheck.smoke.core import _build_report
+
+        harness_err = _make_finding_harness_error_helper()
+        report = _build_report(
+            tmp_path,
+            [harness_err],
+            ha_version="2025.4",
+            python_version="3.12",
+            domain=None,
+            integration_path=None,
+        )
+        assert report.target.check_mode == "import-smoke"
+
+    # G1.10 — S3-detect-target-none: fallback when detect_target returns None
+    def test_build_report_fallback_when_detect_target_none(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When detect_target returns None, _build_report falls back to bare 4-field target."""
+        monkeypatch.setattr("hasscheck.smoke.core.detect_target", lambda *a, **kw: None)
+        from hasscheck.smoke.core import _build_report
+
+        harness_err = _make_finding_harness_error_helper()
+        root, integration_path, domain = _make_integration_with_meta(tmp_path)
+        report = _build_report(
+            root,
+            [harness_err],
+            ha_version="2025.4",
+            python_version="3.12",
+            domain=domain,
+            integration_path=integration_path,
+        )
+        assert report.target.check_mode == "import-smoke"
+        assert report.target.integration_version is None
+        assert report.target.manifest_hash is None
+
+
+def _make_finding_harness_error_helper():
+    """Create a minimal harness Finding for use in _build_report tests."""
+    from hasscheck.smoke.core import _make_finding_harness_error
+
+    return _make_finding_harness_error("test harness error", "2025.4")
