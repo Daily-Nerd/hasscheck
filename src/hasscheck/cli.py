@@ -23,6 +23,7 @@ from hasscheck.config import ConfigError, GateConfig, GateMode, discover_config
 from hasscheck.diff import _load_report, compute_delta, delta_to_md
 from hasscheck.docs_render import check_drift, render_all
 from hasscheck.init import init_project
+from hasscheck.inventory import InventoryResult, run_inventory
 from hasscheck.models import Finding, HassCheckReport, RuleSeverity, RuleStatus
 from hasscheck.output import print_terminal_report, report_to_json, report_to_md
 from hasscheck.publish import (
@@ -313,6 +314,129 @@ def badge(
     typer.echo(f"Wrote {len(artifacts)} badge(s) to {out_dir}")
     for a in artifacts:
         typer.echo(f"  {a.filename}: {a.label_left} — {a.label_right}")
+
+
+@app.command()
+def inventory(
+    ha_config: Path = typer.Argument(
+        ...,
+        help=(
+            "Path to a Home Assistant configuration directory "
+            "(the one containing custom_components/)."
+        ),
+    ),
+    format: OutputFormat = typer.Option(
+        OutputFormat.TERMINAL,
+        "--format",
+        help="Output format: terminal (default) or json.",
+        case_sensitive=False,
+    ),
+    ha_version: str | None = typer.Option(
+        None,
+        "--ha-version",
+        help=(
+            "Home Assistant core version to evaluate compatibility against "
+            "(e.g. 2026.5.0). Forwarded to every per-integration check."
+        ),
+    ),
+    no_config: bool = typer.Option(
+        False,
+        "--no-config",
+        help="Ignore hasscheck.yaml even if present in any integration.",
+    ),
+) -> None:
+    """Scan all custom integrations under a Home Assistant config dir.
+
+    Walks <ha_config>/custom_components/, runs the full ruleset on every
+    integration that has a manifest.json, and emits a consolidated report.
+
+    Exit codes:
+      0 — every integration passed (no FAIL findings).
+      1 — at least one integration has a FAIL finding or failed to scan.
+      2 — argument error (missing dir, etc.) [Typer default].
+    """
+    if not ha_config.exists():
+        typer.echo(
+            f"hasscheck: error: ha_config path does not exist: {ha_config}",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    if not ha_config.is_dir():
+        typer.echo(
+            f"hasscheck: error: ha_config must be a directory: {ha_config}",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    if not (ha_config / "custom_components").is_dir():
+        typer.echo(
+            f"hasscheck: error: no custom_components/ directory found at {ha_config}",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    if format is OutputFormat.MD:
+        typer.echo(
+            "hasscheck: error: --format md is not supported for inventory.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    result = run_inventory(
+        ha_config,
+        ha_version=ha_version,
+        no_config=no_config,
+    )
+
+    if format is OutputFormat.JSON:
+        typer.echo(json.dumps(result.to_json_dict(), indent=2))
+    else:
+        _print_inventory_terminal(result)
+
+    raise typer.Exit(code=result.exit_code)
+
+
+def _print_inventory_terminal(result: InventoryResult) -> None:
+    """Render a one-row-per-integration table to the shared `console`.
+
+    Reuses the module-level rich.Console (already instantiated at module scope).
+    No new dependency — rich.table.Table is in the same package as Console.
+    """
+    from rich.table import Table
+
+    table = Table(title=f"HassCheck Inventory — {result.ha_config}")
+    table.add_column("Domain", style="bold")
+    table.add_column("Version")
+    table.add_column("FAIL", justify="right", style="red")
+    table.add_column("WARN", justify="right", style="yellow")
+    table.add_column("Status")
+
+    for entry in result.entries:
+        if not entry.ok:
+            table.add_row(
+                entry.domain, "—", "—", "—", f"[red]ERROR[/red] {entry.error}"
+            )
+            continue
+        report = entry.report
+        fails = sum(1 for f in report.findings if f.status is RuleStatus.FAIL)
+        warns = sum(1 for f in report.findings if f.status is RuleStatus.WARN)
+        status = (
+            "[red]FAIL[/red]"
+            if fails
+            else "[yellow]WARN[/yellow]"
+            if warns
+            else "[green]PASS[/green]"
+        )
+        version = report.project.integration_version or "—"
+        table.add_row(entry.domain, version, str(fails), str(warns), status)
+
+    console.print(table)
+    s = result.summary
+    console.print(
+        f"\n{s.total} integration(s) scanned: "
+        f"[green]{s.passed} pass[/green], "
+        f"[yellow]{s.warned} warn[/yellow], "
+        f"[red]{s.failed} fail[/red]"
+    )
 
 
 @app.command()

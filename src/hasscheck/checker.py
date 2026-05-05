@@ -5,7 +5,12 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
-from hasscheck.config import HassCheckConfig, apply_overrides, discover_config
+from hasscheck.config import (
+    HassCheckConfig,
+    ProjectApplicability,
+    apply_overrides,
+    discover_config,
+)
 from hasscheck.detect import detect_project
 from hasscheck.models import (
     Applicability,
@@ -19,7 +24,7 @@ from hasscheck.models import (
 )
 from hasscheck.profiles import PROFILES, ProfileDefinition
 from hasscheck.provenance import detect_provenance
-from hasscheck.rules.base import RuleDefinition
+from hasscheck.rules.base import ProjectContext, RuleDefinition
 from hasscheck.rules.registry import RULES
 from hasscheck.slug import detect_repo_slug
 from hasscheck.target import build_validity, detect_target
@@ -119,43 +124,47 @@ def apply_profile_overrides(
     return result
 
 
-def run_check(
-    path: Path | str,
+def run_check_at(
+    root: Path,
+    integration_path: Path | None,
+    domain: str | None,
     *,
     config: HassCheckConfig | None = None,
     no_config: bool = False,
     profile_name: str | None = None,
     ha_version: str | None = None,
+    applicability: ProjectApplicability | None = None,
+    rule_settings: dict[str, dict] | None = None,
 ) -> HassCheckReport:
-    """Run a full HassCheck report for the given repository path.
+    """Run the full ruleset at a pre-resolved (root, integration_path, domain).
 
-    Override order:
-      1. Rules fire and produce raw findings.
-      2. Profile severity_overrides and disabled_rules are applied
-         (apply_profile_overrides). Only overridable rules are affected.
-      3. Per-rule RuleOverride entries from hasscheck.yaml are applied last
-         (apply_overrides). User intent always wins over profile.
+    Discovery has already happened — caller owns it. This function only
+    executes rules. Used by `run_check()` (single-integration discovery
+    wrapper) and `run_inventory()` (fan-out over many pre-discovered paths).
     """
     if config is not None and no_config:
         raise ValueError("Cannot pass both config= and no_config=True; pick one.")
 
-    root = Path(path).resolve()
-
     if config is None and not no_config:
         config = discover_config(root)
 
-    rule_settings: dict[str, dict] = {}
-    if config is not None:
-        rule_settings = {
-            rule_id: override.settings
-            for rule_id, override in (config.rules or {}).items()
-            if override.settings
-        }
+    if rule_settings is None:
+        rule_settings = {}
+        if config is not None:
+            rule_settings = {
+                rule_id: override.settings
+                for rule_id, override in (config.rules or {}).items()
+                if override.settings
+            }
 
-    context = detect_project(
-        root,
-        applicability=config.applicability if config else None,
-        rule_settings=rule_settings,
+    context = ProjectContext(
+        root=root,
+        integration_path=integration_path,
+        domain=domain,
+        applicability=applicability
+        if applicability is not None
+        else (config.applicability if config else None),
+        rule_settings=rule_settings or {},
     )
 
     now = datetime.now(UTC)
@@ -255,4 +264,59 @@ def run_check(
         provenance=detect_provenance(now=now),
         target=target,
         validity=validity,
+    )
+
+
+def run_check(
+    path: Path | str,
+    *,
+    config: HassCheckConfig | None = None,
+    no_config: bool = False,
+    profile_name: str | None = None,
+    ha_version: str | None = None,
+) -> HassCheckReport:
+    """Discover the integration in `path` and run the full ruleset.
+
+    Thin wrapper over `run_check_at()`. Kept for backwards compatibility
+    with all single-integration callers (cli.py, action runner, etc.).
+
+    Override order:
+      1. Rules fire and produce raw findings.
+      2. Profile severity_overrides and disabled_rules are applied
+         (apply_profile_overrides). Only overridable rules are affected.
+      3. Per-rule RuleOverride entries from hasscheck.yaml are applied last
+         (apply_overrides). User intent always wins over profile.
+    """
+    if config is not None and no_config:
+        raise ValueError("Cannot pass both config= and no_config=True; pick one.")
+
+    root = Path(path).resolve()
+
+    if config is None and not no_config:
+        config = discover_config(root)
+
+    rule_settings: dict[str, dict] = {}
+    if config is not None:
+        rule_settings = {
+            rule_id: override.settings
+            for rule_id, override in (config.rules or {}).items()
+            if override.settings
+        }
+
+    context = detect_project(
+        root,
+        applicability=config.applicability if config else None,
+        rule_settings=rule_settings,
+    )
+
+    return run_check_at(
+        root,
+        context.integration_path,
+        context.domain,
+        config=config,
+        no_config=no_config,
+        profile_name=profile_name,
+        ha_version=ha_version,
+        applicability=context.applicability,
+        rule_settings=context.rule_settings,
     )
