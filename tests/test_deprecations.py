@@ -483,63 +483,6 @@ class TestAsyncSetupEntryMissing:
         assert finding.status == RuleStatus.NOT_APPLICABLE
 
 
-class TestHelpersDeprecatedImport:
-    """Rule 9: helpers.deprecated_import"""
-
-    def test_fires_on_deprecated_helpers_entity_import(self, tmp_path: Path) -> None:
-        """Spec S7: fires on deprecated HA helper import."""
-        source = "from homeassistant.helpers.entity import Entity\n"
-        ctx = _make_context(tmp_path, integration_content={"sensor.py": source})
-
-        from hasscheck.rules.deprecations import check_helpers_deprecated_import
-
-        finding = check_helpers_deprecated_import(ctx)
-        assert finding.status == RuleStatus.WARN
-
-    def test_fires_on_deprecated_entity_platform_import(self, tmp_path: Path) -> None:
-        source = "from homeassistant.helpers.entity_platform import EntityPlatform\n"
-        ctx = _make_context(tmp_path, integration_content={"sensor.py": source})
-
-        from hasscheck.rules.deprecations import check_helpers_deprecated_import
-
-        finding = check_helpers_deprecated_import(ctx)
-        assert finding.status == RuleStatus.WARN
-
-    def test_fires_on_deprecated_entity_registry_import(self, tmp_path: Path) -> None:
-        source = "from homeassistant.helpers.entity_registry import async_get\n"
-        ctx = _make_context(tmp_path, integration_content={"sensor.py": source})
-
-        from hasscheck.rules.deprecations import check_helpers_deprecated_import
-
-        finding = check_helpers_deprecated_import(ctx)
-        assert finding.status == RuleStatus.WARN
-
-    def test_passes_when_modern_import_used(self, tmp_path: Path) -> None:
-        source = "from homeassistant.components.sensor import SensorEntity\n"
-        ctx = _make_context(tmp_path, integration_content={"sensor.py": source})
-
-        from hasscheck.rules.deprecations import check_helpers_deprecated_import
-
-        finding = check_helpers_deprecated_import(ctx)
-        assert finding.status == RuleStatus.PASS
-
-    def test_not_applicable_when_no_python_files(self, tmp_path: Path) -> None:
-        ctx = _make_context(tmp_path)  # no .py files
-
-        from hasscheck.rules.deprecations import check_helpers_deprecated_import
-
-        finding = check_helpers_deprecated_import(ctx)
-        assert finding.status == RuleStatus.NOT_APPLICABLE
-
-    def test_not_applicable_when_no_integration_path(self) -> None:
-        ctx = _make_context_no_integration()
-
-        from hasscheck.rules.deprecations import check_helpers_deprecated_import
-
-        finding = check_helpers_deprecated_import(ctx)
-        assert finding.status == RuleStatus.NOT_APPLICABLE
-
-
 class TestManifestConfigFlowTrueButNoClass:
     """Rule 10: manifest.config_flow.true_but_no_class"""
 

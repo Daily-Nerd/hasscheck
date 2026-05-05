@@ -99,7 +99,6 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
     "config_entry.runtime_data.missing",
     "entity.unique_id.mutable_source",
     "setup.async_setup_entry.missing",
-    "helpers.deprecated_import",
     "manifest.config_flow.true_but_no_class",
     # #145 — HACS installability rules (RECOMMENDED, overridable=True)
     "hacs.content_in_root_consistent",
@@ -112,8 +111,9 @@ EXPECTED_OVERRIDABLE_RULE_IDS = {
 }
 
 
-def test_total_rule_count_is_seventy_four() -> None:
-    assert len(RULES) == 74, f"expected 74 rules, got {len(RULES)}"
+def test_total_rule_count_is_seventy_three() -> None:
+    # 74 → 73 after #184 removed helpers.deprecated_import (false positive on canonical HA API)
+    assert len(RULES) == 73, f"expected 73 rules, got {len(RULES)}"
 
 
 def test_every_rule_declares_overridable_bool() -> None:

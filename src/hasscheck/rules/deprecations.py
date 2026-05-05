@@ -12,8 +12,12 @@ Rules:
     6.  config_entry.runtime_data.missing
     7.  entity.unique_id.mutable_source
     8.  setup.async_setup_entry.missing
-    9.  helpers.deprecated_import
-    10. manifest.config_flow.true_but_no_class
+    9.  manifest.config_flow.true_but_no_class
+
+  Removed:
+    helpers.deprecated_import (#184) — flagged canonical HA entity API as
+    deprecated. Replacement work tracked in follow-up issues for
+    symbol-level deprecation rules with cited sources.
 
 Category: deprecations
 Severity: RECOMMENDED (all overridable)
@@ -57,20 +61,8 @@ _ENTITY_UNIQUE_ID_SOURCE = (
 _ASYNC_SETUP_ENTRY_SOURCE = (
     "https://developers.home-assistant.io/docs/config_entries_index/#an-example"
 )
-_HELPERS_SOURCE = "https://developers.home-assistant.io/docs/core/entity/"
 _MANIFEST_SOURCE = (
     "https://developers.home-assistant.io/docs/creating_integration_manifest"
-)
-
-# ---------------------------------------------------------------------------
-# Deprecated helper paths (rule 9)
-# ---------------------------------------------------------------------------
-_DEPRECATED_HELPER_MODULES = frozenset(
-    {
-        "homeassistant.helpers.entity",
-        "homeassistant.helpers.entity_platform",
-        "homeassistant.helpers.entity_registry",
-    }
 )
 
 # ---------------------------------------------------------------------------
@@ -932,87 +924,6 @@ def check_async_setup_entry_missing(context: ProjectContext) -> Finding:
 
 
 # ---------------------------------------------------------------------------
-# Rule 9: helpers.deprecated_import
-# ---------------------------------------------------------------------------
-
-_RULE9_ID = "helpers.deprecated_import"
-_RULE9_TITLE = "Integration imports from deprecated homeassistant.helpers path"
-
-
-def _has_deprecated_helper_import(tree: ast.Module) -> str | None:
-    """Return the first deprecated import module path found, or None."""
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.ImportFrom):
-            continue
-        module = node.module or ""
-        if module in _DEPRECATED_HELPER_MODULES:
-            return module
-    return None
-
-
-def check_helpers_deprecated_import(context: ProjectContext) -> Finding:
-    """Check that integration files don't import from deprecated HA helper paths."""
-    fallback = "custom_components/<domain>/<file>.py"
-
-    if context.integration_path is None:
-        return _make_not_applicable(
-            _RULE9_ID,
-            _RULE9_TITLE,
-            _HELPERS_SOURCE,
-            message="No integration directory was detected.",
-            reason="integration_path must exist before this rule can run.",
-            path=fallback,
-        )
-
-    python_files = sorted(context.integration_path.glob("*.py"))
-    if not python_files:
-        return _make_not_applicable(
-            _RULE9_ID,
-            _RULE9_TITLE,
-            _HELPERS_SOURCE,
-            message="No Python files found in the integration directory.",
-            reason="No .py files to inspect for deprecated imports.",
-            path=fallback,
-        )
-
-    for py_file in python_files:
-        display = _display_path(py_file, context, fallback)
-        tree, error = parse_module(py_file)
-        if error is not None:
-            continue
-
-        deprecated_module = _has_deprecated_helper_import(tree)
-        if deprecated_module is not None:
-            return _make_finding(
-                _RULE9_ID,
-                _RULE9_TITLE,
-                _HELPERS_SOURCE,
-                status=RuleStatus.WARN,
-                message=(
-                    f"{display} imports from deprecated path '{deprecated_module}'. "
-                    "Migrate to the modern import path."
-                ),
-                reason=f"'{deprecated_module}' was deprecated in HA 2024.x.",
-                path=display,
-                fix=FixSuggestion(
-                    summary=f"Replace 'from {deprecated_module} import ...' with the modern path.",
-                    docs_url=_HELPERS_SOURCE,
-                ),
-            )
-
-    first_display = _display_path(python_files[0], context, fallback)
-    return _make_finding(
-        _RULE9_ID,
-        _RULE9_TITLE,
-        _HELPERS_SOURCE,
-        status=RuleStatus.PASS,
-        message="No deprecated homeassistant.helpers imports found.",
-        reason="All imports use non-deprecated paths.",
-        path=first_display,
-    )
-
-
-# ---------------------------------------------------------------------------
 # Rule 10: manifest.config_flow.true_but_no_class
 # ---------------------------------------------------------------------------
 
@@ -1280,22 +1191,6 @@ RULES: list[RuleDefinition] = [
         overridable=True,
         advisory_id="ha-2024-01-async-setup-entry",
         min_ha_version="2024.1",
-    ),
-    RuleDefinition(
-        id=_RULE9_ID,
-        version="1.0.0",
-        category=CATEGORY,
-        severity=RuleSeverity.RECOMMENDED,
-        title=_RULE9_TITLE,
-        why=(
-            "Several homeassistant.helpers.* modules were deprecated in HA 2024.x. "
-            "Importing from these paths will fail in a future HA version."
-        ),
-        source_url=_HELPERS_SOURCE,
-        check=check_helpers_deprecated_import,
-        overridable=True,
-        advisory_id="ha-2024-03-helpers-deprecated-imports",
-        min_ha_version="2024.3",
     ),
     RuleDefinition(
         id=_RULE10_ID,
