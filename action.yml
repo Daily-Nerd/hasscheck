@@ -36,7 +36,7 @@ inputs:
     required: false
     default: ''
   token:
-    description: 'GitHub token for diff-mode PR comment posting. Alias for github-token; used by the diff-mode steps.'
+    description: 'DEPRECATED — use `github-token` instead. Retained as a fallback so existing workflows do not break. Will be removed in a future major version.'
     required: false
     default: ''
   diff-mode:
@@ -90,11 +90,22 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.github-token }}
       run: |
-        gh pr comment "${{ github.event.pull_request.number }}" \
-          --body-file hasscheck-report.md \
-          --edit-last 2>/dev/null || \
-        gh pr comment "${{ github.event.pull_request.number }}" \
-          --body-file hasscheck-report.md
+        # #187: marker-based sticky comment so we PATCH the same comment
+        # across runs instead of edit-last (which can collide with other bots).
+        MARKER="<!-- hasscheck-pr-comment -->"
+        BODY_FILE=hasscheck-report.md
+        if ! head -n1 "$BODY_FILE" | grep -qF "$MARKER"; then
+          { printf '%s\n' "$MARKER"; cat "$BODY_FILE"; } > "${BODY_FILE}.marked"
+          mv "${BODY_FILE}.marked" "$BODY_FILE"
+        fi
+        EXISTING_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+          --paginate --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -1)
+        if [ -n "$EXISTING_ID" ]; then
+          gh api "repos/${{ github.repository }}/issues/comments/$EXISTING_ID" \
+            --method PATCH --field body="$(cat "$BODY_FILE")"
+        else
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file "$BODY_FILE"
+        fi
 
     - name: Checkout base branch for diff
       if: inputs.diff-mode == 'true' && github.event_name == 'pull_request'
@@ -106,7 +117,13 @@ runs:
     - name: Run hasscheck on base branch
       if: inputs.diff-mode == 'true' && github.event_name == 'pull_request'
       shell: bash
-      run: hasscheck check --path "${{ inputs.path }}" --format json > /tmp/hasscheck-base.json || true
+      run: |
+        # #187: respect no-config in diff base/head checks so they match the main run.
+        ARGS=""
+        if [ "${{ inputs.no-config }}" = "true" ]; then
+          ARGS="--no-config"
+        fi
+        hasscheck check --path "${{ inputs.path }}" --format json $ARGS > /tmp/hasscheck-base.json || true
 
     - name: Checkout PR HEAD for diff
       if: inputs.diff-mode == 'true' && github.event_name == 'pull_request'
@@ -119,14 +136,26 @@ runs:
       if: inputs.diff-mode == 'true' && github.event_name == 'pull_request'
       shell: bash
       env:
-        GH_TOKEN: ${{ inputs.token }}
+        # #187: prefer github-token; fall back to deprecated `token` for back-compat.
+        GH_TOKEN: ${{ inputs.github-token != '' && inputs.github-token || inputs.token }}
       run: |
-        hasscheck check --path "${{ inputs.path }}" --format json > /tmp/hasscheck-head.json || true
+        # #187: respect no-config on the head run too.
+        ARGS=""
+        if [ "${{ inputs.no-config }}" = "true" ]; then
+          ARGS="--no-config"
+        fi
+        hasscheck check --path "${{ inputs.path }}" --format json $ARGS > /tmp/hasscheck-head.json || true
         hasscheck diff /tmp/hasscheck-base.json /tmp/hasscheck-head.json --format md > /tmp/hasscheck-delta.md || true
-        gh pr comment ${{ github.event.pull_request.number }} \
-          --edit-last --body-file /tmp/hasscheck-delta.md 2>/dev/null || \
-        gh pr comment ${{ github.event.pull_request.number }} \
-          --body-file /tmp/hasscheck-delta.md
+        # #187: marker-based sticky — delta_to_md already prefixes the marker.
+        MARKER="<!-- hasscheck-pr-comment -->"
+        EXISTING_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+          --paginate --jq ".[] | select(.body | contains(\"$MARKER\")) | .id" | head -1)
+        if [ -n "$EXISTING_ID" ]; then
+          gh api "repos/${{ github.repository }}/issues/comments/$EXISTING_ID" \
+            --method PATCH --field body="$(cat /tmp/hasscheck-delta.md)"
+        else
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/hasscheck-delta.md
+        fi
 
     - name: Generate badges
       if: inputs.emit-badges == 'true'
