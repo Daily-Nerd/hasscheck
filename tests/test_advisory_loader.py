@@ -89,12 +89,12 @@ def test_advisory_defaults() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_advisories_count_is_ten() -> None:
-    """len(ADVISORIES) == 10 at import (spec S1)."""
+def test_advisories_count_is_nine() -> None:
+    """len(ADVISORIES) == 9 after #184 removed ha-2024-03-helpers-deprecated-imports."""
     from hasscheck.advisories import ADVISORIES
 
-    assert len(ADVISORIES) == 10, (
-        f"Expected 10 advisories, got {len(ADVISORIES)}: {list(ADVISORIES.keys())}"
+    assert len(ADVISORIES) == 9, (
+        f"Expected 9 advisories, got {len(ADVISORIES)}: {list(ADVISORIES.keys())}"
     )
 
 

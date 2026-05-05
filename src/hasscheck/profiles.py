@@ -196,7 +196,6 @@ _CORE_SUBMISSION_RULE_IDS: frozenset[str] = frozenset(
         "config_entry.runtime_data.missing",
         "entity.unique_id.mutable_source",
         "setup.async_setup_entry.missing",
-        "helpers.deprecated_import",
         "manifest.config_flow.true_but_no_class",
         # #145 — HACS installability rules (7 overridable RECOMMENDED)
         "hacs.content_in_root_consistent",
