@@ -578,6 +578,7 @@ def make_finding(
     rule_id: str = "manifest.domain.exists",
     severity: RuleSeverity = RuleSeverity.REQUIRED,
     status: RuleStatus = RuleStatus.FAIL,
+    category: str = "test",
 ) -> Finding:
     """Build a minimal Finding for gate-mode unit tests."""
     app_status = (
@@ -588,7 +589,7 @@ def make_finding(
     return Finding(
         rule_id=rule_id,
         rule_version="1.0.0",
-        category="test",
+        category=category,
         status=status,
         severity=severity,
         title="Test finding",
@@ -677,9 +678,18 @@ def test_should_exit_nonzero_hacs_publish(
 @pytest.mark.parametrize(
     "rule_id,status,expected",
     [
+        # version.* rules — original behaviour preserved
         ("version.foo", RuleStatus.WARN, True),
         ("version.bar", RuleStatus.FAIL, True),
+        # smoke.* rules — #186: gate must trigger on smoke failures
+        ("smoke.import.fail", RuleStatus.FAIL, True),
+        ("smoke.import.error", RuleStatus.FAIL, True),
+        ("smoke.import.fail", RuleStatus.WARN, True),
+        # manifest constraint rule — #186: included by exact rule id match
+        ("manifest.requirements.compatible_with_ha_constraints", RuleStatus.FAIL, True),
+        # unrelated rules — must NOT trigger
         ("manifest.domain", RuleStatus.FAIL, False),
+        ("hacs.content_in_root_consistent", RuleStatus.WARN, False),
     ],
 )
 def test_should_exit_nonzero_upgrade_radar(
@@ -687,6 +697,26 @@ def test_should_exit_nonzero_upgrade_radar(
 ) -> None:
     gate = GateConfig(mode=GateMode.UPGRADE_RADAR)
     findings = [make_finding(rule_id=rule_id, status=status)]
+    assert should_exit_nonzero(findings, gate=gate) is expected
+
+
+@pytest.mark.parametrize(
+    "category,status,expected",
+    [
+        ("compatibility", RuleStatus.FAIL, True),
+        ("compatibility", RuleStatus.WARN, True),
+        ("compatibility", RuleStatus.PASS, False),
+        ("documentation", RuleStatus.FAIL, False),  # other category — no trigger
+    ],
+)
+def test_should_exit_nonzero_upgrade_radar_compatibility_category(
+    category: str, status: RuleStatus, expected: bool
+) -> None:
+    """#186: UPGRADE_RADAR must trigger on any finding in the 'compatibility' category."""
+    gate = GateConfig(mode=GateMode.UPGRADE_RADAR)
+    findings = [
+        make_finding(rule_id="some.unrelated.rule", status=status, category=category)
+    ]
     assert should_exit_nonzero(findings, gate=gate) is expected
 
 

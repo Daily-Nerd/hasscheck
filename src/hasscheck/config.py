@@ -30,8 +30,10 @@ class GateMode(StrEnum):
       FAIL or WARN.
     - HACS_PUBLISH: Exits non-zero when any REQUIRED or RECOMMENDED finding is
       FAIL or WARN (suitable for HACS submission gates).
-    - UPGRADE_RADAR: Exits non-zero when any version.* rule finding is FAIL or
-      WARN (suitable for per-HA-version upgrade pipeline gates).
+    - UPGRADE_RADAR: Exits non-zero when any upgrade-risk finding is FAIL or
+      WARN — version.* rules, smoke.* import results, the manifest constraint
+      rule, or any finding in the 'compatibility' category. Suitable for
+      per-HA-version upgrade pipeline gates.
     """
 
     ADVISORY = "advisory"
