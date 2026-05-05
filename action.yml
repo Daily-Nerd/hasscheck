@@ -31,6 +31,10 @@ inputs:
     description: 'Publish endpoint URL when emit-publish is true. Defaults to https://hasscheck.io.'
     required: false
     default: 'https://hasscheck.io'
+  ha-version:
+    description: 'Home Assistant core version this report was tested against (e.g. 2026.5.0). When set, propagated to the published report; omit to leave unset.'
+    required: false
+    default: ''
   token:
     description: 'GitHub token for diff-mode PR comment posting. Alias for github-token; used by the diff-mode steps.'
     required: false
@@ -170,6 +174,9 @@ runs:
         ARGS=""
         if [ "${{ inputs.no-config }}" = "true" ]; then
           ARGS="--no-config"
+        fi
+        if [ -n "${{ inputs.ha-version }}" ]; then
+          ARGS="$ARGS --ha-version ${{ inputs.ha-version }}"
         fi
         hasscheck publish \
           --path "${{ inputs.path }}" \

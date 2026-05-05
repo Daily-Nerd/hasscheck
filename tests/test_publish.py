@@ -396,3 +396,70 @@ def test_detect_oidc_token_does_not_raise_when_missing(monkeypatch):
     monkeypatch.delenv(OIDC_TOKEN_ENV_VAR, raising=False)
     # Must not raise MissingTokenError
     detect_oidc_token(None)
+
+
+# ---------------------------------------------------------------------------
+# Issue #181 — ha_version threading through publish_report (S3, S5)
+
+
+def test_publish_report_threads_ha_version():
+    """publish_report(ha_version=...) must put that value in the POST body target."""
+    repo_root = os.path.dirname(os.path.dirname(__file__))
+    fixture = os.path.join(repo_root, "examples", "good_integration")
+
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "report_id": "rep_abc",
+                "report_url": "https://hasscheck.io/owner/repo/reports/rep_abc",
+                "badge_url_template": "https://hasscheck.io/api/badge/{category}.json",
+                "schema_version": "0.5.0",
+            },
+        )
+
+    with _make_client(handler) as client:
+        publish_report(
+            fixture,
+            endpoint="https://hasscheck.io",
+            oidc_token="tok-abc",
+            no_config=True,
+            client=client,
+            ha_version="2026.5.0",
+        )
+
+    assert captured["body"]["target"]["ha_version"] == "2026.5.0"
+
+
+def test_publish_report_omits_ha_version_null():
+    """publish_report() without ha_version must leave target.ha_version as None."""
+    repo_root = os.path.dirname(os.path.dirname(__file__))
+    fixture = os.path.join(repo_root, "examples", "good_integration")
+
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "report_id": "rep_xyz",
+                "report_url": "https://hasscheck.io/owner/repo/reports/rep_xyz",
+                "badge_url_template": "https://hasscheck.io/api/badge/{category}.json",
+                "schema_version": "0.5.0",
+            },
+        )
+
+    with _make_client(handler) as client:
+        publish_report(
+            fixture,
+            endpoint="https://hasscheck.io",
+            oidc_token="tok-abc",
+            no_config=True,
+            client=client,
+        )
+
+    assert captured["body"]["target"]["ha_version"] is None

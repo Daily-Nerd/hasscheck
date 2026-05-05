@@ -369,6 +369,14 @@ def publish(
         "--dry-run",
         help="Validate and preview without making any network request.",
     ),
+    ha_version: str | None = typer.Option(
+        None,
+        "--ha-version",
+        help=(
+            "Home Assistant core version this report was tested against "
+            "(e.g. 2026.5.0). No format validation. Propagated to the published report."
+        ),
+    ),
 ) -> None:
     """Opt-in upload of a HassCheck report to a hosted service.
 
@@ -504,6 +512,7 @@ def publish(
             endpoint=endpoint,
             oidc_token=token,
             no_config=no_config,
+            ha_version=ha_version,
         )
     except ConfigError as exc:
         typer.echo(f"hasscheck: error: {exc}", err=True)

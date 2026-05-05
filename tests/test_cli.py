@@ -1514,3 +1514,88 @@ def test_diff_malformed_json_exit_2(tmp_path: Path) -> None:
 
     result = runner.invoke(app, ["diff", str(base), str(head)])
     assert result.exit_code == 2, result.output
+
+
+# ---------------------------------------------------------------------------
+# Issue #181 — --ha-version CLI option on publish command (S2)
+
+
+def _make_fake_publish_result():
+    from hasscheck.publish import PublishResult
+
+    return PublishResult(
+        report_id="rep_test",
+        report_url="https://hasscheck.io/owner/repo/reports/rep_test",
+        badge_url_template="https://hasscheck.io/api/badge/{category}.json",
+        schema_version="0.5.0",
+    )
+
+
+def test_publish_cli_forwards_ha_version(tmp_path, monkeypatch) -> None:
+    """publish --ha-version 2026.5.0 must forward ha_version='2026.5.0' to publish_report."""
+    monkeypatch.setenv("HASSCHECK_OIDC_TOKEN", "tok-test")
+    write_minimal_integration(tmp_path)
+
+    spy_kwargs = {}
+
+    def fake_publish_report(
+        path,
+        *,
+        endpoint,
+        oidc_token,
+        no_config=False,
+        config=None,
+        ha_version=None,
+        **kw,
+    ):
+        spy_kwargs["ha_version"] = ha_version
+        return _make_fake_publish_result()
+
+    monkeypatch.setattr("hasscheck.cli.publish_report", fake_publish_report)
+
+    result = runner.invoke(
+        app,
+        [
+            "publish",
+            "--path",
+            str(tmp_path),
+            "--ha-version",
+            "2026.5.0",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert spy_kwargs.get("ha_version") == "2026.5.0"
+
+
+def test_publish_cli_omits_ha_version_defaults_none(tmp_path, monkeypatch) -> None:
+    """publish without --ha-version must call publish_report with ha_version=None."""
+    monkeypatch.setenv("HASSCHECK_OIDC_TOKEN", "tok-test")
+    write_minimal_integration(tmp_path)
+
+    spy_kwargs = {}
+
+    def fake_publish_report(
+        path,
+        *,
+        endpoint,
+        oidc_token,
+        no_config=False,
+        config=None,
+        ha_version=None,
+        **kw,
+    ):
+        spy_kwargs["ha_version"] = ha_version
+        return _make_fake_publish_result()
+
+    monkeypatch.setattr("hasscheck.cli.publish_report", fake_publish_report)
+
+    result = runner.invoke(
+        app,
+        [
+            "publish",
+            "--path",
+            str(tmp_path),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert spy_kwargs.get("ha_version") is None
